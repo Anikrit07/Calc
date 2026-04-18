@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>OrthoMeasure</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#161b27;--panel:#1c2333;--border:#252d3d;
+  --text:#e2e8f4;--muted:#5a6a82;--subtle:#8a9ab8;
+  --blue:#3b82f6;--blue-lt:rgba(59,130,246,.12);--blue-md:rgba(59,130,246,.3);
+  --green:#22c55e;--green-lt:rgba(34,197,94,.12);
+  --orange:#f97316;--orange-lt:rgba(249,115,22,.12);
+  --red:#ef4444;--red-lt:rgba(239,68,68,.12);
+  --yellow:#eab308;
+}
+html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── TOP PROMPT BAR ── */
+.prompt-bar{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  background:linear-gradient(135deg,#1c2333 0%,#161b27 100%);
+  border-bottom:1px solid var(--border);
+  padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+}
+.logo{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;color:var(--blue);flex-shrink:0;white-space:nowrap;letter-spacing:-.3px}
+.prompt-input-wrap{
+  flex:1;min-width:160px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:8px;
+  display:flex;align-items:center;gap:8px;padding:6px 10px;
+  transition:border-color .2s;cursor:text;
+}
+.prompt-input-wrap:focus-within{border-color:var(--blue);}
+.prompt-icon{font-size:14px;flex-shrink:0;opacity:.6}
+.prompt-input{background:none;border:none;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;width:100%;outline:none;}
+.prompt-input::placeholder{color:var(--muted)}
+.pb-btn{background:var(--blue);color:#fff;border:none;padding:7px 13px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0}
+.pb-btn:hover{background:#2563eb}
+.pb-btn.ghost{background:transparent;border:1px solid var(--border);color:var(--subtle)}
+.pb-btn.ghost:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+.pb-btn.save{background:var(--green);color:#000}
+.pb-btn.save:hover{background:#16a34a}
+/* file label as button */
+.upload-label{background:transparent;border:1px solid var(--border);color:var(--subtle);padding:7px 13px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:5px}
+.upload-label:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+#file-inp{display:none}
+.divv{width:1px;height:20px;background:var(--border);flex-shrink:0}
+
+/* ── MAIN LAYOUT ── */
+.main{
+  display:grid;
+  grid-template-columns:200px 1fr 280px;
+  height:100vh;
+  padding-top:52px; /* prompt bar height */
+}
+
+/* ── LEFT SIDEBAR ── */
+.sidebar-l{
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-scroll{overflow-y:auto;flex:1}
+.sb-scroll::-webkit-scrollbar{width:3px}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+.sec{padding:10px;border-bottom:1px solid var(--border)}
+.sec-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+/* Template cards */
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tpl-card{
+  background:var(--panel);border:1.5px solid var(--border);border-radius:7px;
+  padding:7px 5px;cursor:pointer;text-align:center;transition:all .18s;
+  position:relative;overflow:hidden;
+}
+.tpl-card:hover{border-color:var(--blue);background:var(--blue-lt)}
+.tpl-card.active{border-color:var(--blue);background:var(--blue-lt)}
+.tpl-thumb{width:100%;height:48px;object-fit:cover;border-radius:4px;margin-bottom:4px;background:var(--bg);display:block}
+.tpl-name{font-size:10px;font-weight:600;color:var(--text);line-height:1.2}
+.tpl-sub{font-size:9px;color:var(--muted);margin-top:1px}
+
+/* Tools */
+.tool-btn{
+  display:flex;align-items:center;gap:7px;width:100%;
+  background:transparent;border:1.5px solid transparent;
+  border-radius:7px;padding:6px 7px;text-align:left;
+  transition:all .12s;margin-bottom:2px;cursor:pointer;
+}
+.tool-btn:hover{background:var(--panel)}
+.tool-btn.active{background:var(--blue-lt);border-color:var(--blue-md)}
+.ticon{width:26px;height:26px;border-radius:5px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:background .12s}
+.tool-btn.active .ticon{background:var(--blue);color:#fff}
+.tname{font-size:11px;font-weight:600;line-height:1.2;color:var(--text)}
+.tdesc{font-size:9px;color:var(--muted);margin-top:1px}
+
+/* Color swatches */
+.swatches{display:flex;gap:5px;flex-wrap:wrap}
+.sw{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.sw:hover{transform:scale(1.2)}
+.sw.sel{border-color:#fff;transform:scale(1.1)}
+
+/* Presets */
+.pcat{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:8px 6px 3px}
+.pitem{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;color:var(--text);transition:all .12s}
+.pitem:hover{background:var(--panel)}
+.pitem.active{background:var(--panel);font-weight:700;color:var(--blue)}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ── CANVAS AREA ── */
+.canvas-wrap{
+  background:#0a0c10;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+#cvs{position:absolute;top:0;left:0;touch-action:none}
+
+.hint-pill{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  background:rgba(59,130,246,.92);color:#fff;
+  padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;
+  pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;z-index:4;
+  max-width:90%;text-align:center;
+}
+.hint-pill.on{opacity:1}
+
+.zbar{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(10,12,18,.9);border:1px solid var(--border);
+  border-radius:8px;display:flex;align-items:center;
+  backdrop-filter:blur(10px);overflow:hidden;z-index:4;
+}
+.zbar button{background:none;border:none;color:var(--muted);width:34px;height:34px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:color .15s;cursor:pointer}
+.zbar button:hover{color:#fff}
+.zlbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:0 8px;border-left:1px solid var(--border);border-right:1px solid var(--border);height:34px;display:flex;align-items:center;min-width:52px;justify-content:center}
+
+/* ── RIGHT SIDEBAR ── */
+.sidebar-r{
+  background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{
+  flex:1;padding:10px 6px;text-align:center;font-size:11px;font-weight:600;
+  color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:none;flex:1;overflow-y:auto;flex-direction:column}
+.tab-content.active{display:flex}
+.tab-content::-webkit-scrollbar{width:3px}
+.tab-content::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* Measurements tab */
+.mitem{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.mitem:hover{background:var(--panel)}
+.mitem.sel{background:var(--blue-lt);border-left:3px solid var(--blue)}
+.mrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.mname{font-size:10px;font-weight:700;letter-spacing:.3px}
+.mval{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1}
+.msub{font-size:9px;color:var(--muted);margin-top:3px}
+.mdel{background:none;border:none;color:var(--muted);font-size:12px;padding:2px 4px;border-radius:3px;transition:all .12s;cursor:pointer}
+.mdel:hover{background:var(--red-lt);color:var(--red)}
+.no-m{padding:20px 14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* Guide tab */
+.guide-card{margin:10px;padding:14px;background:var(--panel);border-radius:10px;border:1px solid var(--border)}
+.guide-title{font-size:13px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.guide-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.5px}
+.badge-normal{background:var(--green-lt);color:var(--green)}
+.badge-warn{background:var(--orange-lt);color:var(--orange)}
+.guide-section{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:12px 0 5px}
+.guide-p{font-size:12px;color:var(--subtle);line-height:1.6;margin-bottom:6px}
+.guide-step{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--blue);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-txt{font-size:12px;color:var(--subtle);line-height:1.5}
+.ref-range{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border-radius:7px;margin-top:6px;border:1px solid var(--border)}
+.ref-label{font-size:10px;color:var(--muted)}
+.ref-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+.ref-val.normal{color:var(--green)}
+.ref-val.warn{color:var(--orange)}
+
+/* Saved tab */
+.saved-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
+.saved-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;transition:all .15s}
+.saved-card:hover{border-color:var(--blue)}
+.saved-thumb{width:100%;height:70px;object-fit:cover;display:block;background:var(--bg)}
+.saved-info{padding:5px 7px}
+.saved-name{font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saved-date{font-size:9px;color:var(--muted);margin-top:1px}
+.saved-actions{display:flex;gap:4px;padding:0 7px 6px}
+.saved-btn{font-size:9px;padding:3px 7px;border-radius:4px;border:none;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
+.saved-dl{background:var(--blue-lt);color:var(--blue)}
+.saved-rm{background:var(--red-lt);color:var(--red)}
+.no-saved{padding:30px 14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* ── MODAL ── */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
+.mbg.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text)}
+.modal input{width:100%;padding:9px 11px;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;margin-bottom:12px;outline:none;transition:border-color .15s}
+.modal input:focus{border-color:var(--blue)}
+.mbtns{display:flex;gap:8px;justify-content:flex-end}
+.mbtns button{padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.btn-ok{background:var(--blue);color:#fff}.btn-ok:hover{background:#2563eb}
+.btn-cx{background:var(--panel);color:var(--text)}.btn-cx:hover{background:var(--border)}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .main{
+    grid-template-columns:1fr;
+    grid-template-rows:auto 1fr auto;
+    padding-top:0;
+  }
+  .prompt-bar{position:relative;flex-wrap:wrap;padding:8px 10px;gap:6px}
+  .logo{font-size:13px}
+  .prompt-input-wrap{min-width:100%;order:10;flex-basis:100%}
+  .sidebar-l{
+    display:none; /* shown as bottom sheet on mobile */
+  }
+  .sidebar-r{
+    height:200px;border-left:none;border-top:1px solid var(--border);
+    flex-direction:row;
+  }
+  .tabs{flex-direction:column;border-bottom:none;border-right:1px solid var(--border);width:70px;flex-shrink:0}
+  .tab{padding:12px 4px;font-size:9px;border-bottom:none;border-right:2px solid transparent}
+  .tab.active{border-bottom:none;border-right-color:var(--blue)}
+  .canvas-wrap{min-height:300px}
+  .zbar{bottom:8px}
+  .mob-tools-btn{display:flex}
+  .divv{display:none}
+  .pb-btn.ghost{display:none}
+}
+@media(min-width:769px){
+  .mob-tools-btn{display:none}
+}
+
+/* Mobile tool drawer */
+.mob-tools-btn{
+  position:fixed;bottom:220px;right:12px;z-index:20;
+  background:var(--blue);color:#fff;border:none;
+  width:44px;height:44px;border-radius:50%;font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(59,130,246,.4);cursor:pointer;
+}
+.mob-drawer{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:var(--surface);border-top:1px solid var(--border);
+  border-radius:16px 16px 0 0;padding:16px;
+  transform:translateY(100%);transition:transform .3s;
+  max-height:70vh;overflow-y:auto;
+}
+.mob-drawer.open{transform:translateY(0)}
+.mob-drawer-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}
+
+/* Save name modal */
+.save-input{width:100%;padding:9px 11px;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;margin-bottom:12px}
+.save-input:focus{border-color:var(--green)}
+
+button{font-family:'IBM Plex Sans',sans-serif}
+</style>
+</head>
+<body>
+
+<!-- ── TOP PROMPT BAR ── -->
+<div class="prompt-bar">
+  <div class="logo">OrthoMeasure</div>
+  <div class="divv"></div>
+
+  <!-- File upload -->
+  <label class="upload-label" for="file-inp">📂 Load X-Ray</label>
+  <input type="file" id="file-inp" accept="image/*" onchange="loadFile(event)">
+
+  <!-- Contextual prompt -->
+  <div class="prompt-input-wrap" onclick="document.getElementById('prompt-inp').focus()">
+    <span class="prompt-icon">💡</span>
+    <input id="prompt-inp" class="prompt-input" readonly placeholder="Select a template or tool to see measurement guidance…">
+  </div>
+
+  <div class="divv"></div>
+  <button class="pb-btn save" onclick="saveSnapshot()">💾 Save Image</button>
+  <button class="pb-btn ghost" onclick="exportPNG()">↓ PNG</button>
+  <button class="pb-btn ghost" onclick="exportPDF()">↓ PDF</button>
+  <button class="pb-btn ghost" onclick="undoLast()">↩</button>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar-l" id="sidebar-l">
+    <div class="sb-scroll">
+
+      <!-- Templates -->
+      <div class="sec">
+        <div class="sec-label">X-Ray Templates</div>
+        <div class="tpl-grid">
+          <div class="tpl-card active" id="tpl-hip" onclick="loadTemplate('hip',this)">
+            <img class="tpl-thumb" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Hip_ap.jpg/120px-Hip_ap.jpg" onerror="this.style.display='none'" alt="Hip AP">
+            <div class="tpl-name">Hip Joint</div>
+            <div class="tpl-sub">AP pelvis</div>
+          </div>
+          <div class="tpl-card" id="tpl-knee" onclick="loadTemplate('knee',this)">
+            <img class="tpl-thumb" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Knee_plain_xray.jpg/120px-Knee_plain_xray.jpg" onerror="this.style.display='none'" alt="Knee">
+            <div class="tpl-name">Knee</div>
+            <div class="tpl-sub">Frontal view</div>
+          </div>
+          <div class="tpl-card" id="tpl-spine" onclick="loadTemplate('spine',this)">
+            <img class="tpl-thumb" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Scoliosis_cobb.gif/120px-Scoliosis_cobb.gif" onerror="this.style.display='none'" alt="Spine">
+            <div class="tpl-name">Spine</div>
+            <div class="tpl-sub">Scoliosis AP</div>
+          </div>
+          <div class="tpl-card" id="tpl-pelvis" onclick="loadTemplate('pelvis',this)">
+            <img class="tpl-thumb" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Pelvis_AP.jpg/120px-Pelvis_AP.jpg" onerror="this.style.display='none'" alt="Pelvis">
+            <div class="tpl-name">Full Pelvis</div>
+            <div class="tpl-sub">Both hips</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tools -->
+      <div class="sec">
+        <div class="sec-label">Tools</div>
+        <button class="tool-btn active" id="tb-select"   onclick="setTool('select')">  <div class="ticon">↖</div><div><div class="tname">Select [S]</div><div class="tdesc">Move objects</div></div></button>
+        <button class="tool-btn"        id="tb-angle3"   onclick="setTool('angle3')">  <div class="ticon">∠</div><div><div class="tname">3-Point Angle [A]</div><div class="tdesc">3 clicks · mid = vertex</div></div></button>
+        <button class="tool-btn"        id="tb-angle4"   onclick="setTool('angle4')">  <div class="ticon">⊾</div><div><div class="tname">4-Point Angle [F]</div><div class="tdesc">Two lines → angle</div></div></button>
+        <button class="tool-btn"        id="tb-cobb"     onclick="setTool('cobb')">    <div class="ticon">≋</div><div><div class="tname">Cobb Angle [C]</div><div class="tdesc">Two endplates</div></div></button>
+        <button class="tool-btn"        id="tb-line"     onclick="setTool('line')">    <div class="ticon">↔</div><div><div class="tname">Line/Distance [L]</div><div class="tdesc">2 clicks · measure</div></div></button>
+        <button class="tool-btn"        id="tb-annotate" onclick="setTool('annotate')"><div class="ticon">✎</div><div><div class="tname">Annotate [N]</div><div class="tdesc">Add text label</div></div></button>
+        <button class="tool-btn"        id="tb-erase"    onclick="setTool('erase')">   <div class="ticon" style="font-size:10px;font-weight:800">DEL</div><div><div class="tname">Erase [E]</div><div class="tdesc">Remove object</div></div></button>
+      </div>
+
+      <!-- Color -->
+      <div class="sec">
+        <div class="sec-label">Color</div>
+        <div class="swatches">
+          <div class="sw sel" style="background:#3b82f6" onclick="pickCol('#3b82f6',this)"></div>
+          <div class="sw"     style="background:#ef4444" onclick="pickCol('#ef4444',this)"></div>
+          <div class="sw"     style="background:#22c55e" onclick="pickCol('#22c55e',this)"></div>
+          <div class="sw"     style="background:#eab308" onclick="pickCol('#eab308',this)"></div>
+          <div class="sw"     style="background:#a855f7" onclick="pickCol('#a855f7',this)"></div>
+          <div class="sw"     style="background:#f97316" onclick="pickCol('#f97316',this)"></div>
+          <div class="sw"     style="background:#06b6d4" onclick="pickCol('#06b6d4',this)"></div>
+          <div class="sw"     style="background:#f1f5f9;border:1px solid #334155" onclick="pickCol('#f1f5f9',this)"></div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="sec" style="padding-bottom:20px">
+        <div class="sec-label">Presets</div>
+        <div class="pcat">Hip / Pelvis</div>
+        <div class="pitem" onclick="usePreset('nsa',this)"><div class="pdot" style="background:#3b82f6"></div>Neck-Shaft Angle</div>
+        <div class="pitem" onclick="usePreset('ce',this)"><div class="pdot" style="background:#ef4444"></div>CE Angle</div>
+        <div class="pitem" onclick="usePreset('acetab',this)"><div class="pdot" style="background:#22c55e"></div>Acetabular Index</div>
+        <div class="pitem" onclick="usePreset('tonnis',this)"><div class="pdot" style="background:#eab308"></div>Tönnis Angle</div>
+        <div class="pitem" onclick="usePreset('shenton',this)"><div class="pdot" style="background:#a855f7"></div>Shenton's Line</div>
+        <div class="pitem" onclick="usePreset('wiberg',this)"><div class="pdot" style="background:#f97316"></div>Wiberg / VCA</div>
+        <div class="pcat">Knee / Alignment</div>
+        <div class="pitem" onclick="usePreset('tfa',this)"><div class="pdot" style="background:#3b82f6"></div>Tibiofemoral Angle</div>
+        <div class="pitem" onclick="usePreset('mech',this)"><div class="pdot" style="background:#ef4444"></div>Mechanical Axis</div>
+        <div class="pitem" onclick="usePreset('mpta',this)"><div class="pdot" style="background:#22c55e"></div>MPTA</div>
+        <div class="pitem" onclick="usePreset('ldfa',this)"><div class="pdot" style="background:#eab308"></div>LDFA</div>
+        <div class="pcat">Spine</div>
+        <div class="pitem" onclick="usePreset('cobbs',this)"><div class="pdot" style="background:#3b82f6"></div>Cobb Angle</div>
+        <div class="pitem" onclick="usePreset('lordosis',this)"><div class="pdot" style="background:#ef4444"></div>Lumbar Lordosis</div>
+        <div class="pitem" onclick="usePreset('cervical',this)"><div class="pdot" style="background:#22c55e"></div>Cervical Lordosis</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap" id="ca">
+    <canvas id="cvs"></canvas>
+    <div class="hint-pill" id="hint"></div>
+    <div class="zbar">
+      <button onclick="doZoom(1.2)">+</button>
+      <div class="zlbl" id="zlbl">100%</div>
+      <button onclick="doZoom(0.8)">−</button>
+      <button onclick="resetZoom()">⊡</button>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="sidebar-r">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('measurements',this)">📐 Results</div>
+      <div class="tab" onclick="switchTab('guide',this)">📖 Guide</div>
+      <div class="tab" onclick="switchTab('saved',this)">💾 Saved</div>
+    </div>
+
+    <!-- MEASUREMENTS TAB -->
+    <div class="tab-content active" id="tab-measurements">
+      <div id="mlist">
+        <div class="no-m">📐 No measurements yet.<br><br>Choose a template + tool, then click on the x-ray to start.</div>
+      </div>
+    </div>
+
+    <!-- GUIDE TAB -->
+    <div class="tab-content" id="tab-guide">
+      <div id="guide-content" style="padding:10px">
+        <div class="guide-card">
+          <div class="guide-title">📖 How to Use</div>
+          <div class="guide-p">Select a tool or preset from the left panel. A guide for that specific measurement will appear here.</div>
+          <div class="guide-section">Quick Start</div>
+          <div class="guide-step"><div class="step-num">1</div><div class="step-txt">Pick an X-ray template or upload your own image</div></div>
+          <div class="guide-step"><div class="step-num">2</div><div class="step-txt">Choose a preset (e.g. "Neck-Shaft Angle") from the left</div></div>
+          <div class="guide-step"><div class="step-num">3</div><div class="step-txt">Click 3 points on the image — the angle calculates automatically</div></div>
+          <div class="guide-step"><div class="step-num">4</div><div class="step-txt">Save the annotated image to the Saved tab</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVED TAB -->
+    <div class="tab-content" id="tab-saved">
+      <div id="saved-list">
+        <div class="no-saved">💾 No saved images yet.<br><br>Click "Save Image" in the top bar to capture the current view with all measurements.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile tools button -->
+<button class="mob-tools-btn" onclick="toggleMobDrawer()">⚙</button>
+
+<!-- Mobile drawer -->
+<div class="mob-drawer" id="mob-drawer">
+  <div class="mob-drawer-handle"></div>
+  <div class="sec-label" style="padding:0 0 8px">Tools</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px">
+    <button class="tool-btn" onclick="setTool('select');closeMobDrawer()">  <div class="ticon">↖</div><div class="tname">Select</div></button>
+    <button class="tool-btn" onclick="setTool('angle3');closeMobDrawer()">  <div class="ticon">∠</div><div class="tname">3-Pt Angle</div></button>
+    <button class="tool-btn" onclick="setTool('angle4');closeMobDrawer()">  <div class="ticon">⊾</div><div class="tname">4-Pt Angle</div></button>
+    <button class="tool-btn" onclick="setTool('cobb');closeMobDrawer()">    <div class="ticon">≋</div><div class="tname">Cobb</div></button>
+    <button class="tool-btn" onclick="setTool('line');closeMobDrawer()">    <div class="ticon">↔</div><div class="tname">Distance</div></button>
+    <button class="tool-btn" onclick="setTool('erase');closeMobDrawer()">   <div class="ticon" style="font-size:10px;font-weight:800">DEL</div><div class="tname">Erase</div></button>
+  </div>
+  <div class="sec-label" style="padding:0 0 8px">Color</div>
+  <div class="swatches" style="margin-bottom:14px">
+    <div class="sw sel" style="background:#3b82f6;width:28px;height:28px" onclick="pickCol('#3b82f6',this)"></div>
+    <div class="sw"     style="background:#ef4444;width:28px;height:28px" onclick="pickCol('#ef4444',this)"></div>
+    <div class="sw"     style="background:#22c55e;width:28px;height:28px" onclick="pickCol('#22c55e',this)"></div>
+    <div class="sw"     style="background:#eab308;width:28px;height:28px" onclick="pickCol('#eab308',this)"></div>
+    <div class="sw"     style="background:#a855f7;width:28px;height:28px" onclick="pickCol('#a855f7',this)"></div>
+    <div class="sw"     style="background:#f97316;width:28px;height:28px" onclick="pickCol('#f97316',this)"></div>
+  </div>
+  <div class="sec-label" style="padding:0 0 8px">Templates</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+    <button class="tool-btn" onclick="loadTemplate('hip',null);closeMobDrawer()"><div class="tname">Hip Joint</div></button>
+    <button class="tool-btn" onclick="loadTemplate('knee',null);closeMobDrawer()"><div class="tname">Knee</div></button>
+    <button class="tool-btn" onclick="loadTemplate('spine',null);closeMobDrawer()"><div class="tname">Spine</div></button>
+    <button class="tool-btn" onclick="loadTemplate('pelvis',null);closeMobDrawer()"><div class="tname">Pelvis</div></button>
+  </div>
+</div>
+
+<!-- Annotation modal -->
+<div class="mbg" id="mbg">
+  <div class="modal">
+    <h3>Add Annotation</h3>
+    <input type="text" id="ann-inp" placeholder="Type label text…" maxlength="80">
+    <div class="mbtns">
+      <button class="btn-cx" onclick="closeModal()">Cancel</button>
+      <button class="btn-ok" onclick="confirmAnn()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save name modal -->
+<div class="mbg" id="save-mbg">
+  <div class="modal">
+    <h3>💾 Save Annotated Image</h3>
+    <input class="save-input" id="save-inp" placeholder="Name this snapshot…" maxlength="50">
+    <div class="mbtns">
+      <button class="btn-cx" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn-ok" style="background:var(--green)" onclick="confirmSave()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CANVAS ──────────────────────────────────────────────────────────────────
+const cvs = document.getElementById('cvs');
+const ctx = cvs.getContext('2d');
+let W, H;
+
+function resizeCvs() {
+  const a = document.getElementById('ca');
+  W = cvs.width = a.clientWidth;
+  H = cvs.height = a.clientHeight;
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let objs = [], tool = 'select', wip = [], col = '#3b82f6';
+let dragging = false, dstart = null, dobj = null, selObj = null;
+let annPt = null, mpos = { x: 0, y: 0 };
+let zl = 1, panX = 0, panY = 0;
+let currentTemplate = 'hip';
+let bgImage = null;  // user-uploaded or template image
+let savedSnapshots = [];
+
+// ─── PRESETS + GUIDES ────────────────────────────────────────────────────────
+const PRESETS = {
+  nsa: {
+    name:'Neck-Shaft Angle', col:'#3b82f6', tool:'angle3',
+    normal:'125°–135°', warn:'<120° coxa vara / >140° coxa valga',
+    prompt:'Click: ① femoral shaft axis point ② femoral neck center ③ femoral head center',
+    guide:[
+      'Identify the long axis of the femoral shaft',
+      'Draw a line along the femoral neck',
+      'The angle between these two lines at the greater trochanter level is the NSA'
+    ],
+    definition:'The angle between the femoral neck axis and the femoral shaft axis, measured on AP pelvis radiograph.',
+    clinical:'Reduced NSA (coxa vara) causes limb shortening. Increased NSA (coxa valga) causes gait abnormality.'
+  },
+  ce: {
+    name:'Center-Edge Angle', col:'#ef4444', tool:'angle3',
+    normal:'25°–40°', warn:'<20° dysplasia / >40° pincer morphology',
+    prompt:'Click: ① femoral head center ② lateral acetabular edge ③ vertical reference point above',
+    guide:[
+      'Mark the center of the femoral head',
+      'Draw a vertical line upward from that center',
+      'Draw a line from the center to the lateral edge of the acetabulum',
+      'The angle between these two lines is the CE angle'
+    ],
+    definition:'Measures lateral coverage of the femoral head by the acetabulum on AP pelvis X-ray.',
+    clinical:'Low CE angle indicates insufficient lateral coverage (dysplasia). High CE angle indicates overcoverage (pincer).'
+  },
+  acetab: {
+    name:'Acetabular Index', col:'#22c55e', tool:'angle3',
+    normal:'<10° in adults, <30° in children', warn:'>20° indicates dysplasia risk',
+    prompt:'Click: ① medial acetabular point (teardrops) ② lateral acetabular edge ③ horizontal reference',
+    guide:[
+      'Find the triradiate cartilage (teardrop) point medially',
+      'Find the lateral edge of the acetabular sourcil (roof)',
+      'Measure the angle this line makes with the horizontal'
+    ],
+    definition:'Angle of the acetabular roof relative to the horizontal, indicating acetabular inclination.',
+    clinical:'Elevated acetabular index in adults indicates a dysplastic acetabulum with inadequate coverage.'
+  },
+  tonnis: {
+    name:'Tönnis Angle', col:'#eab308', tool:'angle3',
+    normal:'0°–10°', warn:'<0° overcoverage / >10° instability',
+    prompt:'Click: ① medial sourcil point ② lateral sourcil point ③ horizontal reference',
+    guide:[
+      'Identify the weight-bearing dome of the acetabulum (sourcil)',
+      'Mark its medial and lateral edges',
+      'Measure the slope angle relative to horizontal'
+    ],
+    definition:'Angle of inclination of the acetabular sourcil (weight-bearing dome), measured on AP X-ray.',
+    clinical:'Elevated Tönnis angle predicts risk of osteoarthritis and instability. Used in periacetabular osteotomy planning.'
+  },
+  shenton: {
+    name:"Shenton's Line", col:'#a855f7', tool:'line',
+    normal:'Smooth continuous arc', warn:'Broken line = subluxation/dislocation',
+    prompt:'Draw a line from the inferior femoral neck to the superior obturator foramen',
+    guide:[
+      "Identify the inferior border of the femoral neck",
+      "Identify the superior border of the obturator foramen",
+      "These should form a smooth continuous arc",
+      "A broken or disrupted arc indicates hip subluxation"
+    ],
+    definition:"An imaginary curved line drawn along the inferior border of the superior pubic ramus and the medial border of the femoral neck.",
+    clinical:"Disruption indicates hip dislocation, developmental dysplasia, or fracture displacement."
+  },
+  wiberg: {
+    name:'Wiberg / VCA Angle', col:'#f97316', tool:'angle3',
+    normal:'CE >25°', warn:'<20° lateral subluxation risk',
+    prompt:'Click: ① femoral head center ② lateral sourcil edge ③ vertical above center',
+    guide:[
+      'Same points as CE angle — Wiberg originally described this measurement',
+      'Femoral head center to lateral acetabular rim',
+      'Compare to a vertical line from femoral head center'
+    ],
+    definition:'Lateral center-edge angle of Wiberg: measures lateral acetabular coverage on AP X-ray. Synonym of CE angle.',
+    clinical:'Values <20° are considered dysplastic and may require surgical correction.'
+  },
+  tfa: {
+    name:'Tibiofemoral Angle', col:'#3b82f6', tool:'angle3',
+    normal:'5°–7° valgus physiologic', warn:'Any varus or >10° valgus = abnormal',
+    prompt:'Click: ① femoral shaft point ② knee joint center ③ tibial shaft point',
+    guide:[
+      'Draw the mechanical axis of the femur (femoral head to knee center)',
+      'Draw the mechanical axis of the tibia (knee center to ankle center)',
+      'The angle between these axes at the knee is the TFA'
+    ],
+    definition:'Angle between the femoral and tibial mechanical axes measured at the knee joint on AP long-leg X-ray.',
+    clinical:'Varus malalignment increases medial compartment loading. Valgus increases lateral loading. Critical for osteotomy planning.'
+  },
+  mech: {
+    name:'Mechanical Axis', col:'#ef4444', tool:'line',
+    normal:'Passes through knee center', warn:'Medial/lateral shift = deformity',
+    prompt:'Draw the line from femoral head center to ankle center',
+    guide:[
+      'Mark the center of the femoral head',
+      'Mark the center of the tibiotalar joint (ankle)',
+      'The line between them is the mechanical axis',
+      'In normal alignment it passes through the center of the knee'
+    ],
+    definition:'The mechanical axis of the lower limb extends from the center of the femoral head to the center of the ankle joint.',
+    clinical:'Medial deviation = varus deformity. Lateral = valgus. Deviation >3mm from knee center is clinically significant.'
+  },
+  mpta: {
+    name:'MPTA (Medial Proximal Tibial Angle)', col:'#22c55e', tool:'angle3',
+    normal:'87° ± 3°', warn:'<84° varus / >90° valgus proximal tibia',
+    prompt:'Click: ① medial tibial plateau ② lateral tibial plateau ③ tibial shaft axis point',
+    guide:[
+      'Draw a line across the proximal tibial articular surface',
+      'Draw the tibial mechanical axis (ankle center to plateau center)',
+      'Measure the angle on the medial side'
+    ],
+    definition:'Angle between the medial tibial plateau and tibial mechanical axis. Measures proximal tibial joint line obliquity.',
+    clinical:'Reduced MPTA indicates varus tibial deformity. Used in high tibial osteotomy (HTO) planning.'
+  },
+  ldfa: {
+    name:'LDFA (Lateral Distal Femoral Angle)', col:'#eab308', tool:'angle3',
+    normal:'81° ± 2°', warn:'Outside 79°–83° = abnormal',
+    prompt:'Click: ① medial femoral condyle ② lateral femoral condyle ③ femoral shaft axis point',
+    guide:[
+      'Draw a line across the distal femoral articular surface',
+      'Draw the femoral mechanical axis (femoral head to condyle midpoint)',
+      'Measure the angle on the lateral side'
+    ],
+    definition:'Angle between the femoral mechanical axis and the distal femoral joint line, measured on the lateral side.',
+    clinical:'Abnormal LDFA indicates distal femoral deformity. Critical in planning distal femoral osteotomy.'
+  },
+  cobbs: {
+    name:'Cobb Angle', col:'#3b82f6', tool:'cobb',
+    normal:'<10° normal spine', warn:'>10° scoliosis / >25° monitor / >40° surgical consideration',
+    prompt:'Click: ① top of upper vertebra ② bottom of upper vertebra ③ top of lower vertebra ④ bottom of lower vertebra',
+    guide:[
+      'Identify the most tilted vertebra at the top of the curve (upper end vertebra)',
+      'Draw a line along its superior endplate',
+      'Identify the most tilted vertebra at the bottom (lower end vertebra)',
+      'Draw a line along its inferior endplate',
+      'The angle between these two lines (or their perpendiculars) is the Cobb angle'
+    ],
+    definition:'Standard measurement of spinal curvature magnitude on AP radiograph. Named after Dr. John Robert Cobb (1948).',
+    clinical:'<10°: normal. 10–25°: mild scoliosis, observe. 25–40°: brace. >40–45°: surgical correction considered.'
+  },
+  lordosis: {
+    name:'Lumbar Lordosis', col:'#ef4444', tool:'cobb',
+    normal:'40°–60°', warn:'<30° flat back syndrome / >70° hyperlordosis',
+    prompt:'Click: ① S1 superior endplate start ② S1 endplate end ③ L1 superior endplate start ④ L1 endplate end',
+    guide:[
+      'On lateral lumbar X-ray, identify L1 superior endplate',
+      'Identify S1 superior endplate',
+      'Draw lines along each endplate',
+      'Measure the angle between them (Cobb method)'
+    ],
+    definition:'Lumbar lordosis is the normal anterior curvature of the lumbar spine. Measured L1–S1 on lateral X-ray.',
+    clinical:'Reduced lordosis seen in muscle spasm, disc disease. Excessive lordosis seen in spondylolisthesis, obesity.'
+  },
+  cervical: {
+    name:'Cervical Lordosis', col:'#22c55e', tool:'cobb',
+    normal:'20°–40°', warn:'<0° kyphosis / >50° hyperlordosis',
+    prompt:'Click: ① C2 inferior endplate start ② C2 endplate end ③ C7 inferior endplate start ④ C7 endplate end',
+    guide:[
+      'On lateral cervical X-ray, identify C2 inferior endplate',
+      'Identify C7 inferior endplate',
+      'Draw lines along each endplate',
+      'Measure the angle — this is the Cobb C2–C7 lordosis'
+    ],
+    definition:'Cervical lordosis is the normal posterior curvature of the cervical spine. Measured C2–C7 on lateral X-ray.',
+    clinical:'Loss of lordosis (military neck) may indicate muscle spasm or disc herniation. Common in whiplash injuries.'
+  }
+};
+
+const TOOL_HINTS = {
+  select:   'Click an object to select · drag to move it',
+  angle3:   '① Click Point 1   ② Click Vertex (middle)   ③ Click Point 3',
+  angle4:   '① Line 1 start   ② Line 1 end   ③ Line 2 start   ④ Line 2 end',
+  cobb:     '① Endplate 1 start   ② Endplate 1 end   ③ Endplate 2 start   ④ Endplate 2 end',
+  line:     '① Click start point   ② Click end point',
+  annotate: '① Click where to place the label on the image',
+  erase:    'Click any measurement object to delete it',
+};
+
+const REQ = { angle3:3, angle4:4, cobb:4, line:2 };
+
+// ─── TEMPLATE IMAGES ─────────────────────────────────────────────────────────
+const TEMPLATE_URLS = {
+  hip:    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Hip_ap.jpg/600px-Hip_ap.jpg',
+  knee:   'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Knee_plain_xray.jpg/400px-Knee_plain_xray.jpg',
+  spine:  'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Scoliosis_cobb.gif/300px-Scoliosis_cobb.gif',
+  pelvis: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Pelvis_AP.jpg/600px-Pelvis_AP.jpg',
+};
+
+function loadTemplate(name, el) {
+  currentTemplate = name;
+  objs = []; wip = []; selObj = null;
+  zl = 1; panX = 0; panY = 0;
+  document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.pitem').forEach(i => i.classList.remove('active'));
+
+  const url = TEMPLATE_URLS[name];
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => { bgImage = image; fitBg(); updateList(); redraw(); };
+  image.onerror = () => { bgImage = null; updateList(); redraw(); };
+  image.src = url;
+
+  setPrompt(`Template: ${name.charAt(0).toUpperCase()+name.slice(1)} X-ray loaded. Select a preset from the left to begin measuring.`);
+  updateList(); redraw();
+}
+
+function loadFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const image = new Image();
+    image.onload = () => {
+      bgImage = image; fitBg();
+      objs = []; wip = []; selObj = null;
+      zl = 1; panX = 0; panY = 0;
+      document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+      setPrompt('Your X-ray loaded. Select a preset from the left to begin measuring.');
+      updateList(); redraw();
+    };
+    image.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fitBg() {
+  if (!bgImage) return;
+  zl = Math.min(W / bgImage.width, H / bgImage.height) * 0.95;
+  panX = (W - bgImage.width * zl) / 2;
+  panY = (H - bgImage.height * zl) / 2;
+  updateZlbl();
+}
+
+// ─── TOOL ────────────────────────────────────────────────────────────────────
+function setTool(t) {
+  tool = t; wip = [];
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('tb-' + t);
+  if (btn) btn.classList.add('active');
+  cvs.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  showHint(TOOL_HINTS[t] || '');
+  if (!document.querySelector('.pitem.active')) setPrompt(TOOL_HINTS[t]);
+  redraw();
+}
+
+function pickCol(c, el) {
+  col = c;
+  document.querySelectorAll('.sw').forEach(s => s.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+}
+
+function showHint(msg) {
+  const h = document.getElementById('hint');
+  h.textContent = msg; h.classList.toggle('on', !!msg);
+}
+
+function setPrompt(msg) {
+  document.getElementById('prompt-inp').placeholder = msg;
+}
+
+function usePreset(key, el) {
+  const p = PRESETS[key]; if (!p) return;
+  col = p.col;
+  document.querySelectorAll('.sw').forEach(s => s.classList.remove('sel'));
+  setTool(p.tool);
+  document.querySelectorAll('.pitem').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  setPrompt('📍 ' + p.prompt);
+  showHint(p.prompt);
+  showGuide(key);
+  switchTab('guide', null);
+  setTimeout(() => switchTab('measurements', document.querySelector('.tab')), 2000);
+}
+
+// ─── GUIDE ───────────────────────────────────────────────────────────────────
+function showGuide(key) {
+  const p = PRESETS[key]; if (!p) return;
+  const gc = document.getElementById('guide-content');
+  gc.innerHTML = `
+    <div class="guide-card">
+      <div class="guide-title">
+        <span style="color:${p.col}">●</span> ${p.name}
+        <span class="guide-badge badge-normal">${p.tool === 'line' ? 'LINE' : p.tool === 'cobb' ? '4-PT' : '3-PT'}</span>
+      </div>
+      <div class="guide-p" style="font-style:italic;color:var(--muted)">${p.definition}</div>
+
+      <div class="guide-section">How to Calculate</div>
+      ${p.guide.map((s,i) => `<div class="guide-step"><div class="step-num">${i+1}</div><div class="step-txt">${s}</div></div>`).join('')}
+
+      <div class="guide-section">Reference Ranges</div>
+      <div class="ref-range">
+        <span class="ref-label">Normal</span>
+        <span class="ref-val normal">${p.normal}</span>
+      </div>
+      <div class="ref-range" style="margin-top:5px">
+        <span class="ref-label">Abnormal</span>
+        <span class="ref-val warn">${p.warn}</span>
+      </div>
+
+      <div class="guide-section">Clinical Significance</div>
+      <div class="guide-p">${p.clinical}</div>
+    </div>`;
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else { const tabs = document.querySelectorAll('.tab'); if(name==='measurements')tabs[0].classList.add('active'); else if(name==='guide')tabs[1].classList.add('active'); else tabs[2].classList.add('active'); }
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── CANVAS EVENTS ────────────────────────────────────────────────────────────
+cvs.addEventListener('click', e => {
+  const { x, y } = gp(e);
+  if (tool === 'select')   { doSel(x, y); return; }
+  if (tool === 'erase')    { doErase(x, y); return; }
+  if (tool === 'annotate') { annPt = { x, y }; openModal(); return; }
+  wip.push({ x, y });
+  if (wip.length === REQ[tool]) finalise();
+  else showHint(stepHint());
+  redraw();
+});
+
+cvs.addEventListener('mousemove', e => {
+  const { x, y } = gp(e); mpos = { x, y };
+  if (dragging && dobj) {
+    const dx = x - dstart.x, dy = y - dstart.y; dstart = { x, y };
+    dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    redraw(); return;
+  }
+  if (wip.length > 0) redraw();
+});
+
+cvs.addEventListener('mousedown', e => {
+  if (tool !== 'select') return;
+  const { x, y } = gp(e), hit = findObj(x, y);
+  if (hit) { dragging = true; dobj = hit; dstart = { x, y }; selObj = hit; }
+});
+
+cvs.addEventListener('mouseup', () => { dragging = false; dobj = null; });
+cvs.addEventListener('wheel', e => { e.preventDefault(); doZoom(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+
+// Touch support
+let lastTouch = null, touchDist = 0;
+cvs.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    lastTouch = gpt(e.touches[0]);
+    if (tool === 'select') {
+      const hit = findObj(lastTouch.x, lastTouch.y);
+      if (hit) { dragging = true; dobj = hit; dstart = lastTouch; selObj = hit; }
+    }
+  }
+  if (e.touches.length === 2) {
+    touchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  }
+}, { passive: false });
+
+cvs.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = gpt(e.touches[0]);
+    mpos = t;
+    if (dragging && dobj) {
+      const dx = t.x - dstart.x, dy = t.y - dstart.y; dstart = t;
+      dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    }
+    if (wip.length > 0 || dragging) redraw();
+  }
+  if (e.touches.length === 2) {
+    const nd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if (touchDist) doZoom(nd / touchDist);
+    touchDist = nd;
+  }
+}, { passive: false });
+
+cvs.addEventListener('touchend', e => {
+  e.preventDefault();
+  dragging = false; dobj = null;
+  if (e.changedTouches.length === 1 && !dragging) {
+    const t = gpt(e.changedTouches[0]);
+    if (tool === 'select') { doSel(t.x, t.y); return; }
+    if (tool === 'erase')  { doErase(t.x, t.y); return; }
+    if (tool === 'annotate') { annPt = t; openModal(); return; }
+    wip.push(t);
+    if (wip.length === REQ[tool]) finalise();
+    else showHint(stepHint());
+    redraw();
+  }
+}, { passive: false });
+
+function gp(e) {
+  const r = cvs.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+}
+function gpt(touch) {
+  const r = cvs.getBoundingClientRect();
+  return { x: (touch.clientX - r.left) * (W / r.width), y: (touch.clientY - r.top) * (H / r.height) };
+}
+
+function stepHint() {
+  const map = {
+    angle3: ['② Click the VERTEX (middle)', '③ Click Point 3'],
+    angle4: ['② Line 1 end', '③ Line 2 start', '④ Line 2 end'],
+    cobb:   ['② Endplate 1 end', '③ Endplate 2 start', '④ Endplate 2 end'],
+    line:   ['② Click end point'],
+  };
+  return (map[tool] || [])[wip.length - 1] || '';
+}
+
+// ─── FINALISE ────────────────────────────────────────────────────────────────
+function finalise() {
+  const p = [...wip];
+  const lbl = activePLabel();
+  const o = { type: tool, points: p, color: col, label: '', value: '' };
+  if (tool === 'angle3') { o.angle = ang3(p[0],p[1],p[2]); o.value = o.angle.toFixed(1)+'°'; o.label = lbl||'3-Pt Angle'; }
+  else if (tool === 'angle4') { o.angle = ang4(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°'; o.label = lbl||'4-Pt Angle'; }
+  else if (tool === 'cobb') { o.angle = cobbA(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°'; o.label = lbl||'Cobb Angle'; }
+  else if (tool === 'line') {
+    const dx = p[1].x-p[0].x, dy = p[1].y-p[0].y;
+    o.dist = Math.sqrt(dx*dx+dy*dy); o.value = o.dist.toFixed(1)+' px'; o.label = lbl||'Distance';
+  }
+  objs.push(o); wip = [];
+  updateList(); showHint(TOOL_HINTS[tool]); redraw();
+  switchTab('measurements', document.querySelectorAll('.tab')[0]);
+}
+
+function activePLabel() { const a = document.querySelector('.pitem.active'); return a ? a.textContent.trim() : ''; }
+
+// ─── MATH ────────────────────────────────────────────────────────────────────
+function ang3(a,b,c){const v1={x:a.x-b.x,y:a.y-b.y},v2={x:c.x-b.x,y:c.y-b.y};return Math.acos(Math.max(-1,Math.min(1,(v1.x*v2.x+v1.y*v2.y)/(Math.hypot(v1.x,v1.y)*Math.hypot(v2.x,v2.y)))))*180/Math.PI;}
+function ang4(a,b,c,d){const v1={x:b.x-a.x,y:b.y-a.y},v2={x:d.x-c.x,y:d.y-c.y};return Math.acos(Math.max(-1,Math.min(1,(v1.x*v2.x+v1.y*v2.y)/(Math.hypot(v1.x,v1.y)*Math.hypot(v2.x,v2.y)))))*180/Math.PI;}
+function cobbA(a,b,c,d){let diff=Math.abs(Math.atan2(b.y-a.y,b.x-a.x)-Math.atan2(d.y-c.y,d.x-c.x))*180/Math.PI;while(diff>180)diff=Math.abs(diff-180);if(diff>90)diff=180-diff;return diff;}
+function intersect(a,b,c,d){const dx1=b.x-a.x,dy1=b.y-a.y,dx2=d.x-c.x,dy2=d.y-c.y,den=dx1*dy2-dy1*dx2;if(Math.abs(den)<1e-10)return null;const t=((c.x-a.x)*dy2-(c.y-a.y)*dx2)/den;return{x:a.x+t*dx1,y:a.y+t*dy1};}
+function mp(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
+function midAll(p){return mp(mp(p[0],p[1]),mp(p[2]||p[1],p[3]||p[2]||p[1]));}
+
+// ─── DRAW ────────────────────────────────────────────────────────────────────
+function redraw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0c10'; ctx.fillRect(0, 0, W, H);
+
+  if (bgImage) {
+    ctx.save();
+    ctx.drawImage(bgImage, panX, panY, bgImage.width * zl, bgImage.height * zl);
+    ctx.restore();
+  } else {
+    // Placeholder grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(90,106,130,.4)'; ctx.font = '13px "IBM Plex Sans",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Select a template or upload an X-ray to begin', W/2, H/2);
+    ctx.textAlign = 'left';
+  }
+
+  objs.forEach(o => drawObj(o));
+
+  if (wip.length > 0) {
+    wip.forEach(p => dot(p.x, p.y, col));
+    for (let i = 1; i < wip.length; i++) seg(wip[i-1], wip[i], col);
+    ghost(mpos.x, mpos.y);
+  }
+}
+
+function drawObj(o) {
+  const p = o.points, c = o.color;
+  ctx.lineWidth = 2;
+  if (o.type === 'angle3') {
+    seg(p[0],p[1],c); seg(p[1],p[2],c); arc3(p[0],p[1],p[2],c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[2]), o.label, o.value, c);
+  } else if (o.type === 'angle4') {
+    seg(p[0],p[1],c); seg(p[2],p[3],c);
+    const ix = intersect(p[0],p[1],p[2],p[3]); if(ix) arc4(p[0],p[1],p[2],p[3],ix,c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c);
+  } else if (o.type === 'cobb') {
+    seg(p[0],p[1],c); seg(p[2],p[3],c);
+    extLine(p[0],p[1],c); extLine(p[2],p[3],c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c);
+  } else if (o.type === 'line') {
+    seg(p[0],p[1],c);
+    const ang = Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x)+Math.PI/2;
+    [p[0],p[1]].forEach(q => {
+      ctx.beginPath(); ctx.moveTo(q.x+Math.cos(ang)*7,q.y+Math.sin(ang)*7);
+      ctx.lineTo(q.x-Math.cos(ang)*7,q.y-Math.sin(ang)*7);
+      ctx.strokeStyle=c; ctx.lineWidth=2; ctx.stroke();
+    });
+    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[1]), o.label, o.value, c);
+  } else if (o.type === 'annotate') {
+    ctx.beginPath(); ctx.arc(p[0].x,p[0].y,5,0,Math.PI*2);
+    ctx.fillStyle = c; ctx.fill(); annLbl(p[0], o.text||'', c);
+  }
+  if (o === selObj) o.points.forEach(q => {
+    ctx.beginPath(); ctx.arc(q.x,q.y,9,0,Math.PI*2);
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+  });
+}
+
+function seg(a,b,c){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=c;ctx.lineWidth=2;ctx.stroke();}
+function dot(x,y,c){ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.9)';ctx.fill();ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();}
+function ghost(mx,my){if(!wip.length)return;const l=wip[wip.length-1];ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.globalAlpha=.4;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(mx,my);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.restore();}
+function extLine(a,b,c){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy),ux=dx/len,uy=dy/len,ext=80;ctx.save();ctx.setLineDash([5,5]);ctx.globalAlpha=.4;ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a.x-ux*ext,a.y-uy*ext);ctx.lineTo(b.x+ux*ext,b.y+uy*ext);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.restore();}
+function arc3(a,b,c,col){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(b.x,b.y,24,Math.atan2(a.y-b.y,a.x-b.x),Math.atan2(c.y-b.y,c.x-b.x));ctx.stroke();ctx.globalAlpha=1;ctx.restore();}
+function arc4(a,b,c,d,ix,col){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(ix.x,ix.y,24,Math.atan2(a.y-ix.y,a.x-ix.x),Math.atan2(c.y-ix.y,c.x-ix.x));ctx.stroke();ctx.globalAlpha=1;ctx.restore();}
+
+function lbl(p,name,value,c){
+  ctx.save();
+  ctx.font='bold 12px "IBM Plex Mono",monospace';const vw=ctx.measureText(value).width;
+  ctx.font='500 10px "IBM Plex Sans",sans-serif';const nw=ctx.measureText(name).width;
+  const w=Math.max(vw,nw)+14,h=34,bx=p.x-w/2,by=p.y-h-10;
+  ctx.fillStyle='rgba(10,12,18,0.92)';rrect(bx,by,w,h,5);
+  ctx.strokeStyle=c;ctx.lineWidth=1;rrectStroke(bx,by,w,h,5);
+  ctx.fillStyle='rgba(138,154,184,.8)';ctx.font='500 9px "IBM Plex Sans",sans-serif';ctx.fillText(name,bx+7,by+13);
+  ctx.fillStyle=c;ctx.font='bold 13px "IBM Plex Mono",monospace';ctx.fillText(value,bx+7,by+28);
+  ctx.restore();
+}
+function annLbl(p,text,c){ctx.save();ctx.font='600 12px "IBM Plex Sans",sans-serif';const w=ctx.measureText(text).width+12,h=22;ctx.fillStyle='rgba(10,12,18,.92)';rrect(p.x+10,p.y-11,w,h,4);ctx.fillStyle=c;ctx.fillText(text,p.x+16,p.y+4);ctx.restore();}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();ctx.fill();}
+function rrectStroke(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();ctx.stroke();}
+
+// ─── SELECT / ERASE ──────────────────────────────────────────────────────────
+function doSel(x,y){selObj=findObj(x,y)||null;updateList();redraw();}
+function doErase(x,y){const i=objs.findIndex(o=>isNear(o,x,y));if(i>=0){objs.splice(i,1);updateList();redraw();}}
+function findObj(x,y){return objs.find(o=>isNear(o,x,y));}
+function isNear(o,x,y){return o.points.some(p=>Math.hypot(p.x-x,p.y-y)<14);}
+
+// ─── ZOOM ────────────────────────────────────────────────────────────────────
+function doZoom(f){
+  const cx=W/2,cy=H/2;
+  panX=cx-(cx-panX)*f; panY=cy-(cy-panY)*f; zl*=f;
+  objs.forEach(o=>{o.points=o.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}));});
+  updateZlbl(); redraw();
+}
+function resetZoom(){if(bgImage){fitBg();}else{zl=1;panX=0;panY=0;updateZlbl();}redraw();}
+function updateZlbl(){document.getElementById('zlbl').textContent=Math.round(zl*100)+'%';}
+
+// ─── UNDO ────────────────────────────────────────────────────────────────────
+function undoLast(){if(wip.length>0){wip.pop();redraw();return;}if(objs.length>0){objs.pop();updateList();redraw();}}
+
+// ─── LIST ────────────────────────────────────────────────────────────────────
+function updateList(){
+  const s=document.getElementById('mlist');
+  if(objs.length===0){s.innerHTML='<div class="no-m">📐 No measurements yet.<br><br>Choose a preset and click on the X-ray.</div>';return;}
+  const tl={angle3:'3-Point Angle',angle4:'4-Point Angle',cobb:'Cobb Angle',line:'Distance',annotate:'Annotation'};
+  s.innerHTML=objs.map((o,i)=>`
+    <div class="mitem${o===selObj?' sel':''}" onclick="selFromList(${i})">
+      <div class="mrow">
+        <div class="mname" style="color:${o.color}">${o.label||o.type}</div>
+        <button class="mdel" onclick="event.stopPropagation();delObj(${i})">✕</button>
+      </div>
+      <div class="mval" style="color:${o.color}">${o.value||o.text||'—'}</div>
+      <div class="msub">${tl[o.type]||o.type}</div>
+    </div>`).join('');
+}
+function selFromList(i){selObj=objs[i];updateList();redraw();}
+function delObj(i){if(selObj===objs[i])selObj=null;objs.splice(i,1);updateList();redraw();}
+
+// ─── ANNOTATION ──────────────────────────────────────────────────────────────
+function openModal(){document.getElementById('ann-inp').value='';document.getElementById('mbg').classList.add('on');setTimeout(()=>document.getElementById('ann-inp').focus(),50);}
+function closeModal(){document.getElementById('mbg').classList.remove('on');annPt=null;}
+function confirmAnn(){const t=document.getElementById('ann-inp').value.trim();if(!t||!annPt){closeModal();return;}objs.push({type:'annotate',points:[{...annPt}],color:col,label:'Annotation',value:t,text:t});closeModal();updateList();redraw();}
+document.getElementById('ann-inp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAnn();if(e.key==='Escape')closeModal();});
+
+// ─── SAVE SNAPSHOT ────────────────────────────────────────────────────────────
+function saveSnapshot(){
+  document.getElementById('save-inp').value = 'Snapshot ' + (savedSnapshots.length+1);
+  document.getElementById('save-mbg').classList.add('on');
+  setTimeout(()=>document.getElementById('save-inp').focus(),50);
+}
+function closeSaveModal(){document.getElementById('save-mbg').classList.remove('on');}
+function confirmSave(){
+  const name = document.getElementById('save-inp').value.trim() || ('Snapshot '+(savedSnapshots.length+1));
+  redraw();
+  const dataUrl = cvs.toDataURL('image/png');
+  const snap = { name, date: new Date().toLocaleString(), dataUrl, measurements: objs.length };
+  savedSnapshots.push(snap);
+  closeSaveModal();
+  renderSaved();
+  switchTab('saved', document.querySelectorAll('.tab')[2]);
+}
+document.getElementById('save-inp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmSave();if(e.key==='Escape')closeSaveModal();});
+
+function renderSaved(){
+  const sl = document.getElementById('saved-list');
+  if(savedSnapshots.length===0){sl.innerHTML='<div class="no-saved">💾 No saved images yet.<br><br>Click "Save Image" in the top bar to capture the current view with all measurements.</div>';return;}
+  sl.innerHTML = `<div class="saved-grid">${savedSnapshots.map((s,i)=>`
+    <div class="saved-card">
+      <img class="saved-thumb" src="${s.dataUrl}" alt="${s.name}">
+      <div class="saved-info">
+        <div class="saved-name">${s.name}</div>
+        <div class="saved-date">${s.measurements} measurements · ${s.date}</div>
+      </div>
+      <div class="saved-actions">
+        <button class="saved-btn saved-dl" onclick="dlSaved(${i})">↓ Save</button>
+        <button class="saved-btn saved-rm" onclick="rmSaved(${i})">✕</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function dlSaved(i){
+  const s = savedSnapshots[i];
+  const a = document.createElement('a');
+  a.href = s.dataUrl; a.download = s.name.replace(/\s+/g,'_')+'.png'; a.click();
+}
+function rmSaved(i){savedSnapshots.splice(i,1);renderSaved();}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function exportPNG(){redraw();cvs.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`orthomeasure_${Date.now()}.png`;a.click();});}
+function exportPDF(){
+  redraw();const imgD=cvs.toDataURL('image/png');
+  const rows=objs.map((o,i)=>`<tr><td>${i+1}</td><td><b style="color:${o.color}">${o.label||o.type}</b></td><td style="font-family:monospace;font-weight:700;font-size:15px;color:${o.color}">${o.value||o.text||'—'}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>OrthoMeasure Report</title><style>body{font-family:'Segoe UI',sans-serif;padding:24px;color:#1a1f2e}h1{font-size:20px;margin-bottom:2px}.sub{color:#888;font-size:12px;margin-bottom:18px}img{max-width:100%;border:1px solid #dde1e8;border-radius:6px;margin-bottom:18px;display:block}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a1f2e;color:#fff;padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:8px 12px;border-bottom:1px solid #f0f2f5}@media print{body{padding:8px}}</style></head><body><h1>OrthoMeasure — X-Ray Analysis Report</h1><div class="sub">Generated: ${new Date().toLocaleString()} · ${objs.length} measurements</div><img src="${imgD}"><table><thead><tr><th>#</th><th>Label</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+// ─── MOBILE DRAWER ───────────────────────────────────────────────────────────
+function toggleMobDrawer(){document.getElementById('mob-drawer').classList.toggle('open');}
+function closeMobDrawer(){document.getElementById('mob-drawer').classList.remove('open');}
+
+// ─── KEYBOARD ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  const map={s:'select',a:'angle3',f:'angle4',c:'cobb',l:'line',n:'annotate',e:'erase'};
+  if(map[e.key])setTool(map[e.key]);
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
+  if(e.key==='Escape'){wip=[];redraw();showHint(TOOL_HINTS[tool]);}
+  if(e.key==='Delete'&&selObj){const i=objs.indexOf(selObj);if(i>=0){objs.splice(i,1);selObj=null;updateList();redraw();}}
+});
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+resizeCvs();
+loadTemplate('hip', document.getElementById('tpl-hip'));
+setTool('select');
+window.addEventListener('resize',()=>{resizeCvs();if(bgImage)fitBg();redraw();});
+</script>
+</body>
+</html>
