@@ -488,6 +488,9 @@ function resizeCvs() {
 let objs = [], tool = 'select', wip = [], col = '#3b82f6';
 let dragging = false, dstart = null, dobj = null, selObj = null;
 let panning = false, panStart = null;
+// Point-level drag for precision editing
+let dragPt = null;   // { obj, idx } — the specific point being dragged
+let showLens = false; // magnifier lens active
 let annPt = null, mpos = { x: 0, y: 0 };
 let zl = 1, panX = 0, panY = 0;
 let currentTemplate = 'hip';
@@ -814,17 +817,55 @@ cvs.addEventListener('click', e => {
 
 cvs.addEventListener('mousemove', e => {
   const { x, y } = gp(e); mpos = { x, y };
+
   if (panning && panStart) {
     const dx = x - panStart.x, dy = y - panStart.y;
     panX += dx; panY += dy; panStart = { x, y };
     redraw(); return;
   }
+
+  // Point-level drag — move just one point
+  if (dragPt) {
+    dragPt.obj.points[dragPt.idx] = { x, y };
+    recalcObj(dragPt.obj);
+    redraw();
+    drawLens(x, y);
+    return;
+  }
+
   if (dragging && dobj) {
     const dx = x - dstart.x, dy = y - dstart.y; dstart = { x, y };
     dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
     redraw(); return;
   }
   if (wip.length > 0) redraw();
+
+  // Highlight nearest draggable point on hover (select tool only)
+  if (tool === 'select' && !dragging && !dragPt && !panning) {
+    let nearest = null, nearDist = 18;
+    for (const obj of objs) {
+      for (const p of obj.points) {
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d < nearDist) { nearest = p; nearDist = d; }
+      }
+    }
+    if (nearest) {
+      cvs.style.cursor = 'crosshair';
+      // Draw a highlight ring — need a redraw
+      redraw();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(nearest.x, nearest.y, 10, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    } else {
+      cvs.style.cursor = 'default';
+    }
+  }
 });
 
 cvs.addEventListener('mousedown', e => {
@@ -834,12 +875,33 @@ cvs.addEventListener('mousedown', e => {
     cvs.style.cursor = 'grabbing'; return;
   }
   if (tool !== 'select') return;
+
+  // Check if we're clicking near an individual point of any object
+  for (const obj of objs) {
+    for (let idx = 0; idx < obj.points.length; idx++) {
+      const p = obj.points[idx];
+      if (Math.hypot(p.x - x, p.y - y) < 14) {
+        dragPt = { obj, idx };
+        showLens = true;
+        selObj = obj;
+        cvs.style.cursor = 'none';
+        return;
+      }
+    }
+  }
+
+  // Otherwise drag the whole object
   const hit = findObj(x, y);
   if (hit) { dragging = true; dobj = hit; dstart = { x, y }; selObj = hit; }
 });
 
 cvs.addEventListener('mouseup', () => {
   dragging = false; dobj = null;
+  if (dragPt) {
+    dragPt = null; showLens = false;
+    cvs.style.cursor = 'default';
+    updateList(); redraw();
+  }
   if (panning) { panning = false; panStart = null; cvs.style.cursor = 'grab'; }
 });
 cvs.addEventListener('wheel', e => { e.preventDefault(); doZoom(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
@@ -852,6 +914,15 @@ cvs.addEventListener('touchstart', e => {
     lastTouch = gpt(e.touches[0]);
     if (tool === 'pan') { panning = true; panStart = lastTouch; return; }
     if (tool === 'select') {
+      // Check individual point first
+      for (const obj of objs) {
+        for (let idx = 0; idx < obj.points.length; idx++) {
+          const p = obj.points[idx];
+          if (Math.hypot(p.x - lastTouch.x, p.y - lastTouch.y) < 18) {
+            dragPt = { obj, idx }; showLens = true; selObj = obj; return;
+          }
+        }
+      }
       const hit = findObj(lastTouch.x, lastTouch.y);
       if (hit) { dragging = true; dobj = hit; dstart = lastTouch; selObj = hit; }
     }
@@ -870,6 +941,11 @@ cvs.addEventListener('touchmove', e => {
       panX += t.x - panStart.x; panY += t.y - panStart.y; panStart = t;
       redraw(); return;
     }
+    if (dragPt) {
+      dragPt.obj.points[dragPt.idx] = { x: t.x, y: t.y };
+      recalcObj(dragPt.obj); mpos = t;
+      redraw(); drawLens(t.x, t.y); return;
+    }
     if (dragging && dobj) {
       const dx = t.x - dstart.x, dy = t.y - dstart.y; dstart = t;
       dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
@@ -886,8 +962,10 @@ cvs.addEventListener('touchmove', e => {
 cvs.addEventListener('touchend', e => {
   e.preventDefault();
   const wasPanning = panning;
+  const wasDragPt = !!dragPt;
   dragging = false; dobj = null; panning = false; panStart = null;
-  if (wasPanning) return; // don't place a point if we were panning
+  if (dragPt) { dragPt = null; showLens = false; updateList(); redraw(); }
+  if (wasPanning || wasDragPt) return;
   if (e.changedTouches.length === 1) {
     const t = gpt(e.changedTouches[0]);
     if (tool === 'select') { doSel(t.x, t.y); return; }
@@ -946,6 +1024,116 @@ function intersect(a,b,c,d){const dx1=b.x-a.x,dy1=b.y-a.y,dx2=d.x-c.x,dy2=d.y-c.
 function mp(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
 function midAll(p){return mp(mp(p[0],p[1]),mp(p[2]||p[1],p[3]||p[2]||p[1]));}
 
+// ─── RECALC after point move ──────────────────────────────────────────────────
+function recalcObj(o) {
+  const p = o.points;
+  if (o.type === 'angle3' && p.length === 3) {
+    o.angle = ang3(p[0],p[1],p[2]); o.value = o.angle.toFixed(1)+'°';
+  } else if (o.type === 'angle4' && p.length === 4) {
+    o.angle = ang4(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°';
+  } else if (o.type === 'cobb' && p.length === 4) {
+    o.angle = cobbA(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°';
+  } else if (o.type === 'line' && p.length === 2) {
+    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
+    o.dist = Math.sqrt(dx*dx+dy*dy); o.value = o.dist.toFixed(1)+' px';
+  }
+}
+
+// ─── MAGNIFIER LENS ──────────────────────────────────────────────────────────
+const LENS_SIZE  = 140;   // px — lens window size
+const LENS_ZOOM  = 4;     // zoom factor inside lens
+const LENS_OFFSET = 20;   // gap from cursor
+
+function drawLens(cx, cy) {
+  if (!showLens) return;
+
+  // Position lens: prefer top-right of cursor, flip if near edges
+  let lx = cx + LENS_OFFSET;
+  let ly = cy - LENS_SIZE - LENS_OFFSET;
+  if (lx + LENS_SIZE > W) lx = cx - LENS_SIZE - LENS_OFFSET;
+  if (ly < 0) ly = cy + LENS_OFFSET;
+
+  const half = LENS_SIZE / 2;
+
+  ctx.save();
+
+  // Clip to a circle
+  ctx.beginPath();
+  ctx.arc(lx + half, ly + half, half, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Dark background fallback
+  ctx.fillStyle = '#0a0c10';
+  ctx.fillRect(lx, ly, LENS_SIZE, LENS_SIZE);
+
+  // Draw the magnified region from the main canvas
+  // Source area: LENS_SIZE/LENS_ZOOM px around cursor, in canvas coords
+  const srcSize = LENS_SIZE / LENS_ZOOM;
+  const srcX = cx - srcSize / 2;
+  const srcY = cy - srcSize / 2;
+
+  // Redraw scene into a temp offscreen first so we capture measurements too
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const offCtx = off.getContext('2d');
+
+  // bg image
+  if (bgImage) {
+    offCtx.drawImage(bgImage, panX, panY, bgImage.width * zl, bgImage.height * zl);
+  }
+  // objects (simplified redraw onto offscreen)
+  objs.forEach(o => drawObjOnCtx(offCtx, o));
+
+  // Draw the src region scaled up into the lens
+  ctx.drawImage(off, srcX, srcY, srcSize, srcSize, lx, ly, LENS_SIZE, LENS_SIZE);
+
+  // Crosshair in centre of lens
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(lx + half - 8, ly + half); ctx.lineTo(lx + half + 8, ly + half);
+  ctx.moveTo(lx + half, ly + half - 8); ctx.lineTo(lx + half, ly + half + 8);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Lens border (outside clip)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(lx + half, ly + half, half, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(59,130,246,0.9)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // Value badge below lens
+  if (dragPt && dragPt.obj.value) {
+    const bw = 90, bh = 22;
+    const bx = lx + half - bw/2, by = ly + LENS_SIZE + 6;
+    ctx.fillStyle = 'rgba(10,12,18,0.92)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 5);
+    ctx.fill();
+    ctx.fillStyle = dragPt.obj.color;
+    ctx.font = 'bold 13px "IBM Plex Mono",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(dragPt.obj.value, lx + half, by + 15);
+    ctx.textAlign = 'left';
+  }
+}
+
+// Draw one object onto an arbitrary context (for lens offscreen render)
+function drawObjOnCtx(c, o) {
+  const p = o.points, col = o.color;
+  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 2;
+  const segC = (a,b) => { c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke(); };
+  const dotC = (x,y) => { c.beginPath();c.arc(x,y,6,0,Math.PI*2);c.fillStyle='rgba(255,255,255,.9)';c.fill();c.beginPath();c.arc(x,y,4,0,Math.PI*2);c.fillStyle=col;c.fill(); };
+  if (o.type==='angle3'&&p.length===3){ segC(p[0],p[1]);segC(p[1],p[2]);p.forEach(q=>dotC(q.x,q.y)); }
+  else if (o.type==='angle4'&&p.length===4){ segC(p[0],p[1]);segC(p[2],p[3]);p.forEach(q=>dotC(q.x,q.y)); }
+  else if (o.type==='cobb'&&p.length===4){ segC(p[0],p[1]);segC(p[2],p[3]);p.forEach(q=>dotC(q.x,q.y)); }
+  else if (o.type==='line'&&p.length===2){ segC(p[0],p[1]);p.forEach(q=>dotC(q.x,q.y)); }
+}
+
 // ─── DRAW ────────────────────────────────────────────────────────────────────
 function redraw() {
   ctx.clearRect(0, 0, W, H);
@@ -973,6 +1161,9 @@ function redraw() {
     for (let i = 1; i < wip.length; i++) seg(wip[i-1], wip[i], col);
     ghost(mpos.x, mpos.y);
   }
+
+  // Draw magnifier lens if a point is being dragged
+  if (dragPt && showLens) drawLens(mpos.x, mpos.y);
 }
 
 function drawObj(o) {
