@@ -200,6 +200,20 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;bac
 .btn-ok{background:var(--blue);color:#fff}.btn-ok:hover{background:#2563eb}
 .btn-cx{background:var(--panel);color:var(--text)}.btn-cx:hover{background:var(--border)}
 
+/* Label editor modal */
+.lbl-editor{display:flex;flex-direction:column;gap:10px}
+.lbl-row{display:flex;align-items:center;gap:8px}
+.lbl-row label{font-size:11px;color:var(--muted);width:72px;flex-shrink:0}
+.lbl-input{flex:1;padding:7px 9px;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.lbl-input:focus{border-color:var(--blue)}
+.lbl-size{width:70px}
+.lbl-toggle{display:flex;gap:6px}
+.toggle-btn{padding:5px 10px;border-radius:5px;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.toggle-btn.on{border-color:var(--blue);background:var(--blue-lt);color:var(--blue)}
+.color-chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.chip:hover{transform:scale(1.2)}
+.chip.sel{border-color:#fff}
 /* ── MOBILE ── */
 @media(max-width:768px){
   .main{
@@ -472,6 +486,52 @@ button{font-family:'IBM Plex Sans',sans-serif}
   </div>
 </div>
 
+<!-- Label customise modal -->
+<div class="mbg" id="lbl-mbg">
+  <div class="modal" style="max-width:340px">
+    <h3>✏️ Customise Label</h3>
+    <div class="lbl-editor">
+      <div class="lbl-row">
+        <label>Label text</label>
+        <input class="lbl-input" id="lbl-text" placeholder="Label name…" maxlength="60">
+      </div>
+      <div class="lbl-row">
+        <label>Value text</label>
+        <input class="lbl-input" id="lbl-value" placeholder="e.g. 127.3°">
+      </div>
+      <div class="lbl-row">
+        <label>Font size</label>
+        <input class="lbl-input lbl-size" id="lbl-size" type="number" min="8" max="32" value="13">
+        <span style="font-size:11px;color:var(--muted)">px</span>
+      </div>
+      <div class="lbl-row">
+        <label>Style</label>
+        <div class="lbl-toggle">
+          <button class="toggle-btn on" id="lbl-bold" onclick="this.classList.toggle('on')">B</button>
+          <button class="toggle-btn" id="lbl-italic" onclick="this.classList.toggle('on')"><i>I</i></button>
+          <button class="toggle-btn on" id="lbl-bg" onclick="this.classList.toggle('on')">BG</button>
+        </div>
+      </div>
+      <div class="lbl-row">
+        <label>Color</label>
+        <div class="color-chips" id="lbl-chips">
+          <div class="chip sel" style="background:#3b82f6" onclick="selectChip(this,'#3b82f6')"></div>
+          <div class="chip" style="background:#ef4444" onclick="selectChip(this,'#ef4444')"></div>
+          <div class="chip" style="background:#22c55e" onclick="selectChip(this,'#22c55e')"></div>
+          <div class="chip" style="background:#eab308" onclick="selectChip(this,'#eab308')"></div>
+          <div class="chip" style="background:#a855f7" onclick="selectChip(this,'#a855f7')"></div>
+          <div class="chip" style="background:#f97316" onclick="selectChip(this,'#f97316')"></div>
+          <div class="chip" style="background:#f1f5f9;border-color:#334155" onclick="selectChip(this,'#f1f5f9')"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mbtns" style="margin-top:14px">
+      <button class="btn-cx" onclick="closeLblModal()">Cancel</button>
+      <button class="btn-ok" onclick="confirmLblEdit()">Apply</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── CANVAS ──────────────────────────────────────────────────────────────────
 const cvs = document.getElementById('cvs');
@@ -491,6 +551,11 @@ let panning = false, panStart = null;
 // Point-level drag for precision editing
 let dragPt = null;   // { obj, idx } — the specific point being dragged
 let showLens = false; // magnifier lens active
+// Label drag
+let dragLbl = null;  // { obj } — object whose label is being dragged
+let dragLblStart = null;
+let lblEditObj = null; // object being label-edited
+let lblPickedColor = '#3b82f6';
 let annPt = null, mpos = { x: 0, y: 0 };
 let zl = 1, panX = 0, panY = 0;
 let currentTemplate = 'hip';
@@ -735,7 +800,8 @@ function setTool(t) {
   document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('tb-' + t);
   if (btn) btn.classList.add('active');
-  cvs.style.cursor = tool === 'select' ? 'default' : tool === 'pan' ? 'grab' : 'crosshair';
+  const handCursor = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 3.5C9 2.67 9.67 2 10.5 2S12 2.67 12 3.5V11h.5C12.5 9.07 13.57 8 14.5 8s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 12.88V3.5z'/%3E%3C/svg%3E") 4 0, pointer`;
+  cvs.style.cursor = tool === 'select' ? 'default' : tool === 'pan' ? handCursor : 'crosshair';
   if (!document.querySelector('.pitem.active')) setPrompt(TOOL_HINTS[t]);
   redraw();
 }
@@ -824,13 +890,25 @@ cvs.addEventListener('mousemove', e => {
     redraw(); return;
   }
 
+  // Label drag
+  if (dragLbl && dragLblStart) {
+    const dx = x - dragLblStart.x, dy = y - dragLblStart.y;
+    dragLblStart = { x, y };
+    if (!dragLbl.labelPos) {
+      // initialise from current _lblBox centre
+      const b = dragLbl._lblBox;
+      dragLbl.labelPos = { x: b ? b.x + b.w/2 : x, y: b ? b.y + b.h/2 : y };
+    }
+    dragLbl.labelPos.x += dx;
+    dragLbl.labelPos.y += dy;
+    redraw(); return;
+  }
+
   // Point-level drag — move just one point
   if (dragPt) {
     dragPt.obj.points[dragPt.idx] = { x, y };
     recalcObj(dragPt.obj);
-    redraw();
-    drawLens(x, y);
-    return;
+    redraw(); drawLens(x, y); return;
   }
 
   if (dragging && dobj) {
@@ -840,30 +918,38 @@ cvs.addEventListener('mousemove', e => {
   }
   if (wip.length > 0) redraw();
 
-  // Highlight nearest draggable point on hover (select tool only)
-  if (tool === 'select' && !dragging && !dragPt && !panning) {
-    let nearest = null, nearDist = 18;
+  // Hover hints on select tool
+  if (tool === 'select' && !dragging && !dragPt && !dragLbl && !panning) {
+    // Label hover?
+    let overLbl = false;
     for (const obj of objs) {
-      for (const p of obj.points) {
-        const d = Math.hypot(p.x - x, p.y - y);
-        if (d < nearDist) { nearest = p; nearDist = d; }
+      if (obj._lblBox) {
+        const b = obj._lblBox;
+        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+          cvs.style.cursor = 'move'; overLbl = true; break;
+        }
       }
     }
-    if (nearest) {
-      cvs.style.cursor = 'crosshair';
-      // Draw a highlight ring — need a redraw
-      redraw();
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(nearest.x, nearest.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([3, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    } else {
-      cvs.style.cursor = 'default';
+    if (!overLbl) {
+      // Point hover?
+      let nearest = null, nearDist = 18;
+      for (const obj of objs) {
+        for (const p of obj.points) {
+          const d = Math.hypot(p.x - x, p.y - y);
+          if (d < nearDist) { nearest = p; nearDist = d; }
+        }
+      }
+      if (nearest) {
+        cvs.style.cursor = 'crosshair';
+        redraw();
+        ctx.save();
+        ctx.beginPath(); ctx.arc(nearest.x, nearest.y, 10, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+        ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.restore();
+      } else {
+        cvs.style.cursor = 'default';
+      }
     }
   }
 });
@@ -871,40 +957,64 @@ cvs.addEventListener('mousemove', e => {
 cvs.addEventListener('mousedown', e => {
   const { x, y } = gp(e);
   if (tool === 'pan') {
+    const grabbingCursor = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 11.5C9 10.67 9.67 10 10.5 10S12 10.67 12 11.5v.5h.5c0-1.93 1.07-3 2-3s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 13.88V11.5z'/%3E%3C/svg%3E") 4 0, grabbing`;
     panning = true; panStart = { x, y };
-    cvs.style.cursor = 'grabbing'; return;
+    cvs.style.cursor = grabbingCursor; return;
   }
   if (tool !== 'select') return;
 
-  // Check if we're clicking near an individual point of any object
+  // 1. Check label box hit first
   for (const obj of objs) {
-    for (let idx = 0; idx < obj.points.length; idx++) {
-      const p = obj.points[idx];
-      if (Math.hypot(p.x - x, p.y - y) < 14) {
-        dragPt = { obj, idx };
-        showLens = true;
-        selObj = obj;
-        cvs.style.cursor = 'none';
-        return;
+    if (obj._lblBox) {
+      const b = obj._lblBox;
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        dragLbl = obj; dragLblStart = { x, y }; selObj = obj;
+        cvs.style.cursor = 'move'; return;
       }
     }
   }
 
-  // Otherwise drag the whole object
+  // 2. Check individual points
+  for (const obj of objs) {
+    for (let idx = 0; idx < obj.points.length; idx++) {
+      const p = obj.points[idx];
+      if (Math.hypot(p.x - x, p.y - y) < 14) {
+        dragPt = { obj, idx }; showLens = true; selObj = obj;
+        cvs.style.cursor = 'none'; return;
+      }
+    }
+  }
+
+  // 3. Whole object drag
   const hit = findObj(x, y);
   if (hit) { dragging = true; dobj = hit; dstart = { x, y }; selObj = hit; }
 });
 
 cvs.addEventListener('mouseup', () => {
   dragging = false; dobj = null;
-  if (dragPt) {
-    dragPt = null; showLens = false;
-    cvs.style.cursor = 'default';
-    updateList(); redraw();
+  if (dragLbl) { dragLbl = null; dragLblStart = null; cvs.style.cursor = 'default'; redraw(); }
+  if (dragPt) { dragPt = null; showLens = false; cvs.style.cursor = 'default'; updateList(); redraw(); }
+  if (panning) {
+    panning = false; panStart = null;
+    const handCursor = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 3.5C9 2.67 9.67 2 10.5 2S12 2.67 12 3.5V11h.5C12.5 9.07 13.57 8 14.5 8s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 12.88V3.5z'/%3E%3C/svg%3E") 4 0, pointer`;
+    cvs.style.cursor = handCursor;
   }
-  if (panning) { panning = false; panStart = null; cvs.style.cursor = 'grab'; }
 });
 cvs.addEventListener('wheel', e => { e.preventDefault(); doZoom(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+
+// Double-click on a label box → open editor
+cvs.addEventListener('dblclick', e => {
+  if (tool !== 'select') return;
+  const { x, y } = gp(e);
+  for (const obj of objs) {
+    if (obj._lblBox) {
+      const b = obj._lblBox;
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        openLblModal(obj); return;
+      }
+    }
+  }
+});
 
 // Touch support
 let lastTouch = null, touchDist = 0;
@@ -1040,9 +1150,9 @@ function recalcObj(o) {
 }
 
 // ─── MAGNIFIER LENS ──────────────────────────────────────────────────────────
-const LENS_SIZE  = 140;   // px — lens window size
+const LENS_SIZE  = 220;   // px — lens window size
 const LENS_ZOOM  = 4;     // zoom factor inside lens
-const LENS_OFFSET = 20;   // gap from cursor
+const LENS_OFFSET = 24;   // gap from cursor
 
 function drawLens(cx, cy) {
   if (!showLens) return;
@@ -1171,15 +1281,15 @@ function drawObj(o) {
   ctx.lineWidth = 2;
   if (o.type === 'angle3') {
     seg(p[0],p[1],c); seg(p[1],p[2],c); arc3(p[0],p[1],p[2],c);
-    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[2]), o.label, o.value, c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[2]), o.label, o.value, c, o);
   } else if (o.type === 'angle4') {
     seg(p[0],p[1],c); seg(p[2],p[3],c);
     const ix = intersect(p[0],p[1],p[2],p[3]); if(ix) arc4(p[0],p[1],p[2],p[3],ix,c);
-    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c, o);
   } else if (o.type === 'cobb') {
     seg(p[0],p[1],c); seg(p[2],p[3],c);
     extLine(p[0],p[1],c); extLine(p[2],p[3],c);
-    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(midAll(p), o.label, o.value, c, o);
   } else if (o.type === 'line') {
     seg(p[0],p[1],c);
     const ang = Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x)+Math.PI/2;
@@ -1188,7 +1298,7 @@ function drawObj(o) {
       ctx.lineTo(q.x-Math.cos(ang)*7,q.y-Math.sin(ang)*7);
       ctx.strokeStyle=c; ctx.lineWidth=2; ctx.stroke();
     });
-    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[1]), o.label, o.value, c);
+    p.forEach(q => dot(q.x,q.y,c)); lbl(mp(p[0],p[1]), o.label, o.value, c, o);
   } else if (o.type === 'annotate') {
     ctx.beginPath(); ctx.arc(p[0].x,p[0].y,5,0,Math.PI*2);
     ctx.fillStyle = c; ctx.fill(); annLbl(p[0], o.text||'', c);
@@ -1206,16 +1316,50 @@ function extLine(a,b,c){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy),ux=dx/
 function arc3(a,b,c,col){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(b.x,b.y,24,Math.atan2(a.y-b.y,a.x-b.x),Math.atan2(c.y-b.y,c.x-b.x));ctx.stroke();ctx.globalAlpha=1;ctx.restore();}
 function arc4(a,b,c,d,ix,col){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(ix.x,ix.y,24,Math.atan2(a.y-ix.y,a.x-ix.x),Math.atan2(c.y-ix.y,c.x-ix.x));ctx.stroke();ctx.globalAlpha=1;ctx.restore();}
 
-function lbl(p,name,value,c){
+function getLblPos(o, defaultPt) {
+  if (o.labelPos) return { x: o.labelPos.x, y: o.labelPos.y };
+  return { x: defaultPt.x, y: defaultPt.y };
+}
+
+function lbl(defaultPt, name, value, c, o) {
+  const pos = getLblPos(o, defaultPt);
+  const px = pos.x, py = pos.y;
+  const fs = o.fontSize || 13;
+  const bold = o.bold !== false ? 'bold ' : '';
+  const italic = o.italic ? 'italic ' : '';
+  const showBg = o.showBg !== false;
+  const lc = o.lblColor || c;
+
   ctx.save();
-  ctx.font='bold 12px "IBM Plex Mono",monospace';const vw=ctx.measureText(value).width;
-  ctx.font='500 10px "IBM Plex Sans",sans-serif';const nw=ctx.measureText(name).width;
-  const w=Math.max(vw,nw)+14,h=34,bx=p.x-w/2,by=p.y-h-10;
-  ctx.fillStyle='rgba(10,12,18,0.92)';rrect(bx,by,w,h,5);
-  ctx.strokeStyle=c;ctx.lineWidth=1;rrectStroke(bx,by,w,h,5);
-  ctx.fillStyle='rgba(138,154,184,.8)';ctx.font='500 9px "IBM Plex Sans",sans-serif';ctx.fillText(name,bx+7,by+13);
-  ctx.fillStyle=c;ctx.font='bold 13px "IBM Plex Mono",monospace';ctx.fillText(value,bx+7,by+28);
+  ctx.font = `${bold}${italic}${fs}px "IBM Plex Mono",monospace`;
+  const vw = ctx.measureText(value).width;
+  ctx.font = `500 ${Math.max(8,fs-3)}px "IBM Plex Sans",sans-serif`;
+  const nw = ctx.measureText(name).width;
+  const w = Math.max(vw, nw) + 14, h = fs + 22;
+  const bx = px - w/2, by = py - h - 10;
+
+  if (showBg) {
+    ctx.fillStyle = 'rgba(10,12,18,0.92)'; rrect(bx, by, w, h, 5);
+    ctx.strokeStyle = lc; ctx.lineWidth = 1; rrectStroke(bx, by, w, h, 5);
+  }
+
+  ctx.fillStyle = 'rgba(138,154,184,.8)';
+  ctx.font = `500 ${Math.max(8,fs-3)}px "IBM Plex Sans",sans-serif`;
+  ctx.fillText(name, bx + 7, by + Math.max(8,fs-3) + 2);
+  ctx.fillStyle = lc;
+  ctx.font = `${bold}${italic}${fs}px "IBM Plex Mono",monospace`;
+  ctx.fillText(value, bx + 7, by + h - 6);
+
+  // Highlight if selected obj
+  if (o === selObj && !dragPt) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([3,3]); rrectStroke(bx-2, by-2, w+4, h+4, 6); ctx.setLineDash([]);
+  }
+
   ctx.restore();
+
+  // Store bounding box on object for hit-testing
+  o._lblBox = { x: bx, y: by, w, h };
 }
 function annLbl(p,text,c){ctx.save();ctx.font='600 12px "IBM Plex Sans",sans-serif';const w=ctx.measureText(text).width+12,h=22;ctx.fillStyle='rgba(10,12,18,.92)';rrect(p.x+10,p.y-11,w,h,4);ctx.fillStyle=c;ctx.fillText(text,p.x+16,p.y+4);ctx.restore();}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();ctx.fill();}
