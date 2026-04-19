@@ -115,14 +115,6 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;bac
 }
 #cvs{position:absolute;top:0;left:0;touch-action:none}
 
-.hint-pill{
-  position:absolute;top:10px;left:50%;transform:translateX(-50%);
-  background:rgba(59,130,246,.92);color:#fff;
-  padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;
-  pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;z-index:4;
-  max-width:90%;text-align:center;
-}
-.hint-pill.on{opacity:1}
 
 .zbar{
   position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
@@ -271,7 +263,7 @@ button{font-family:'IBM Plex Sans',sans-serif}
   <div class="divv"></div>
 
   <!-- File upload -->
-  <label class="upload-label" for="file-inp">📂 Load X-Ray</label>
+  <label class="upload-label" for="file-inp">⬆️ Upload X-Ray</label>
   <input type="file" id="file-inp" accept="image/*" onchange="loadFile(event)">
 
   <!-- Contextual prompt -->
@@ -325,6 +317,7 @@ button{font-family:'IBM Plex Sans',sans-serif}
       <div class="sec">
         <div class="sec-label">Tools</div>
         <button class="tool-btn active" id="tb-select"   onclick="setTool('select')">  <div class="ticon">↖</div><div><div class="tname">Select [S]</div><div class="tdesc">Move objects</div></div></button>
+        <button class="tool-btn"        id="tb-pan"      onclick="setTool('pan')">      <div class="ticon">✋</div><div><div class="tname">Pan Image [P]</div><div class="tdesc">Drag image around</div></div></button>
         <button class="tool-btn"        id="tb-angle3"   onclick="setTool('angle3')">  <div class="ticon">∠</div><div><div class="tname">3-Point Angle [A]</div><div class="tdesc">3 clicks · mid = vertex</div></div></button>
         <button class="tool-btn"        id="tb-angle4"   onclick="setTool('angle4')">  <div class="ticon">⊾</div><div><div class="tname">4-Point Angle [F]</div><div class="tdesc">Two lines → angle</div></div></button>
         <button class="tool-btn"        id="tb-cobb"     onclick="setTool('cobb')">    <div class="ticon">≋</div><div><div class="tname">Cobb Angle [C]</div><div class="tdesc">Two endplates</div></div></button>
@@ -374,7 +367,7 @@ button{font-family:'IBM Plex Sans',sans-serif}
   <!-- CANVAS -->
   <div class="canvas-wrap" id="ca">
     <canvas id="cvs"></canvas>
-    <div class="hint-pill" id="hint"></div>
+
     <div class="zbar">
       <button onclick="doZoom(1.2)">+</button>
       <div class="zlbl" id="zlbl">100%</div>
@@ -494,6 +487,7 @@ function resizeCvs() {
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let objs = [], tool = 'select', wip = [], col = '#3b82f6';
 let dragging = false, dstart = null, dobj = null, selObj = null;
+let panning = false, panStart = null;
 let annPt = null, mpos = { x: 0, y: 0 };
 let zl = 1, panX = 0, panY = 0;
 let currentTemplate = 'hip';
@@ -738,8 +732,7 @@ function setTool(t) {
   document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('tb-' + t);
   if (btn) btn.classList.add('active');
-  cvs.style.cursor = t === 'select' ? 'default' : 'crosshair';
-  showHint(TOOL_HINTS[t] || '');
+  cvs.style.cursor = tool === 'select' ? 'default' : tool === 'pan' ? 'grab' : 'crosshair';
   if (!document.querySelector('.pitem.active')) setPrompt(TOOL_HINTS[t]);
   redraw();
 }
@@ -750,10 +743,6 @@ function pickCol(c, el) {
   if (el) el.classList.add('sel');
 }
 
-function showHint(msg) {
-  const h = document.getElementById('hint');
-  h.textContent = msg; h.classList.toggle('on', !!msg);
-}
 
 function setPrompt(msg) {
   document.getElementById('prompt-inp').placeholder = msg;
@@ -767,10 +756,9 @@ function usePreset(key, el) {
   document.querySelectorAll('.pitem').forEach(i => i.classList.remove('active'));
   if (el) el.classList.add('active');
   setPrompt('📍 ' + p.prompt);
-  showHint(p.prompt);
+  
   showGuide(key);
   switchTab('guide', null);
-  setTimeout(() => switchTab('measurements', document.querySelector('.tab')), 2000);
 }
 
 // ─── GUIDE ───────────────────────────────────────────────────────────────────
@@ -820,12 +808,17 @@ cvs.addEventListener('click', e => {
   if (tool === 'annotate') { annPt = { x, y }; openModal(); return; }
   wip.push({ x, y });
   if (wip.length === REQ[tool]) finalise();
-  else showHint(stepHint());
+  
   redraw();
 });
 
 cvs.addEventListener('mousemove', e => {
   const { x, y } = gp(e); mpos = { x, y };
+  if (panning && panStart) {
+    const dx = x - panStart.x, dy = y - panStart.y;
+    panX += dx; panY += dy; panStart = { x, y };
+    redraw(); return;
+  }
   if (dragging && dobj) {
     const dx = x - dstart.x, dy = y - dstart.y; dstart = { x, y };
     dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
@@ -835,12 +828,20 @@ cvs.addEventListener('mousemove', e => {
 });
 
 cvs.addEventListener('mousedown', e => {
+  const { x, y } = gp(e);
+  if (tool === 'pan') {
+    panning = true; panStart = { x, y };
+    cvs.style.cursor = 'grabbing'; return;
+  }
   if (tool !== 'select') return;
-  const { x, y } = gp(e), hit = findObj(x, y);
+  const hit = findObj(x, y);
   if (hit) { dragging = true; dobj = hit; dstart = { x, y }; selObj = hit; }
 });
 
-cvs.addEventListener('mouseup', () => { dragging = false; dobj = null; });
+cvs.addEventListener('mouseup', () => {
+  dragging = false; dobj = null;
+  if (panning) { panning = false; panStart = null; cvs.style.cursor = 'grab'; }
+});
 cvs.addEventListener('wheel', e => { e.preventDefault(); doZoom(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
 
 // Touch support
@@ -849,6 +850,7 @@ cvs.addEventListener('touchstart', e => {
   e.preventDefault();
   if (e.touches.length === 1) {
     lastTouch = gpt(e.touches[0]);
+    if (tool === 'pan') { panning = true; panStart = lastTouch; return; }
     if (tool === 'select') {
       const hit = findObj(lastTouch.x, lastTouch.y);
       if (hit) { dragging = true; dobj = hit; dstart = lastTouch; selObj = hit; }
@@ -864,6 +866,10 @@ cvs.addEventListener('touchmove', e => {
   if (e.touches.length === 1) {
     const t = gpt(e.touches[0]);
     mpos = t;
+    if (panning && panStart) {
+      panX += t.x - panStart.x; panY += t.y - panStart.y; panStart = t;
+      redraw(); return;
+    }
     if (dragging && dobj) {
       const dx = t.x - dstart.x, dy = t.y - dstart.y; dstart = t;
       dobj.points = dobj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
@@ -879,15 +885,17 @@ cvs.addEventListener('touchmove', e => {
 
 cvs.addEventListener('touchend', e => {
   e.preventDefault();
-  dragging = false; dobj = null;
-  if (e.changedTouches.length === 1 && !dragging) {
+  const wasPanning = panning;
+  dragging = false; dobj = null; panning = false; panStart = null;
+  if (wasPanning) return; // don't place a point if we were panning
+  if (e.changedTouches.length === 1) {
     const t = gpt(e.changedTouches[0]);
     if (tool === 'select') { doSel(t.x, t.y); return; }
     if (tool === 'erase')  { doErase(t.x, t.y); return; }
     if (tool === 'annotate') { annPt = t; openModal(); return; }
     wip.push(t);
     if (wip.length === REQ[tool]) finalise();
-    else showHint(stepHint());
+    
     redraw();
   }
 }, { passive: false });
@@ -924,7 +932,7 @@ function finalise() {
     o.dist = Math.sqrt(dx*dx+dy*dy); o.value = o.dist.toFixed(1)+' px'; o.label = lbl||'Distance';
   }
   objs.push(o); wip = [];
-  updateList(); showHint(TOOL_HINTS[tool]); redraw();
+  updateList(); redraw();
   switchTab('measurements', document.querySelectorAll('.tab')[0]);
 }
 
@@ -1125,10 +1133,10 @@ function closeMobDrawer(){document.getElementById('mob-drawer').classList.remove
 // ─── KEYBOARD ────────────────────────────────────────────────────────────────
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
-  const map={s:'select',a:'angle3',f:'angle4',c:'cobb',l:'line',n:'annotate',e:'erase'};
+  const map={s:'select',p:'pan',a:'angle3',f:'angle4',c:'cobb',l:'line',n:'annotate',e:'erase'};
   if(map[e.key])setTool(map[e.key]);
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
-  if(e.key==='Escape'){wip=[];redraw();showHint(TOOL_HINTS[tool]);}
+  if(e.key==='Escape'){wip=[];redraw();}
   if(e.key==='Delete'&&selObj){const i=objs.indexOf(selObj);if(i>=0){objs.splice(i,1);selObj=null;updateList();redraw();}}
 });
 
