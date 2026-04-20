@@ -177,83 +177,13 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;bac
 .chip.sel{border-color:#fff}
 
 @media(max-width:768px){
-  /* ── Full screen layout ── */
-  .main{
-    display:flex;
-    flex-direction:column;
-    height:100vh;
-    padding-top:0;
-  }
-
-  /* ── Top bar: compact, single row ── */
-  .prompt-bar{
-    position:relative;
-    flex-wrap:nowrap;
-    padding:7px 10px;
-    gap:6px;
-    overflow-x:auto;
-    flex-shrink:0;
-    height:48px;
-  }
-  .prompt-bar::-webkit-scrollbar{display:none}
-  .logo{font-size:18px;flex-shrink:0}
-  .prompt-input-wrap{display:none} /* hide on mobile - not needed */
-  .divv{display:none}
-  .pb-btn{padding:6px 10px;font-size:11px;flex-shrink:0}
-  .pb-btn.ghost{display:inline-flex}
-  .upload-label{padding:6px 10px;font-size:11px;flex-shrink:0}
-
-  /* ── Left sidebar: hidden (replaced by bottom drawer) ── */
-  .sidebar-l{display:none}
-
-  /* ── Canvas: takes all remaining space ── */
-  .canvas-wrap{
-    flex:1;
-    min-height:0;
-    position:relative;
-  }
-
-  /* ── Right sidebar: hidden (replaced by bottom sheet) ── */
-  .sidebar-r{display:none}
-
-  /* ── Zoom bar: smaller, higher up ── */
-  .zbar{bottom:66px}
-  .zbar button{width:36px;height:36px;font-size:17px}
-  .zlbl{height:36px;font-size:11px}
-
-  /* ── Mobile bottom toolbar ── */
-  .mob-toolbar{
-    display:flex;
-    position:fixed;bottom:0;left:0;right:0;z-index:20;
-    background:var(--surface);
-    border-top:1px solid var(--border);
-    padding:6px 8px;
-    gap:6px;
-    justify-content:space-around;
-    align-items:center;
-    height:58px;
-    box-shadow:0 -4px 20px rgba(0,0,0,.5);
-  }
-  .mob-toolbar-btn{
-    display:flex;flex-direction:column;align-items:center;gap:2px;
-    background:transparent;border:none;color:var(--muted);
-    font-family:'IBM Plex Sans',sans-serif;font-size:9px;font-weight:600;
-    letter-spacing:.3px;text-transform:uppercase;cursor:pointer;
-    padding:4px 6px;border-radius:7px;transition:all .15s;min-width:44px;
-  }
-  .mob-toolbar-btn .mtb-icon{font-size:20px;line-height:1}
-  .mob-toolbar-btn.active{color:var(--red);background:rgba(192,57,43,.1)}
-  .mob-toolbar-btn:active{transform:scale(.92)}
-
-  /* Panels hidden on desktop */
-  .mob-tools-btn{display:none}
+  /* Hide desktop layout elements */
+  .main{display:none}
+  .prompt-bar{display:none}
 }
-
 @media(min-width:769px){
-  .mob-tools-btn{display:none}
   .mob-toolbar{display:none}
-  .mob-results-sheet{display:none}
-  .mob-menu-sheet{display:none}
+  .mob-fullscreen{display:none}
 }
 
 /* ── Shared bottom sheet styles ── */
@@ -311,12 +241,37 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;bac
 .mob-toolbar{display:none}
 
 /* ── Existing drawer ── */
-.mob-tools-btn{position:fixed;bottom:220px;right:12px;z-index:20;background:linear-gradient(160deg,var(--red) 0%,#8b1a14 100%);color:#fff;border:none;width:44px;height:44px;border-radius:50%;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px var(--red-glow);cursor:pointer}
-.mob-drawer{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--surface);border-top:2px solid var(--red);border-radius:14px 14px 0 0;padding:16px;transform:translateY(100%);transition:transform .3s;max-height:70vh;overflow-y:auto}
-.mob-drawer.open{transform:translateY(0)}
-.mob-drawer-handle{width:36px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 14px}
+.mob-tools-btn{display:none}
+.mob-drawer{display:none}
+.mob-drawer.open{display:none}
+.mob-drawer-handle{display:none}
 .save-input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;margin-bottom:12px}
 .save-input:focus{border-color:var(--grey-md)}
+
+/* ── Mobile-only classes ── */
+.mob-fullscreen{display:none}
+.mob-tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--muted);font-family:'IBM Plex Sans',sans-serif;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;cursor:pointer;padding:4px 2px;transition:color .15s;line-height:1}
+.mob-tb span{font-size:22px;line-height:1.3;display:block}
+.mob-tb:active{color:var(--red)}
+.mob-bsheet{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--surface);border-top:2px solid var(--red);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);max-height:80vh;overflow:hidden;display:none}
+.mob-bsheet.open{transform:translateY(0)}
+.mob-bsheet-bar{width:36px;height:3px;background:var(--border);border-radius:2px;margin:10px auto 6px}
+.mob-bsheet-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:0 16px 10px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.mob-ti{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:10px 4px;cursor:pointer;font-size:9px;font-weight:700;color:var(--text);letter-spacing:.3px;text-align:center;line-height:1.2}
+.mob-ti span{font-size:22px;line-height:1.2;display:block}
+.mob-ti.active{background:rgba(192,57,43,.15);border-color:var(--red);color:#e88a84}
+.mob-sw{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.mob-sw:active{transform:scale(1.2)}
+.mob-sw.sel{border-color:#fff;transform:scale(1.1)}
+.mob-pcat{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:10px 16px 4px}
+.mob-pr{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;color:var(--text)}
+.mob-pr span{margin-left:auto;font-size:10px;color:var(--muted);background:var(--panel);padding:2px 7px;border-radius:8px;white-space:nowrap}
+.mob-pr:active{background:rgba(192,57,43,.08)}
+.mob-pd{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+@media(max-width:768px){
+  .mob-fullscreen{display:block}
+  .mob-bsheet{display:block}
+}
 </style>
 </head>
 <body>
@@ -660,6 +615,166 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;bac
 
 <!-- Old drawer (kept for compat, hidden on mobile) -->
 <div class="mob-drawer" id="mob-drawer" style="display:none"></div>
+
+<!-- ════════════════════════════════════════════════════
+     MOBILE FULLSCREEN UI (only visible on phones)
+════════════════════════════════════════════════════ -->
+<div class="mob-fullscreen" id="mob-fullscreen">
+
+  <!-- Mobile top bar -->
+  <div style="
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    background:var(--surface);border-bottom:1px solid var(--border);
+    height:48px;display:flex;align-items:center;
+    padding:0 12px;gap:8px;
+    box-shadow:0 2px 12px rgba(0,0,0,.5);
+  ">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;letter-spacing:1px;flex-shrink:0">
+      Ortho<span style="color:var(--red)">Measure</span>
+    </div>
+    <div style="flex:1"></div>
+    <button id="mob-del-btn" onclick="deleteImage()" style="display:none;background:rgba(192,57,43,.15);border:1px solid #3a1a1a;color:#e88a84;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer">✕ Delete</button>
+    <button onclick="undoLast()" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer">↩</button>
+    <button onclick="saveSnapshot()" style="background:linear-gradient(160deg,#166534,#141719);border:1px solid #166534;color:#86efac;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer">💾</button>
+  </div>
+
+  <!-- Mobile canvas (fills between topbar and toolbar) -->
+  <div style="
+    position:fixed;top:48px;left:0;right:0;bottom:58px;
+    background:#050608;overflow:hidden;
+  " id="mob-canvas-wrap">
+    <canvas id="mob-cvs" style="position:absolute;top:0;left:0;touch-action:none;display:block"></canvas>
+
+    <!-- Zoom controls -->
+    <div style="
+      position:absolute;bottom:10px;right:10px;
+      display:flex;flex-direction:column;gap:4px;z-index:4;
+    ">
+      <button onclick="mobZoom(1.25)" style="width:38px;height:38px;background:rgba(8,10,12,.9);border:1px solid var(--border);color:var(--muted);font-size:18px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+      <button onclick="mobZoom(0.8)"  style="width:38px;height:38px;background:rgba(8,10,12,.9);border:1px solid var(--border);color:var(--muted);font-size:18px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+      <button onclick="mobResetZoom()" style="width:38px;height:38px;background:rgba(8,10,12,.9);border:1px solid var(--border);color:var(--muted);font-size:14px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center">⊡</button>
+    </div>
+
+    <!-- Active tool badge -->
+    <div id="mob-tool-badge" style="
+      position:absolute;top:10px;left:10px;
+      background:rgba(192,57,43,.9);color:#fff;
+      padding:4px 10px;border-radius:12px;
+      font-size:11px;font-weight:700;
+      font-family:'IBM Plex Sans',sans-serif;
+      letter-spacing:.3px;
+    ">SELECT / PAN</div>
+  </div>
+
+  <!-- Mobile bottom toolbar -->
+  <div style="
+    position:fixed;bottom:0;left:0;right:0;z-index:10;
+    background:var(--surface);border-top:2px solid var(--border);
+    height:58px;display:flex;align-items:stretch;
+  ">
+    <button class="mob-tb" onclick="mobSheet('xray')">🦴<span>X-Ray</span></button>
+    <button class="mob-tb" onclick="mobSheet('tools')">⚙<span>Tools</span></button>
+    <button class="mob-tb" onclick="mobSheet('presets')">📋<span>Presets</span></button>
+    <button class="mob-tb" onclick="mobSheet('results')">📐<span>Results</span></button>
+    <button class="mob-tb" onclick="exportPNG()">↓<span>Export</span></button>
+  </div>
+
+</div><!-- end mob-fullscreen -->
+
+<!-- Mobile bottom sheets -->
+<div id="mob-backdrop" onclick="mobClose()" style="
+  display:none;position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.5);
+"></div>
+
+<!-- X-Ray sheet -->
+<div class="mob-bsheet" id="msheet-xray">
+  <div class="mob-bsheet-bar"></div>
+  <div class="mob-bsheet-title">Load X-Ray</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px 6px">
+    <div onclick="mobLoadTpl('hip')" style="background:var(--panel);border:1px solid var(--border);border-radius:9px;overflow:hidden;cursor:pointer;active:border-color:var(--red)">
+      <img id="mbt-hip" style="width:100%;height:80px;object-fit:cover;display:block;background:#0a0b0d" src="">
+      <div style="padding:7px 9px;font-size:12px;font-weight:700;color:var(--text)">Hip / Pelvis</div>
+    </div>
+    <div onclick="mobLoadTpl('knee')" style="background:var(--panel);border:1px solid var(--border);border-radius:9px;overflow:hidden;cursor:pointer">
+      <img id="mbt-knee" style="width:100%;height:80px;object-fit:cover;display:block;background:#0a0b0d" src="">
+      <div style="padding:7px 9px;font-size:12px;font-weight:700;color:var(--text)">Knee</div>
+    </div>
+  </div>
+  <div style="padding:6px 14px 14px">
+    <label for="file-inp" style="display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:12px;cursor:pointer">
+      <span style="font-size:22px">📂</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">Upload Your X-Ray</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">JPG or PNG</div>
+      </div>
+    </label>
+  </div>
+</div>
+
+<!-- Tools sheet -->
+<div class="mob-bsheet" id="msheet-tools">
+  <div class="mob-bsheet-bar"></div>
+  <div class="mob-bsheet-title">Tools</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px 6px">
+    <div class="mob-ti" id="mti-select"   onclick="mobSetTool('select','SELECT/PAN')">  <span>✋</span>Select</div>
+    <div class="mob-ti" id="mti-angle3"   onclick="mobSetTool('angle3','3-PT ANGLE')">  <span>∠</span>3-Pt Angle</div>
+    <div class="mob-ti" id="mti-angle4"   onclick="mobSetTool('angle4','4-PT ANGLE')">  <span>⊾</span>4-Pt Angle</div>
+    <div class="mob-ti" id="mti-cobb"     onclick="mobSetTool('cobb','COBB ANGLE')">    <span>≋</span>Cobb</div>
+    <div class="mob-ti" id="mti-line"     onclick="mobSetTool('line','DISTANCE')">      <span>↔</span>Distance</div>
+    <div class="mob-ti" id="mti-annotate" onclick="mobSetTool('annotate','ANNOTATE')">  <span>✎</span>Annotate</div>
+    <div class="mob-ti" id="mti-erase"    onclick="mobSetTool('erase','ERASE')">        <span>✕</span>Erase</div>
+    <div class="mob-ti"                   onclick="clearAll();mobClose()">              <span>🗑</span>Clear All</div>
+  </div>
+  <div style="padding:4px 14px 14px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Color</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="mob-sw sel" style="background:#3b82f6" onclick="pickCol('#3b82f6',this)"></div>
+      <div class="mob-sw" style="background:#ef4444" onclick="pickCol('#ef4444',this)"></div>
+      <div class="mob-sw" style="background:#22c55e" onclick="pickCol('#22c55e',this)"></div>
+      <div class="mob-sw" style="background:#eab308" onclick="pickCol('#eab308',this)"></div>
+      <div class="mob-sw" style="background:#a855f7" onclick="pickCol('#a855f7',this)"></div>
+      <div class="mob-sw" style="background:#f97316" onclick="pickCol('#f97316',this)"></div>
+      <div class="mob-sw" style="background:#06b6d4" onclick="pickCol('#06b6d4',this)"></div>
+      <div class="mob-sw" style="background:#f1f5f9;border:2px solid #334155" onclick="pickCol('#f1f5f9',this)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Presets sheet -->
+<div class="mob-bsheet" id="msheet-presets">
+  <div class="mob-bsheet-bar"></div>
+  <div class="mob-bsheet-title">Measurement Presets</div>
+  <div style="overflow-y:auto;max-height:60vh;padding-bottom:16px">
+    <div class="mob-pcat">Hip / Pelvis</div>
+    <div class="mob-pr" onclick="mobUsePreset('nsa')"><div class="mob-pd" style="background:#3b82f6"></div>Neck-Shaft Angle<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('ce')"><div class="mob-pd" style="background:#ef4444"></div>Center-Edge Angle<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('acetab')"><div class="mob-pd" style="background:#22c55e"></div>Acetabular Index<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('tonnis')"><div class="mob-pd" style="background:#eab308"></div>Tönnis Angle<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('shenton')"><div class="mob-pd" style="background:#a855f7"></div>Shenton's Line<span>line</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('wiberg')"><div class="mob-pd" style="background:#f97316"></div>Wiberg / VCA<span>3-pt</span></div>
+    <div class="mob-pcat">Knee / Alignment</div>
+    <div class="mob-pr" onclick="mobUsePreset('tfa')"><div class="mob-pd" style="background:#3b82f6"></div>Tibiofemoral Angle<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('mech')"><div class="mob-pd" style="background:#ef4444"></div>Mechanical Axis<span>line</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('mpta')"><div class="mob-pd" style="background:#22c55e"></div>MPTA<span>3-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('ldfa')"><div class="mob-pd" style="background:#eab308"></div>LDFA<span>3-pt</span></div>
+    <div class="mob-pcat">Spine</div>
+    <div class="mob-pr" onclick="mobUsePreset('cobbs')"><div class="mob-pd" style="background:#3b82f6"></div>Cobb Angle<span>4-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('lordosis')"><div class="mob-pd" style="background:#ef4444"></div>Lumbar Lordosis<span>4-pt</span></div>
+    <div class="mob-pr" onclick="mobUsePreset('cervical')"><div class="mob-pd" style="background:#22c55e"></div>Cervical Lordosis<span>4-pt</span></div>
+  </div>
+</div>
+
+<!-- Results sheet -->
+<div class="mob-bsheet" id="msheet-results">
+  <div class="mob-bsheet-bar"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px;border-bottom:1px solid var(--border);margin-bottom:2px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">Measurements</div>
+    <button onclick="clearAll()" style="background:rgba(192,57,43,.1);border:1px solid #3a1a1a;color:#e88a84;padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">🗑 Clear</button>
+  </div>
+  <div id="mob-res-list" style="overflow-y:auto;max-height:55vh;padding-bottom:16px">
+    <div style="padding:20px 16px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8">No measurements yet.</div>
+  </div>
+</div>
 
 <!-- Annotation modal -->
 <div class="mbg" id="mbg">
@@ -2292,7 +2407,317 @@ resizeCvs();
 initTemplateSrcs();
 setTool('select');
 redraw();
-window.addEventListener('resize',()=>{resizeCvs();if(bgImage)fitBg();redraw();});
+window.addEventListener('resize',()=>{resizeCvs();if(bgImage)fitBg();redraw(); mobResizeCvs();});
+
+// ─── MOBILE CANVAS & LOGIC ───────────────────────────────────────────────────
+const mobCvs = document.getElementById('mob-cvs');
+const mobCtx = mobCvs ? mobCvs.getContext('2d') : null;
+let mobW = 0, mobH = 0;
+let mobZl = 1, mobPanX = 0, mobPanY = 0;
+let mobPanning = false, mobPanStart = null;
+let mobTouchDist = 0;
+let mobDragPt = null, mobDragging = false, mobDobj = null, mobDstart = null;
+let mobWip = [];
+let mobMpos = {x:0, y:0};
+
+function mobResizeCvs() {
+  const wrap = document.getElementById('mob-canvas-wrap');
+  if (!wrap || !mobCvs) return;
+  mobW = mobCvs.width  = wrap.clientWidth;
+  mobH = mobCvs.height = wrap.clientHeight;
+}
+
+function mobFitBg() {
+  if (!bgImage || !mobW) return;
+  mobZl = Math.min(mobW / bgImage.width, mobH / bgImage.height) * 0.94;
+  mobPanX = (mobW - bgImage.width  * mobZl) / 2;
+  mobPanY = (mobH - bgImage.height * mobZl) / 2;
+}
+
+function mobRedraw() {
+  if (!mobCtx) return;
+  mobCtx.clearRect(0, 0, mobW, mobH);
+  mobCtx.fillStyle = '#050608'; mobCtx.fillRect(0, 0, mobW, mobH);
+  if (!bgImage) {
+    mobCtx.fillStyle = 'rgba(90,106,130,.25)';
+    mobCtx.font = '13px IBM Plex Sans, sans-serif';
+    mobCtx.textAlign = 'center';
+    mobCtx.fillText('Tap X-Ray below to load an image', mobW/2, mobH/2);
+    mobCtx.textAlign = 'left';
+    return;
+  }
+  mobCtx.drawImage(bgImage, mobPanX, mobPanY, bgImage.width * mobZl, bgImage.height * mobZl);
+
+  // draw all objects using mobile canvas context
+  const savedCtx = ctx;
+  // temporarily swap ctx for drawObj calls
+  const tmpW = W, tmpH = H;
+  // We'll just re-implement a simple draw loop for mobile
+  objs.forEach(o => mobDrawObj(o));
+
+  // wip
+  if (mobWip.length > 0) {
+    mobWip.forEach(p => mobDot(p.x, p.y, col));
+    for (let i = 1; i < mobWip.length; i++) mobSeg(mobWip[i-1], mobWip[i], col);
+    // ghost
+    if (mobMpos.x) {
+      const l = mobWip[mobWip.length-1];
+      mobCtx.save(); mobCtx.strokeStyle=col; mobCtx.lineWidth=1.5;
+      mobCtx.setLineDash([6,4]); mobCtx.globalAlpha=.4;
+      mobCtx.beginPath(); mobCtx.moveTo(l.x,l.y); mobCtx.lineTo(mobMpos.x,mobMpos.y); mobCtx.stroke();
+      mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
+    }
+  }
+}
+
+function mobDrawObj(o) {
+  const p = o.points, c = o.color;
+  mobCtx.lineWidth = 2.5;
+  if (o.type==='angle3'&&p.length===3){
+    mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
+    p.forEach(q=>mobDot(q.x,q.y,c)); mobLbl(p[1], o.label, o.value, c);
+  } else if (o.type==='angle4'&&p.length===4){
+    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
+    p.forEach(q=>mobDot(q.x,q.y,c)); mobLbl(midAll(p), o.label, o.value, c);
+  } else if (o.type==='cobb'&&p.length===4){
+    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
+    p.forEach(q=>mobDot(q.x,q.y,c)); mobLbl(midAll(p), o.label, o.value, c);
+  } else if (o.type==='line'&&p.length===2){
+    mobSeg(p[0],p[1],c); p.forEach(q=>mobDot(q.x,q.y,c));
+    mobLbl(mp(p[0],p[1]), o.label, o.value, c);
+  } else if (o.type==='annotate'){
+    mobCtx.beginPath(); mobCtx.arc(p[0].x,p[0].y,6,0,Math.PI*2);
+    mobCtx.fillStyle=c; mobCtx.fill();
+    mobCtx.font='600 12px IBM Plex Sans,sans-serif';
+    mobCtx.fillText(o.text||'', p[0].x+10, p[0].y+5);
+  }
+}
+
+function mobSeg(a,b,c){mobCtx.beginPath();mobCtx.moveTo(a.x,a.y);mobCtx.lineTo(b.x,b.y);mobCtx.strokeStyle=c;mobCtx.lineWidth=2.5;mobCtx.stroke();}
+function mobDot(x,y,c){mobCtx.beginPath();mobCtx.arc(x,y,7,0,Math.PI*2);mobCtx.fillStyle='rgba(255,255,255,.9)';mobCtx.fill();mobCtx.beginPath();mobCtx.arc(x,y,5,0,Math.PI*2);mobCtx.fillStyle=c;mobCtx.fill();}
+function mobLbl(p,name,value,c){
+  mobCtx.save();
+  mobCtx.font='bold 13px IBM Plex Mono,monospace'; const vw=mobCtx.measureText(value).width;
+  mobCtx.font='500 10px IBM Plex Sans,sans-serif'; const nw=mobCtx.measureText(name).width;
+  const w=Math.max(vw,nw)+14, h=34, bx=p.x-w/2, by=p.y-h-10;
+  mobCtx.fillStyle='rgba(10,12,18,.92)'; rrect(bx,by,w,h,5);
+  mobCtx.strokeStyle=c; mobCtx.lineWidth=1; rrectStroke(bx,by,w,h,5);
+  mobCtx.fillStyle='rgba(138,154,184,.8)'; mobCtx.font='10px IBM Plex Sans,sans-serif'; mobCtx.fillText(name,bx+7,by+13);
+  mobCtx.fillStyle=c; mobCtx.font='bold 13px IBM Plex Mono,monospace'; mobCtx.fillText(value,bx+7,by+28);
+  mobCtx.restore();
+}
+
+// Use shared rrect / rrectStroke but on mobCtx
+// rrect/rrectStroke are defined earlier for desktop ctx
+
+function mobGpt(touch) {
+  const r = mobCvs.getBoundingClientRect();
+  return { x: (touch.clientX - r.left) * (mobW / r.width), y: (touch.clientY - r.top) * (mobH / r.height) };
+}
+
+// Touch events on mobile canvas
+if (mobCvs) {
+  mobCvs.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      const t = mobGpt(e.touches[0]);
+      mobMpos = t;
+      if (tool === 'select') {
+        // check point hit
+        for (const o of objs) {
+          for (let idx = 0; idx < o.points.length; idx++) {
+            if (Math.hypot(o.points[idx].x-t.x, o.points[idx].y-t.y) < 18) {
+              saveHistory(); mobDragPt = {obj:o, idx}; return;
+            }
+          }
+        }
+        // pan
+        mobPanning = true; mobPanStart = t;
+      }
+    }
+    if (e.touches.length === 2) {
+      mobTouchDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    }
+  }, {passive:false});
+
+  mobCvs.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      const t = mobGpt(e.touches[0]); mobMpos = t;
+      if (mobDragPt) {
+        mobDragPt.obj.points[mobDragPt.idx] = t;
+        recalcObj(mobDragPt.obj); mobRedraw(); return;
+      }
+      if (mobPanning && mobPanStart) {
+        mobPanX += t.x - mobPanStart.x; mobPanY += t.y - mobPanStart.y; mobPanStart = t;
+        mobRedraw(); return;
+      }
+      if (mobWip.length > 0) mobRedraw();
+    }
+    if (e.touches.length === 2) {
+      const nd = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      if (mobTouchDist) { mobZoom(nd/mobTouchDist); }
+      mobTouchDist = nd;
+    }
+  }, {passive:false});
+
+  mobCvs.addEventListener('touchend', e => {
+    e.preventDefault();
+    const wasDrag = !!mobDragPt;
+    const wasPan  = mobPanning;
+    if (mobDragPt) { recalcObj(mobDragPt.obj); mobDragPt = null; updateList(); mobRedraw(); return; }
+    mobPanning = false; mobPanStart = null;
+    if (wasPan && e.changedTouches.length === 1) {
+      // small movement = tap = place point
+      const t = mobGpt(e.changedTouches[0]);
+      const dx = t.x - (mobMpos.x||t.x), dy = t.y - (mobMpos.y||t.y);
+      if (Math.hypot(dx,dy) > 8) return; // was a real pan
+    }
+    if (e.changedTouches.length === 1 && !wasDrag) {
+      const t = mobGpt(e.changedTouches[0]);
+      if (tool === 'select') return;
+      if (tool === 'erase') { const i=objs.findIndex(o=>isNear(o,t.x,t.y)); if(i>=0){saveHistory();objs.splice(i,1);updateList();} mobRedraw(); return; }
+      if (tool === 'annotate') { annPt=t; openModal(); return; }
+      mobWip.push(t);
+      const REQ2 = {angle3:3,angle4:4,cobb:4,line:2};
+      if (mobWip.length === REQ2[tool]) {
+        // finalise using shared wip
+        wip = [...mobWip]; mobWip = [];
+        finalise(); mobRedraw();
+      } else { mobRedraw(); }
+    }
+  }, {passive:false});
+}
+
+function mobZoom(f) {
+  const cx=mobW/2, cy=mobH/2;
+  mobPanX=cx-(cx-mobPanX)*f; mobPanY=cy-(cy-mobPanY)*f; mobZl*=f;
+  objs.forEach(o=>{o.points=o.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}));});
+  mobRedraw();
+}
+
+// These are the buttons in the mobile canvas zoom controls
+function mobZoom(f){if(!mobCvs)return;const cx=mobW/2,cy=mobH/2;mobPanX=cx-(cx-mobPanX)*f;mobPanY=cy-(cy-mobPanY)*f;mobZl*=f;objs.forEach(o=>{o.points=o.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}));});mobRedraw();}
+function mobResetZoom(){if(bgImage){mobFitBg();}else{mobZl=1;mobPanX=0;mobPanY=0;}mobRedraw();}
+
+// Sheet controls
+let activeSheet = null;
+function mobSheet(name) {
+  // close current
+  if (activeSheet) {
+    document.getElementById('msheet-'+activeSheet).classList.remove('open');
+    document.getElementById('mob-backdrop').style.display='none';
+    if (activeSheet === name) { activeSheet=null; return; }
+  }
+  const s = document.getElementById('msheet-'+name);
+  if (!s) { activeSheet=null; return; }
+  // populate template thumbnails
+  if (name==='xray') {
+    ['hip','knee'].forEach(t=>{
+      const src=TEMPLATE_SRCS[t];
+      const img=document.getElementById('mbt-'+t);
+      if(img&&src) img.src=src;
+    });
+  }
+  // populate results
+  if (name==='results') mobUpdateResults();
+  s.classList.add('open');
+  document.getElementById('mob-backdrop').style.display='block';
+  activeSheet = name;
+}
+function mobClose() {
+  if (activeSheet) document.getElementById('msheet-'+activeSheet).classList.remove('open');
+  document.getElementById('mob-backdrop').style.display='none';
+  activeSheet = null;
+}
+
+function mobSetTool(t, label) {
+  setTool(t);
+  document.querySelectorAll('.mob-ti').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('mti-'+t); if(el) el.classList.add('active');
+  const badge=document.getElementById('mob-tool-badge'); if(badge) badge.textContent=label;
+  mobClose();
+}
+
+function mobUsePreset(key) {
+  const el = document.querySelector('.mob-pr[onclick*="'+key+'"]');
+  usePreset(key, el||document.createElement('div'));
+  const badge=document.getElementById('mob-tool-badge');
+  if(badge && PRESETS[key]) badge.textContent=PRESETS[key].name.toUpperCase();
+  mobClose();
+}
+
+function mobLoadTpl(name) {
+  loadTemplate(name, null);
+  mobFitBg();
+  // show delete button
+  const btn=document.getElementById('mob-del-btn'); if(btn) btn.style.display='inline-block';
+  mobClose();
+  setTimeout(()=>mobRedraw(), 200);
+}
+
+function mobUpdateResults() {
+  const s=document.getElementById('mob-res-list'); if(!s) return;
+  if(objs.length===0){s.innerHTML='<div style="padding:20px 16px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8">No measurements yet.</div>';return;}
+  const tl={angle3:'3-Point',angle4:'4-Point',cobb:'Cobb',line:'Distance',annotate:'Note'};
+  s.innerHTML=objs.map((o,i)=>`
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:${o.lblColor||o.color};letter-spacing:.3px">${o.label||o.type}</div>
+        <div style="font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${o.lblColor||o.color}">${o.value||o.text||'—'}</div>
+        <div style="font-size:10px;color:var(--muted)">${tl[o.type]||o.type}</div>
+      </div>
+      <button onclick="saveHistory();objs.splice(${i},1);updateList();mobUpdateResults();mobRedraw()" style="background:rgba(192,57,43,.1);border:1px solid #3a1a1a;color:#e88a84;width:34px;height:34px;border-radius:7px;font-size:16px;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+// Override updateDelImgBtn for mobile too
+const _origUpdateDelImgBtn = updateDelImgBtn;
+function updateDelImgBtn() {
+  _origUpdateDelImgBtn();
+  const btn = document.getElementById('mob-del-btn');
+  if (btn) btn.style.display = bgImage ? 'inline-block' : 'none';
+}
+
+// Override loadTemplate to also refresh mobile
+const _origLoadTemplate = loadTemplate;
+// Already patched via bgImage onload — just need to call mobFitBg after image loads
+// We patch finalise to also update mob results
+const _origFinalise = finalise;
+
+// Also sync mob redraw when desktop finalises
+const _origUpdateList = updateList;
+function updateList() {
+  _origUpdateList();
+  if (mobCvs) { mobUpdateResults(); mobRedraw(); }
+}
+
+// Init mobile
+mobResizeCvs();
+// Delay to let images load
+setTimeout(() => {
+  mobFitBg();
+  mobRedraw();
+  // Set initial active tool badge
+  const badge = document.getElementById('mob-tool-badge');
+  if (badge) badge.textContent = 'SELECT / PAN';
+  const mti = document.getElementById('mti-select');
+  if (mti) mti.classList.add('active');
+}, 300);
+
+// Watch for bgImage changes (after template load)
+let _lastBgImage = null;
+setInterval(() => {
+  if (bgImage !== _lastBgImage) {
+    _lastBgImage = bgImage;
+    if (bgImage) { mobFitBg(); }
+    mobRedraw();
+    const btn = document.getElementById('mob-del-btn');
+    if (btn) btn.style.display = bgImage ? 'inline-block' : 'none';
+  }
+}, 200);
+
+
 
 // ── Loading screen animation ──
 (function(){
