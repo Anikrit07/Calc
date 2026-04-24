@@ -1463,7 +1463,6 @@ function finalise() {
 function initDesktopEvents() {
 
   cvs.addEventListener('click', e => {
-    if (!cvs.style.display || cvs.style.display === 'none') return;
     const { x, y } = gp(e);
     if (tool === 'select')   { doSelect(x, y); return; }
     if (tool === 'erase')    { doErase(x, y);  return; }
