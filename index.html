@@ -397,7 +397,11 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   background: #050608;
   overflow: hidden;
 }
-#mob-cvs { position: absolute; top: 0; left: 0; display: block; touch-action: none; }
+#mob-cvs {
+  position: absolute; top: 0; left: 0;
+  display: block; touch-action: none;
+  width: 100%; height: 100%;
+}
 .mob-tool-badge {
   position: fixed; top: 58px; left: 10px;
   background: rgba(192,57,43,.9); color: #fff;
@@ -1875,7 +1879,8 @@ function exportPDF() {
 let mobCvs, mobCtx, mobW = 0, mobH = 0;
 let mobZl = 1, mobOx = 0, mobOy = 0;
 let mobPanning = false, mobPanStart = null, mobTouchDist = 0;
-let mobDragPt = null, mobWip = [], mobMpos = { x:0, y:0 };
+let mobDragPt = null, mobDragLbl = null, mobDragLblStart = null;
+let mobWip = [], mobMpos = { x:0, y:0 };
 let mobActiveSheet = null;
 
 // ── Init ─────────────────────────────────────────────────────
@@ -1955,19 +1960,19 @@ function mobDrawObj(o) {
   if (o.type==='angle3' && p.length===3) {
     mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
     p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(mp(p[0],p[2]), o.label, o.value, c);
+    mobLbl(mp(p[0],p[2]), o.label, o.value, c, o);
   } else if (o.type==='angle4' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(midAll(p), o.label, o.value, c);
+    mobLbl(midAll(p), o.label, o.value, c, o);
   } else if (o.type==='cobb' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     mobExtLine(p[0],p[1],c); mobExtLine(p[2],p[3],c);
     p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(midAll(p), o.label, o.value, c);
+    mobLbl(midAll(p), o.label, o.value, c, o);
   } else if (o.type==='line' && p.length===2) {
     mobSeg(p[0],p[1],c); p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(mp(p[0],p[1]), o.label, o.value, c);
+    mobLbl(mp(p[0],p[1]), o.label, o.value, c, o);
   } else if (o.type==='annotate') {
     mobCtx.beginPath(); mobCtx.arc(p[0].x,p[0].y,6,0,Math.PI*2);
     mobCtx.fillStyle=c; mobCtx.fill();
@@ -1986,7 +1991,9 @@ function mobExtLine(a,b,c) {
   mobCtx.beginPath(); mobCtx.moveTo(a.x-ux*ext,a.y-uy*ext); mobCtx.lineTo(b.x+ux*ext,b.y+uy*ext); mobCtx.stroke();
   mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
 }
-function mobLbl(pos,name,value,c) {
+function mobLbl(defaultPos, name, value, c, o) {
+  // respect custom label position
+  const pos = (o && o.labelPos) ? o.labelPos : defaultPos;
   mobCtx.save();
   mobCtx.font='bold 13px IBM Plex Mono,monospace'; const vw=mobCtx.measureText(value).width;
   mobCtx.font='500 10px IBM Plex Sans,sans-serif'; const nw=mobCtx.measureText(name).width;
@@ -1998,6 +2005,8 @@ function mobLbl(pos,name,value,c) {
   mobCtx.fillStyle='rgba(138,154,184,.8)'; mobCtx.font='10px IBM Plex Sans,sans-serif'; mobCtx.fillText(name,bx+7,by+13);
   mobCtx.fillStyle=c; mobCtx.font='bold 13px IBM Plex Mono,monospace'; mobCtx.fillText(value,bx+7,by+28);
   mobCtx.restore();
+  // Store bounding box for hit-test
+  if (o) o._lblBox = { x: bx, y: by, w, h };
 }
 
 // ── Touch events ──────────────────────────────────────────────
@@ -2005,13 +2014,25 @@ function initMobileEvents() {
   mobCvs.addEventListener('touchstart', e => {
     e.preventDefault();
     // Reset all drag states on new touch
-    mobPanning = false; mobPanStart = null; mobDragPt = null;
+    mobPanning = false; mobPanStart = null; mobDragPt = null; mobDragLbl = null;
 
     if (e.touches.length === 1) {
       const t = mobGpt(e.touches[0]); mobMpos = t;
 
       if (tool === 'select') {
-        // Check point hit FIRST — larger hit area for fingers (22px)
+        // 1. Check label box hit first
+        let hitLbl = false;
+        for (const o of objs) {
+          if (o._lblBox) {
+            const b = o._lblBox;
+            if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
+              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: t.x, y: t.y }; hitLbl = true; break;
+            }
+          }
+        }
+        if (hitLbl) return;
+
+        // 2. Check point hit (22px radius for fingers)
         let hitPt = false;
         for (const o of objs) {
           for (let idx = 0; idx < o.points.length; idx++) {
@@ -2021,12 +2042,14 @@ function initMobileEvents() {
           }
           if (hitPt) break;
         }
-        // Only pan if NO point was hit
-        if (!hitPt) { mobPanning = true; mobPanStart = t; }
+        if (hitPt) return;
+
+        // 3. Pan image
+        mobPanning = true; mobPanStart = t;
       }
     }
     if (e.touches.length === 2) {
-      mobPanning = false; mobDragPt = null;
+      mobPanning = false; mobDragPt = null; mobDragLbl = null;
       mobTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     }
   }, { passive: false });
@@ -2035,25 +2058,46 @@ function initMobileEvents() {
     e.preventDefault();
     if (e.touches.length === 1) {
       const t = mobGpt(e.touches[0]); mobMpos = t;
-      if (mobDragPt) { mobDragPt.obj.points[mobDragPt.idx]=t; recalcObj(mobDragPt.obj); mobRedraw(); return; }
-      if (mobPanning && mobPanStart) {
-        mobOx += t.x-mobPanStart.x; mobOy += t.y-mobPanStart.y; mobPanStart=t;
+
+      // Label drag
+      if (mobDragLbl && mobDragLblStart) {
+        const dx = t.x - mobDragLblStart.x, dy = t.y - mobDragLblStart.y;
+        mobDragLblStart = { x: t.x, y: t.y };
+        if (!mobDragLbl.labelPos) {
+          const b = mobDragLbl._lblBox;
+          mobDragLbl.labelPos = { x: b ? b.x + b.w/2 : t.x, y: b ? b.y + b.h/2 : t.y };
+        }
+        mobDragLbl.labelPos.x += dx;
+        mobDragLbl.labelPos.y += dy;
         mobRedraw(); return;
       }
+
+      // Point drag
+      if (mobDragPt) {
+        mobDragPt.obj.points[mobDragPt.idx] = t;
+        recalcObj(mobDragPt.obj); mobRedraw(); return;
+      }
+
+      // Pan
+      if (mobPanning && mobPanStart) {
+        mobOx += t.x - mobPanStart.x; mobOy += t.y - mobPanStart.y; mobPanStart = t;
+        mobRedraw(); return;
+      }
+
       if (mobWip.length > 0) mobRedraw();
     }
     if (e.touches.length === 2) {
-      const nd = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      const nd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       if (mobTouchDist) {
-        const f = nd/mobTouchDist;
-        const cx=mobW/2, cy=mobH/2;
-        mobOx=cx-(cx-mobOx)*f; mobOy=cy-(cy-mobOy)*f; mobZl*=f;
-        objs.forEach(o=>{o.points=o.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}));});
+        const f = nd / mobTouchDist;
+        const cx = mobW/2, cy = mobH/2;
+        mobOx = cx-(cx-mobOx)*f; mobOy = cy-(cy-mobOy)*f; mobZl *= f;
+        objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
         mobRedraw();
       }
-      mobTouchDist=nd;
+      mobTouchDist = nd;
     }
-  }, { passive:false });
+  }, { passive: false });
 
   mobCvs.addEventListener('touchend', e => {
     e.preventDefault();
@@ -2062,6 +2106,8 @@ function initMobileEvents() {
 
     // Always reset drag states
     mobPanning = false; mobPanStart = null;
+
+    if (mobDragLbl) { mobDragLbl = null; mobDragLblStart = null; mobRedraw(); return; }
 
     if (wasDragPt) {
       recalcObj(mobDragPt.obj); mobDragPt = null;
@@ -2090,8 +2136,14 @@ function initMobileEvents() {
 }
 
 function mobGpt(touch) {
-  const r = mobCvs.getBoundingClientRect();
-  return { x:(touch.clientX-r.left)*(mobW/r.width), y:(touch.clientY-r.top)*(mobH/r.height) };
+  // Canvas is fixed, top=48px, full window width
+  const x = touch.clientX;
+  const y = touch.clientY - 48; // subtract topbar height
+  // Scale to canvas pixel dimensions
+  return {
+    x: x * (mobW / window.innerWidth),
+    y: y * (mobH / (window.innerHeight - 48 - 58))
+  };
 }
 
 // ── Zoom buttons ─────────────────────────────────────────────
