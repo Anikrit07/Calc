@@ -370,9 +370,13 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
 /* Mobile topbar */
 .mob-topbar {
-  height: 48px; background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 8px;
   box-shadow: 0 2px 12px rgba(0,0,0,.5);
+  z-index: 110;
 }
 .mob-logo { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; letter-spacing: 1px; flex: 1; }
 .mob-logo span { color: var(--red); }
@@ -385,16 +389,24 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .mob-topbtn.save { background: linear-gradient(160deg,#166534,#141719); color: #86efac; border-color: #166534; }
 
 /* Mobile canvas */
-.mob-canvas-area { flex: 1; position: relative; background: #050608; overflow: hidden; }
+.mob-canvas-area {
+  position: fixed;
+  top: 48px;       /* below topbar */
+  left: 0; right: 0;
+  bottom: 58px;    /* above bottom bar */
+  background: #050608;
+  overflow: hidden;
+}
 #mob-cvs { position: absolute; top: 0; left: 0; display: block; touch-action: none; }
 .mob-tool-badge {
-  position: absolute; top: 10px; left: 10px;
+  position: fixed; top: 58px; left: 10px;
   background: rgba(192,57,43,.9); color: #fff;
   padding: 4px 10px; border-radius: 12px;
-  font-size: 11px; font-weight: 700; letter-spacing: .3px; z-index: 4;
+  font-size: 11px; font-weight: 700; letter-spacing: .3px; z-index: 111;
 }
 .mob-zoom-btns {
-  position: absolute; bottom: 10px; right: 10px; z-index: 4;
+  position: fixed;
+  bottom: 68px; right: 10px; z-index: 111;
   display: flex; flex-direction: column; gap: 4px;
 }
 .mob-zbtn {
@@ -404,10 +416,16 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 }
 .mob-zbtn:active { color: #fff; background: rgba(192,57,43,.2); }
 
-/* Mobile bottom bar */
+/* Mobile bottom bar — FIXED to bottom */
 .mob-bar {
-  height: 58px; background: var(--surface); border-top: 2px solid var(--border);
-  display: flex; align-items: stretch; flex-shrink: 0;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 58px;
+  background: var(--surface);
+  border-top: 2px solid var(--border);
+  display: flex; align-items: stretch;
+  z-index: 110;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .mob-bar-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1875,12 +1893,8 @@ function initMobile() {
 
 function mobResize() {
   if (!mobCvs) return;
-  // Use window size minus fixed bars: topbar=48px, bottombar=58px
   mobW = mobCvs.width  = window.innerWidth;
   mobH = mobCvs.height = window.innerHeight - 48 - 58;
-  // Also size the canvas-area div
-  const area = document.getElementById('mob-canvas-area');
-  if (area) { area.style.width = mobW + 'px'; area.style.height = mobH + 'px'; }
 }
 
 function mobFitBg() {
