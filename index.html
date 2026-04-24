@@ -1880,8 +1880,11 @@ let mobCvs, mobCtx, mobW = 0, mobH = 0;
 let mobZl = 1, mobOx = 0, mobOy = 0;
 let mobPanning = false, mobPanStart = null, mobTouchDist = 0;
 let mobDragPt = null, mobDragLbl = null, mobDragLblStart = null;
+let mobShowLens = false;
 let mobWip = [], mobMpos = { x:0, y:0 };
 let mobActiveSheet = null;
+// Double-tap detection
+let mobLastTap = 0, mobLastTapPt = null;
 
 // ── Init ─────────────────────────────────────────────────────
 function initMobile() {
@@ -1953,6 +1956,9 @@ function mobRedraw() {
       mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
     }
   }
+
+  // Magnifier lens when dragging a point
+  if (mobShowLens && mobDragPt) mobDrawLens(mobMpos.x, mobMpos.y);
 }
 
 function mobDrawObj(o) {
@@ -2037,14 +2043,32 @@ function initMobileEvents() {
         for (const o of objs) {
           for (let idx = 0; idx < o.points.length; idx++) {
             if (Math.hypot(o.points[idx].x - t.x, o.points[idx].y - t.y) < 22) {
-              saveHistory(); mobDragPt = { obj: o, idx }; hitPt = true; break;
+              saveHistory(); mobDragPt = { obj: o, idx }; mobShowLens = true; hitPt = true; break;
             }
           }
           if (hitPt) break;
         }
         if (hitPt) return;
 
-        // 3. Pan image
+        // 3. Check for double-tap on label → open label editor
+        const now = Date.now();
+        if (now - mobLastTap < 350 && mobLastTapPt) {
+          const dx = Math.abs(t.x - mobLastTapPt.x), dy = Math.abs(t.y - mobLastTapPt.y);
+          if (dx < 30 && dy < 30) {
+            // double-tap — check if on a label
+            for (const o of objs) {
+              if (o._lblBox) {
+                const b = o._lblBox;
+                if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
+                  openLblModal(o); mobLastTap = 0; return;
+                }
+              }
+            }
+          }
+        }
+        mobLastTap = now; mobLastTapPt = t;
+
+        // 4. Pan image
         mobPanning = true; mobPanStart = t;
       }
     }
@@ -2110,7 +2134,7 @@ function initMobileEvents() {
     if (mobDragLbl) { mobDragLbl = null; mobDragLblStart = null; mobRedraw(); return; }
 
     if (wasDragPt) {
-      recalcObj(mobDragPt.obj); mobDragPt = null;
+      recalcObj(mobDragPt.obj); mobDragPt = null; mobShowLens = false;
       updateList(); mobUpdateResults(); mobRedraw(); return;
     }
 
@@ -2133,6 +2157,63 @@ function initMobileEvents() {
       } else { mobRedraw(); }
     }
   }, { passive: false });
+}
+
+// ── Mobile magnifier lens ─────────────────────────────────────
+function mobDrawLens(cx, cy) {
+  if (!mobShowLens || !mobDragPt) return;
+  const LS = 180, LZ = 4, LO = 20;
+  let lx = cx + LO, ly = cy - LS - LO;
+  if (lx + LS > mobW) lx = cx - LS - LO;
+  if (ly < 0) ly = cy + LO;
+  const half = LS / 2;
+
+  // Capture current scene into offscreen canvas
+  const off = document.createElement('canvas');
+  off.width = mobW; off.height = mobH;
+  const oc = off.getContext('2d');
+  if (bgImage) oc.drawImage(bgImage, mobOx, mobOy, bgImage.width * mobZl, bgImage.height * mobZl);
+  // Draw objects onto offscreen
+  const prevCtx = mobCtx;
+  objs.forEach(o => {
+    const p = o.points, c = o.color;
+    oc.strokeStyle = c; oc.lineWidth = 2.5;
+    const s = (a,b) => { oc.beginPath(); oc.moveTo(a.x,a.y); oc.lineTo(b.x,b.y); oc.stroke(); };
+    const d = (x,y) => { oc.beginPath(); oc.arc(x,y,6,0,Math.PI*2); oc.fillStyle='rgba(255,255,255,.9)'; oc.fill(); oc.beginPath(); oc.arc(x,y,4,0,Math.PI*2); oc.fillStyle=c; oc.fill(); };
+    if (o.type==='angle3'&&p.length===3){ s(p[0],p[1]); s(p[1],p[2]); p.forEach(q=>d(q.x,q.y)); }
+    else if ((o.type==='angle4'||o.type==='cobb')&&p.length===4){ s(p[0],p[1]); s(p[2],p[3]); p.forEach(q=>d(q.x,q.y)); }
+    else if (o.type==='line'&&p.length===2){ s(p[0],p[1]); p.forEach(q=>d(q.x,q.y)); }
+  });
+
+  const srcSize = LS / LZ;
+  const srcX = cx - srcSize/2, srcY = cy - srcSize/2;
+
+  // Clip circle
+  mobCtx.save();
+  mobCtx.beginPath(); mobCtx.arc(lx+half, ly+half, half, 0, Math.PI*2); mobCtx.clip();
+  mobCtx.fillStyle = '#0a0c10'; mobCtx.fillRect(lx, ly, LS, LS);
+  mobCtx.drawImage(off, srcX, srcY, srcSize, srcSize, lx, ly, LS, LS);
+  // Crosshair
+  mobCtx.strokeStyle = 'rgba(255,255,255,.9)'; mobCtx.lineWidth = 1;
+  mobCtx.beginPath();
+  mobCtx.moveTo(lx+half-8, ly+half); mobCtx.lineTo(lx+half+8, ly+half);
+  mobCtx.moveTo(lx+half, ly+half-8); mobCtx.lineTo(lx+half, ly+half+8);
+  mobCtx.stroke();
+  mobCtx.restore();
+
+  // Border
+  mobCtx.beginPath(); mobCtx.arc(lx+half, ly+half, half, 0, Math.PI*2);
+  mobCtx.strokeStyle = 'rgba(59,130,246,.9)'; mobCtx.lineWidth = 2.5; mobCtx.stroke();
+
+  // Value badge
+  if (mobDragPt.obj && mobDragPt.obj.value) {
+    const bw=100, bh=22, bx=lx+half-bw/2, by=ly+LS+6;
+    mobCtx.fillStyle='rgba(10,12,18,.92)';
+    mobCtx.beginPath(); mobCtx.roundRect(bx,by,bw,bh,5); mobCtx.fill();
+    mobCtx.fillStyle=mobDragPt.obj.color;
+    mobCtx.font='bold 13px IBM Plex Mono,monospace';
+    mobCtx.textAlign='center'; mobCtx.fillText(mobDragPt.obj.value, lx+half, by+15); mobCtx.textAlign='left';
+  }
 }
 
 function mobGpt(touch) {
