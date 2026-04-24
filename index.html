@@ -326,8 +326,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   background: #080a0c;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   transition: opacity .6s ease;
-}
-@keyframes bone-pulse { 0%,100%{opacity:.5;transform:scale(.95)} 50%{opacity:1;transform:scale(1.05)} }
+}@keyframes bone-pulse { 0%,100%{opacity:.5;transform:scale(.95)} 50%{opacity:1;transform:scale(1.05)} }
 .bone-anim { animation: bone-pulse 1.6s ease-in-out infinite; transform-origin: center; }
 .loader-bar-wrap { width: 180px; height: 2px; background: #1e2226; border-radius: 2px; margin-top: 32px; overflow: hidden; }
 #loader-bar { height: 100%; width: 0%; background: linear-gradient(90deg,#8b1a14,#c0392b,#e84040); border-radius: 2px; transition: width .1s linear; box-shadow: 0 0 8px rgba(192,57,43,.6); }
@@ -347,14 +346,27 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 @media (max-width: 768px) {
   /* Hide desktop layout */
   .app { display: none; }
+  /* Ensure mobile UI fills screen */
+  #mob-ui {
+    display: flex !important;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+  }
 }
 @media (min-width: 769px) {
   /* Hide mobile layout */
-  #mob-ui { display: none; }
+  #mob-ui { display: none !important; }
 }
 
-/* Mobile UI */
-#mob-ui { height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+/* Mobile UI base — hidden by default, shown via media query */
+#mob-ui {
+  display: none;
+  height: 100vh;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
 
 /* Mobile topbar */
 .mob-topbar {
@@ -408,19 +420,19 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
 /* Mobile sheets */
 .mob-backdrop {
-  display: none; position: fixed; inset: 0; z-index: 20;
+  display: none; position: fixed; inset: 0; z-index: 120;
   background: rgba(0,0,0,.5);
 }
 .mob-backdrop.on { display: block; }
 .mob-sheet {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 130;
   background: var(--surface); border-top: 2px solid var(--red);
   border-radius: 16px 16px 0 0;
   transform: translateY(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
   max-height: 78vh; overflow: hidden;
 }
 .mob-sheet.open { transform: translateY(0); }
-.mob-sheet-inner { overflow-y: auto; max-height: calc(78vh - 24px); }
+.mob-sheet-inner { overflow-y: auto; max-height: calc(78vh - 24px); -webkit-overflow-scrolling: touch; }
 .mob-sheet-handle { width: 36px; height: 3px; background: var(--border); border-radius: 2px; margin: 10px auto 6px; }
 .mob-sheet-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 0 16px 10px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
 
@@ -1847,6 +1859,14 @@ function initMobile() {
   mobResize();
   initMobileEvents();
   mobSetActiveTool('select');
+
+  // Pre-populate template thumbnails in mobile sheet
+  ['hip','knee'].forEach(name => {
+    const src = TEMPLATE_SRCS[name];
+    const img = document.getElementById('mbt-' + name);
+    if (img && src) img.src = src;
+  });
+
   setTimeout(() => { mobFitBg(); mobRedraw(); }, 100);
 
   // Watch bgImage changes
@@ -1854,9 +1874,13 @@ function initMobile() {
 }
 
 function mobResize() {
-  const wrap = document.getElementById('mob-canvas-area'); if (!wrap || !mobCvs) return;
-  mobW = mobCvs.width  = wrap.clientWidth;
-  mobH = mobCvs.height = wrap.clientHeight;
+  if (!mobCvs) return;
+  // Use window size minus fixed bars: topbar=48px, bottombar=58px
+  mobW = mobCvs.width  = window.innerWidth;
+  mobH = mobCvs.height = window.innerHeight - 48 - 58;
+  // Also size the canvas-area div
+  const area = document.getElementById('mob-canvas-area');
+  if (area) { area.style.width = mobW + 'px'; area.style.height = mobH + 'px'; }
 }
 
 function mobFitBg() {
