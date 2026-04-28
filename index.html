@@ -1743,9 +1743,13 @@ function loadTemplate(name, el) {
   if (el) el.classList.add('active');
   document.querySelectorAll('.pitem').forEach(i => i.classList.remove('active'));
 
-  const src = TEMPLATE_SRCS[name]; if (!src) { bgImage=null; updateList(); redraw(); return; }
+  const src = TEMPLATE_SRCS[name]; if (!src) { bgImage=null; updateList(); redraw(); mobRedraw(); return; }
   const image = new Image();
-  image.onload = () => { bgImage=image; fitBg(); updateDelImgBtn(); updateList(); redraw(); };
+  image.onload = () => {
+    bgImage = image;
+    fitBg(); updateDelImgBtn(); updateList(); redraw();
+    mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+  };
   image.src = src;
   updateList(); redraw();
 }
@@ -1756,10 +1760,15 @@ function loadFile(e) {
   reader.onload = ev => {
     const image = new Image();
     image.onload = () => {
-      bgImage=image; objs=[]; wip=[]; selObj=null; zl=1; panX=0; panY=0; history=[];
-      fitBg();
+      bgImage = image;
+      objs=[]; wip=[]; selObj=null; zl=1; panX=0; panY=0; history=[];
+      // Desktop
+      fitBg(); updateDelImgBtn(); updateList(); redraw();
+      // Mobile
+      mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+      // Close any open sheet
+      mobClose();
       document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
-      updateDelImgBtn(); updateList(); redraw();
     };
     image.src = ev.target.result;
   };
@@ -2026,7 +2035,32 @@ function initMobileEvents() {
       const t = mobGpt(e.touches[0]); mobMpos = t;
 
       if (tool === 'select') {
-        // 1. Check label box hit first
+        // ── Double-tap detection (check first, before anything else) ──
+        const now = Date.now();
+        const isDoubleTap = (now - mobLastTap < 350) && mobLastTapPt &&
+          Math.hypot(t.x - mobLastTapPt.x, t.y - mobLastTapPt.y) < 40;
+
+        if (isDoubleTap) {
+          mobLastTap = 0; mobLastTapPt = null;
+          // Check label box
+          for (const o of objs) {
+            if (o._lblBox) {
+              const b = o._lblBox;
+              if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
+                openLblModal(o); return;
+              }
+            }
+          }
+          // Check near a point — open label of that object
+          for (const o of objs) {
+            if (o.points.some(p => Math.hypot(p.x - t.x, p.y - t.y) < 30)) {
+              openLblModal(o); return;
+            }
+          }
+        }
+        mobLastTap = now; mobLastTapPt = { x: t.x, y: t.y };
+
+        // 1. Check label box hit for drag
         let hitLbl = false;
         for (const o of objs) {
           if (o._lblBox) {
@@ -2050,25 +2084,7 @@ function initMobileEvents() {
         }
         if (hitPt) return;
 
-        // 3. Check for double-tap on label → open label editor
-        const now = Date.now();
-        if (now - mobLastTap < 350 && mobLastTapPt) {
-          const dx = Math.abs(t.x - mobLastTapPt.x), dy = Math.abs(t.y - mobLastTapPt.y);
-          if (dx < 30 && dy < 30) {
-            // double-tap — check if on a label
-            for (const o of objs) {
-              if (o._lblBox) {
-                const b = o._lblBox;
-                if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
-                  openLblModal(o); mobLastTap = 0; return;
-                }
-              }
-            }
-          }
-        }
-        mobLastTap = now; mobLastTapPt = t;
-
-        // 4. Pan image
+        // 3. Pan image
         mobPanning = true; mobPanStart = t;
       }
     }
