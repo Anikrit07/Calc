@@ -283,6 +283,28 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .credit-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #e2e8f4; letter-spacing: .03em; position: relative; z-index: 1; }
 .credit-line { width: 100%; height: 1px; background: linear-gradient(90deg,var(--red) 0%,rgba(192,57,43,.3) 60%,transparent 100%); margin-top: 8px; box-shadow: 0 0 8px rgba(192,57,43,.4); position: relative; z-index: 1; }
 
+/* ── Implant overlay ── */
+.plate-card { background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 6px;cursor:pointer;text-align:center;transition:all .15s; }
+.plate-card:hover { border-color:var(--red);background:rgba(192,57,43,.08); }
+.plate-card.active { border-color:var(--red);background:rgba(192,57,43,.12); }
+.plate-name { font-size:9px;font-weight:700;color:var(--text);letter-spacing:.3px;line-height:1.3; }
+.plate-sub  { font-size:8px;color:var(--muted);margin-top:1px; }
+.impl-item { display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;transition:all .15s; }
+.impl-item:hover { border-color:var(--red); }
+.impl-item.selected { border-color:var(--red);background:rgba(192,57,43,.1); }
+.impl-name { font-size:10px;font-weight:600;color:var(--text);flex:1; }
+.impl-del { background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px; }
+.impl-del:hover { color:var(--red); }
+/* ── AO Wizard ── */
+.ao-q { font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.5; }
+.ao-bone-grid { display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px; }
+.ao-opt { background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 7px;cursor:pointer;font-size:11px;font-weight:600;color:var(--text);text-align:left;transition:all .15s;line-height:1.3;width:100%; }
+.ao-opt:hover { border-color:var(--red);background:rgba(192,57,43,.1);color:#e88a84; }
+.ao-code-badge { font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red);display:block;margin-bottom:2px; }
+.ao-breadcrumb { font-size:9px;color:var(--muted);margin-bottom:8px;padding:4px 7px;background:var(--bg);border-radius:4px;font-family:'IBM Plex Mono',monospace; }
+.ao-back { background:none;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:4px 10px;border-radius:5px;cursor:pointer;margin-bottom:8px;font-family:'IBM Plex Sans',sans-serif; }
+.ao-back:hover { color:var(--text);border-color:var(--subtle); }
+
 /* 7. MODALS */
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
 .overlay.on { display: flex; }
@@ -642,6 +664,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <div class="tabs">
       <div class="tab active" onclick="switchTab('measurements',this)">📐 Results</div>
       <div class="tab" onclick="switchTab('guide',this)">📖 Guide</div>
+      <div class="tab" onclick="switchTab('implants',this)">🔩 Implants</div>
+      <div class="tab" onclick="switchTab('ao',this)">🦴 AO</div>
       <div class="tab" onclick="switchTab('saved',this)">💾 Saved</div>
     </div>
 
@@ -663,6 +687,42 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
           <div class="gstep"><div class="gnum">2</div><div class="gtxt">Click a preset (e.g. Neck-Shaft Angle) from the left panel</div></div>
           <div class="gstep"><div class="gnum">3</div><div class="gtxt">Click the required points on the X-ray — angle calculates automatically</div></div>
           <div class="gstep"><div class="gnum">4</div><div class="gtxt">Drag any point to adjust. Double-click a label to customise it.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPLANTS TAB -->
+    <div class="tab-pane" id="tab-implants">
+      <div style="padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Plate Library</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Click a plate to place it on the X-ray. Drag to move, handles to resize/rotate.</div>
+        <div id="plate-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+      </div>
+      <div style="padding:10px;flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Active Implants</div>
+        <div id="implant-list"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">No implants placed yet.</div></div>
+      </div>
+      <div style="padding:8px 10px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:6px">
+        <button class="btn" style="flex:1;font-size:10px;padding:5px" onclick="clearImplants()">✕ Clear All</button>
+        <button class="btn" style="flex:1;font-size:10px;padding:5px" id="implant-rotate-btn" onclick="rotateSelectedImplant(15)" disabled>↻ Rotate</button>
+      </div>
+    </div>
+
+    <!-- AO CLASSIFIER TAB -->
+    <div class="tab-pane" id="tab-ao">
+      <div style="padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">AO/OTA Fracture Classifier</div>
+        <div style="font-size:10px;color:var(--muted)">Answer the questions to identify the AO code. Tag it on the image when done.</div>
+      </div>
+      <div id="ao-wizard" style="flex:1;overflow-y:auto;padding:10px"></div>
+      <div id="ao-result" style="display:none;padding:10px;border-top:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Classification</div>
+        <div id="ao-code" style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--red);margin-bottom:4px"></div>
+        <div id="ao-desc" style="font-size:11px;color:var(--subtle);line-height:1.5;margin-bottom:10px"></div>
+        <div id="ao-treatment" style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:6px;border-left:2px solid var(--red)"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" style="flex:1;font-size:10px;padding:5px" onclick="tagAOOnImage()">📍 Tag on Image</button>
+          <button class="btn danger-outline" style="flex:1;font-size:10px;padding:5px" onclick="resetAOWizard()">↩ Restart</button>
         </div>
       </div>
     </div>
@@ -1517,6 +1577,8 @@ function initDesktopEvents() {
   cvs.addEventListener('mousemove', e => {
     const { x, y } = gp(e); mpos = { x, y };
 
+    if (implantDragging) { handleImplantMouseMove(x, y); return; }
+
     if (panning && panStart) {
       panX += x - panStart.x; panY += y - panStart.y; panStart = { x, y };
       redraw(); return;
@@ -1569,6 +1631,9 @@ function initDesktopEvents() {
     const grabbingCursor = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 11.5C9 10.67 9.67 10 10.5 10S12 10.67 12 11.5v.5h.5c0-1.93 1.07-3 2-3s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 13.88V11.5z'/%3E%3C/svg%3E") 4 0, grabbing`;
     if (tool !== 'select') return;
 
+    // 0. Implant drag
+    if (implants.length && handleImplantMouseDown(x, y)) return;
+
     // 1. Label box
     for (const o of objs) {
       if (o._lblBox) { const b = o._lblBox; if (x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h) { saveHistory(); dragLbl=o; dragLblStart={x,y}; selObj=o; cvs.style.cursor='move'; return; } }
@@ -1588,6 +1653,7 @@ function initDesktopEvents() {
 
   cvs.addEventListener('mouseup', () => {
     const handC = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 3.5C9 2.67 9.67 2 10.5 2S12 2.67 12 3.5V11h.5C12.5 9.07 13.57 8 14.5 8s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 12.88V3.5z'/%3E%3C/svg%3E") 4 0, pointer`;
+    if (implantDragging) { handleImplantMouseUp(); cvs.style.cursor=handC; return; }
     dragging=false; dobj=null;
     if (dragLbl) { dragLbl=null; dragLblStart=null; cvs.style.cursor=handC; redraw(); }
     if (dragPt)  { dragPt=null; showLens=false; cvs.style.cursor=handC; updateList(); redraw(); }
@@ -2340,6 +2406,572 @@ function mobDeleteImage() {
 
 </script>
 <script>
+// ============================================================
+// IMPLANT OVERLAYS
+// ============================================================
+const PLATES = [
+  { id:'broad-dcp',   name:'Broad DCP',       sub:'Dynamic Compression', holes:8,  w:220, h:18, color:'#b0bec5' },
+  { id:'narrow-dcp',  name:'Narrow DCP',       sub:'Dynamic Compression', holes:6,  w:180, h:14, color:'#b0bec5' },
+  { id:'lc-dcp',      name:'LC-DCP',           sub:'Limited Contact',     holes:8,  w:220, h:16, color:'#90a4ae' },
+  { id:'lcp',         name:'LCP',              sub:'Locking Compression', holes:8,  w:220, h:18, color:'#78909c' },
+  { id:'recon',       name:'Recon Plate',      sub:'Reconstruction',      holes:8,  w:200, h:14, color:'#9e9e9e' },
+  { id:'t-plate',     name:'T-Plate',          sub:'Proximal / Distal',   holes:6,  w:130, h:60, color:'#b0bec5', shape:'T' },
+  { id:'l-plate',     name:'L-Plate',          sub:'Angled / Blade',      holes:6,  w:120, h:60, color:'#b0bec5', shape:'L' },
+  { id:'blade-plate', name:'Blade Plate',      sub:'95° / 130° Angled',   holes:6,  w:180, h:14, color:'#9e9e9e', shape:'blade' },
+];
+
+let implants = [];        // placed implants: {id, x, y, angle, scale, plateId}
+let selImplant = null;    // selected implant
+let implantDragging = false, implantDragStart = null;
+let implantIdCounter = 0;
+
+function initImplants() {
+  const grid = document.getElementById('plate-grid');
+  if (!grid) return;
+  grid.innerHTML = PLATES.map(p => `
+    <div class="plate-card" id="pc-${p.id}" onclick="placeImplant('${p.id}')">
+      <div style="height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:3px">
+        ${plateSVGThumb(p)}
+      </div>
+      <div class="plate-name">${p.name}</div>
+      <div class="plate-sub">${p.sub}</div>
+    </div>`).join('');
+}
+
+function plateSVGThumb(p) {
+  if (p.shape === 'T') return `<svg width="32" height="22" viewBox="0 0 32 22"><rect x="0" y="0" width="32" height="6" rx="1.5" fill="#78909c"/><rect x="12" y="6" width="8" height="16" rx="1.5" fill="#78909c"/></svg>`;
+  if (p.shape === 'L') return `<svg width="28" height="22" viewBox="0 0 28 22"><rect x="0" y="0" width="12" height="22" rx="1.5" fill="#78909c"/><rect x="12" y="14" width="16" height="8" rx="1.5" fill="#78909c"/></svg>`;
+  if (p.shape === 'blade') return `<svg width="36" height="12" viewBox="0 0 36 12"><rect x="0" y="3" width="28" height="6" rx="1.5" fill="#78909c"/><polygon points="28,0 36,6 28,12" fill="#78909c"/></svg>`;
+  return `<svg width="36" height="10" viewBox="0 0 36 10"><rect x="0" y="2" width="36" height="6" rx="1.5" fill="#78909c"/>${Array.from({length:4},(_,i)=>`<circle cx="${5+i*9}" cy="5" r="2" fill="#1e2226"/>`).join('')}</svg>`;
+}
+
+function placeImplant(plateId) {
+  const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
+  const impl = {
+    uid: ++implantIdCounter,
+    plateId,
+    x: W/2, y: H/2,
+    angle: 0, scale: 1,
+    plate,
+  };
+  implants.push(impl);
+  selImplant = impl;
+  renderImplantList(); redraw();
+  document.querySelectorAll('.plate-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('pc-'+plateId)?.classList.add('active');
+  document.getElementById('implant-rotate-btn')?.removeAttribute('disabled');
+}
+
+function clearImplants() {
+  implants=[]; selImplant=null;
+  renderImplantList(); redraw();
+  document.querySelectorAll('.plate-card').forEach(c=>c.classList.remove('active'));
+}
+
+function rotateSelectedImplant(deg) {
+  if (!selImplant) return;
+  selImplant.angle = (selImplant.angle + deg) % 360;
+  redraw();
+}
+
+function deleteImplant(uid) {
+  implants = implants.filter(i => i.uid !== uid);
+  if (selImplant?.uid === uid) selImplant = null;
+  renderImplantList(); redraw();
+}
+
+function renderImplantList() {
+  const el = document.getElementById('implant-list'); if(!el) return;
+  if(!implants.length) { el.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">No implants placed yet.</div>'; return; }
+  el.innerHTML = implants.map(i=>`
+    <div class="impl-item${selImplant?.uid===i.uid?' selected':''}" onclick="selectImplant(${i.uid})">
+      <div class="impl-name">${i.plate.name}</div>
+      <button class="impl-del" onclick="event.stopPropagation();deleteImplant(${i.uid})">✕</button>
+    </div>`).join('');
+}
+
+function selectImplant(uid) {
+  selImplant = implants.find(i=>i.uid===uid)||null;
+  renderImplantList(); redraw();
+}
+
+// Draw all implants on canvas
+function drawImplants() {
+  implants.forEach(impl => {
+    const p = impl.plate;
+    ctx.save();
+    ctx.translate(impl.x, impl.y);
+    ctx.rotate(impl.angle * Math.PI/180);
+    ctx.scale(impl.scale, impl.scale);
+    const isSel = impl === selImplant;
+    ctx.globalAlpha = isSel ? 0.85 : 0.65;
+
+    if (p.shape === 'T') {
+      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
+      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, 16, 3); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-12, -p.h/2+16, 24, p.h-16, 3); ctx.fill(); ctx.stroke();
+      drawPlateHoles(ctx, p, 'T');
+    } else if (p.shape === 'L') {
+      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
+      ctx.beginPath(); ctx.roundRect(-12, -p.h/2, 24, p.h, 3); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-12, p.h/2-16, p.w, 16, 3); ctx.fill(); ctx.stroke();
+      drawPlateHoles(ctx, p, 'L');
+    } else if (p.shape === 'blade') {
+      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
+      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.w/2-4, -p.h); ctx.lineTo(p.w/2+20, 0); ctx.lineTo(p.w/2-4, p.h); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      drawPlateHoles(ctx, p, 'straight');
+    } else {
+      // Straight plate
+      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
+      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, p.h/2); ctx.fill(); ctx.stroke();
+      drawPlateHoles(ctx, p, 'straight');
+    }
+
+    // Selection handles
+    if (isSel) {
+      ctx.globalAlpha = 1;
+      const hw = p.shape==='T'||p.shape==='L' ? p.w/2 : p.w/2;
+      const hh = p.h/2;
+      [-hw, hw].forEach(hx => [-hh, hh].forEach(hy => {
+        ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI*2);
+        ctx.fillStyle='#fff'; ctx.fill();
+        ctx.strokeStyle=p.color; ctx.lineWidth=2; ctx.stroke();
+      }));
+    }
+
+    ctx.restore();
+  });
+}
+
+function drawPlateHoles(c, p, shape) {
+  c.fillStyle = '#1e2226';
+  const n = p.holes || 6;
+  if (shape === 'straight' || shape === 'blade') {
+    const spacing = (p.w - 20) / (n-1);
+    for (let i=0; i<n; i++) {
+      c.beginPath(); c.ellipse(-p.w/2+10+i*spacing, 0, 3.5, 4.5, 0, 0, Math.PI*2); c.fill();
+    }
+  } else if (shape === 'T') {
+    const spacing = (p.w-20)/(n-1);
+    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-p.w/2+10+i*spacing, -p.h/2+8, 3,4, 0,0,Math.PI*2);c.fill();}
+    for(let i=0;i<3;i++){c.beginPath();c.ellipse(0, -p.h/2+24+i*14, 3.5,3.5, 0,0,Math.PI*2);c.fill();}
+  } else if (shape === 'L') {
+    for(let i=0;i<4;i++){c.beginPath();c.ellipse(0, -p.h/2+8+i*14, 3.5,3.5, 0,0,Math.PI*2);c.fill();}
+    for(let i=0;i<3;i++){c.beginPath();c.ellipse(-12+16+i*16, p.h/2-8, 3,4, 0,0,Math.PI*2);c.fill();}
+  }
+}
+
+// Implant mouse interaction
+function handleImplantMouseDown(x, y) {
+  for (let i = implants.length-1; i >= 0; i--) {
+    const impl = implants[i];
+    const dx = x-impl.x, dy = y-impl.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const maxR = Math.max(impl.plate.w, impl.plate.h) * impl.scale / 2 + 10;
+    if (dist < maxR) {
+      selImplant = impl; implantDragging = true; implantDragStart={x,y};
+      renderImplantList(); redraw(); return true;
+    }
+  }
+  return false;
+}
+
+function handleImplantMouseMove(x, y) {
+  if (!implantDragging || !selImplant) return;
+  selImplant.x += x - implantDragStart.x;
+  selImplant.y += y - implantDragStart.y;
+  implantDragStart = {x,y}; redraw();
+}
+
+function handleImplantMouseUp() { implantDragging = false; }
+
+// ============================================================
+// AO/OTA FRACTURE CLASSIFICATION
+// ============================================================
+const AO_BONES = [
+  { code:'11', name:'Proximal Humerus',    seg:'Humerus' },
+  { code:'12', name:'Humeral Shaft',       seg:'Humerus' },
+  { code:'13', name:'Distal Humerus',      seg:'Humerus' },
+  { code:'21', name:'Proximal Radius/Ulna',seg:'Forearm' },
+  { code:'22', name:'Radial/Ulnar Shaft',  seg:'Forearm' },
+  { code:'23', name:'Distal Radius',       seg:'Forearm' },
+  { code:'31', name:'Proximal Femur',      seg:'Femur'   },
+  { code:'32', name:'Femoral Shaft',       seg:'Femur'   },
+  { code:'33', name:'Distal Femur',        seg:'Femur'   },
+  { code:'41', name:'Proximal Tibia',      seg:'Tibia'   },
+  { code:'42', name:'Tibial Shaft',        seg:'Tibia'   },
+  { code:'43', name:'Distal Tibia',        seg:'Tibia'   },
+];
+
+// AO type/group/subgroup decision tree
+// Structure: bone → type (A/B/C) → group (1/2/3) → subgroup (1/2/3)
+const AO_TREE = {
+  '11': { // Proximal Humerus
+    types: [
+      { code:'A', name:'Extra-articular unifocal', desc:'One fracture plane, tuberosity or metaphysis only',
+        groups:[
+          { code:'1', name:'Tuberosity fracture', desc:'Greater or lesser tuberosity avulsion', tx:'Non-operative if <5mm displacement; ORIF if displaced' },
+          { code:'2', name:'Impacted metaphyseal', desc:'Valgus impacted, stable pattern', tx:'Usually non-operative; monitor displacement' },
+          { code:'3', name:'Non-impacted metaphyseal', desc:'Unstable, displaced surgical neck', tx:'ORIF or hemiarthroplasty depending on age/bone quality' },
+        ]},
+      { code:'B', name:'Extra-articular bifocal', desc:'Two-part fracture involving tuberosity AND surgical neck',
+        groups:[
+          { code:'1', name:'Metaphysis + greater tuberosity', desc:'Greater tuberosity displaced >5mm with surgical neck', tx:'ORIF with plate or nailing' },
+          { code:'2', name:'Metaphysis + lesser tuberosity', desc:'Lesser tuberosity with surgical neck fracture', tx:'ORIF' },
+          { code:'3', name:'Glenohumeral dislocation', desc:'Fracture-dislocation pattern', tx:'Urgent reduction + fixation or arthroplasty' },
+        ]},
+      { code:'C', name:'Articular (head-splitting)', desc:'Articular surface involved — true 4-part or head-split',
+        groups:[
+          { code:'1', name:'Slight displacement', desc:'Anatomical or minimally displaced', tx:'Consider hemi or reverse TSA in elderly' },
+          { code:'2', name:'Marked displacement', desc:'>3mm or >45° angulation', tx:'Reverse total shoulder arthroplasty' },
+          { code:'3', name:'Head-splitting or impression', desc:'Articular depression or head destruction', tx:'Arthroplasty' },
+        ]},
+    ]},
+  '12': { // Humeral Shaft
+    types:[
+      { code:'A', name:'Simple', desc:'Single fracture line, contact >90%',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Torsional mechanism, long oblique line', tx:'Functional bracing if <20° angulation; nail if fails' },
+          { code:'2', name:'Oblique (≥30°)', desc:'Oblique >30°, stable pattern', tx:'Functional bracing; ORIF if vascular injury' },
+          { code:'3', name:'Transverse (<30°)', desc:'High energy, unstable', tx:'Functional brace vs nail vs plate' },
+        ]},
+      { code:'B', name:'Wedge', desc:'Intermediate fragment, some contact remains',
+        groups:[
+          { code:'1', name:'Spiral wedge', desc:'Butterfly fragment from torsion', tx:'ORIF plate + lag screw' },
+          { code:'2', name:'Bending wedge', desc:'Comminuted wedge fragment', tx:'ORIF bridging plate' },
+          { code:'3', name:'Fragmented wedge', desc:'Multi-fragment wedge', tx:'Bridging plate or nail' },
+        ]},
+      { code:'C', name:'Complex', desc:'No contact between main fragments',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Multiple spiral lines', tx:'IMN or plate + bone graft' },
+          { code:'2', name:'Segmental', desc:'Isolated segment', tx:'IMN or plate' },
+          { code:'3', name:'Irregular', desc:'Highly comminuted', tx:'Bridging plate; consider bone graft' },
+        ]},
+    ]},
+  '13': { // Distal Humerus
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Above articular surface, columns intact or one involved',
+        groups:[
+          { code:'1', name:'Apophyseal avulsion', desc:'Epicondyle avulsion', tx:'Non-operative or screw fixation' },
+          { code:'2', name:'Simple metaphyseal', desc:'Supracondylar, non-comminuted', tx:'ORIF parallel plate technique' },
+          { code:'3', name:'Metaphyseal multifragmentary', desc:'Supracondylar comminuted', tx:'Bicolumnar plating + bone graft' },
+        ]},
+      { code:'B', name:'Partial articular', desc:'One column fractured, other intact',
+        groups:[
+          { code:'1', name:'Lateral condyle', desc:'Capitellum or lateral condyle', tx:'ORIF Herbert screws or mini-fragment plate' },
+          { code:'2', name:'Medial condyle', desc:'Trochlea or medial condyle', tx:'ORIF' },
+          { code:'3', name:'Frontal plane', desc:'Coronal shear — capitellum or trochlea', tx:'Headless compression screws buried flush' },
+        ]},
+      { code:'C', name:'Complete articular', desc:'Both columns and articular surface fractured',
+        groups:[
+          { code:'1', name:'Articular simple + metaphyseal simple', desc:'Intercondylar T or Y pattern, minimal comminution', tx:'Bicolumnar perpendicular plating' },
+          { code:'2', name:'Articular simple + metaphyseal multifrag', desc:'Intercondylar with comminuted metaphysis', tx:'Bicolumnar plating + bone graft; consider arthroplasty elderly' },
+          { code:'3', name:'Articular multifragmentary', desc:'Highly comminuted intra-articular', tx:'Total elbow arthroplasty in elderly; ORIF in young' },
+        ]},
+    ]},
+  '21': { // Proximal Radius/Ulna
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Proximal ulna or radial head extra-articular',
+        groups:[
+          { code:'1', name:'Olecranon avulsion', desc:'Olecranon avulsion by triceps', tx:'Tension band wire or plate' },
+          { code:'2', name:'Metaphyseal', desc:'Proximal ulna metaphyseal', tx:'Plate fixation' },
+          { code:'3', name:'Monteggia type', desc:'Ulna + radial head dislocation', tx:'ORIF ulna + reduce radial head' },
+        ]},
+      { code:'B', name:'Partial articular (radial head)', desc:'Radial head fracture — Mason classification',
+        groups:[
+          { code:'1', name:'Mason I (<2mm)', desc:'Non-displaced radial head', tx:'Non-operative; early ROM' },
+          { code:'2', name:'Mason II (>2mm, <30%)', desc:'Displaced, partial articular', tx:'ORIF with mini-fragment screws' },
+          { code:'3', name:'Mason III (comminuted)', desc:'Complete comminution', tx:'Radial head replacement' },
+        ]},
+      { code:'C', name:'Complete articular', desc:'Both radius and ulna involved proximally',
+        groups:[
+          { code:'1', name:'Simple', desc:'Simple fractures of both bones', tx:'ORIF both bones' },
+          { code:'2', name:'Wedge', desc:'One wedge component', tx:'ORIF' },
+          { code:'3', name:'Complex', desc:'Comminuted, Essex-Lopresti pattern', tx:'ORIF + assess DRUJ; consider radial head replacement' },
+        ]},
+    ]},
+  '22': { // Radial/Ulnar Shaft
+    types:[
+      { code:'A', name:'Simple', desc:'Single fracture both-bone forearm',
+        groups:[
+          { code:'1', name:'Both bones spiral', desc:'Torsional mechanism', tx:'ORIF both bones with 3.5mm plate' },
+          { code:'2', name:'Both bones oblique/transverse', desc:'Direct mechanism', tx:'ORIF both bones' },
+          { code:'3', name:'One bone simple, one complex', desc:'Mixed pattern', tx:'ORIF both bones; bridging plate complex side' },
+        ]},
+      { code:'B', name:'Wedge (Galeazzi / Monteggia variants)', desc:'Wedge fragment with DRUJ or radial head involvement',
+        groups:[
+          { code:'1', name:'Radial shaft + DRUJ (Galeazzi)', desc:'Radial fracture with DRUJ disruption', tx:'ORIF radius; assess DRUJ — usually reduces; if unstable K-wire DRUJ' },
+          { code:'2', name:'Ulnar shaft + radial head (Monteggia)', desc:'Ulna fracture + radial head dislocation', tx:'ORIF ulna; reduce radial head — usually stable' },
+          { code:'3', name:'Both bones wedge', desc:'Wedge fragments both bones', tx:'ORIF both with lag screw + plate' },
+        ]},
+      { code:'C', name:'Complex', desc:'Comminuted or segmental',
+        groups:[
+          { code:'1', name:'Comminuted one bone', desc:'One bone comminuted, other simple', tx:'Bridge plate comminuted side; ORIF other' },
+          { code:'2', name:'Both comminuted', desc:'Both bones multifragmentary', tx:'Bridge plating both; consider bone graft' },
+          { code:'3', name:'Segmental', desc:'Segmental fracture one or both', tx:'Long plate spanning all fragments' },
+        ]},
+    ]},
+  '23': { // Distal Radius
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Fracture does not enter radiocarpal or DRUJ',
+        groups:[
+          { code:'1', name:'Isolated ulnar styloid', desc:'Ulnar styloid fracture only', tx:'Non-operative if stable; if at base — fixation' },
+          { code:'2', name:'Simple extra-articular', desc:'Colles / Smith pattern, no articular involvement', tx:'Cast if acceptable alignment; VPR plate if displaced' },
+          { code:'3', name:'Multifragmentary extra-articular', desc:'Metaphyseal comminution, no articular', tx:'VPR plate' },
+        ]},
+      { code:'B', name:'Partial articular', desc:'Partial articular fracture — part of surface intact',
+        groups:[
+          { code:'1', name:'Radial styloid (Chauffeur)', desc:'Radial styloid fragment', tx:'Percutaneous screw or ORIF' },
+          { code:'2', name:'Dorsal wall (Barton)', desc:'Dorsal rim fracture-subluxation', tx:'ORIF dorsal plate' },
+          { code:'3', name:'Volar wall (reverse Barton)', desc:'Volar rim fracture-subluxation', tx:'ORIF VPR plate' },
+        ]},
+      { code:'C', name:'Complete articular', desc:'Both articular surface and metaphysis fractured',
+        groups:[
+          { code:'1', name:'Articular simple, metaphyseal simple', desc:'Die-punch type, two articular fragments', tx:'VPR plate ± percutaneous pins' },
+          { code:'2', name:'Articular simple, metaphyseal complex', desc:'Simple articular split with comminuted meta', tx:'VPR plate + consider dorsal plate' },
+          { code:'3', name:'Articular complex', desc:'Highly comminuted intra-articular', tx:'VPR plate + fragment-specific fixation; consider external fixator + bone graft' },
+        ]},
+    ]},
+  '31': { // Proximal Femur
+    types:[
+      { code:'A', name:'Trochanteric (Intertrochanteric)', desc:'Fracture line runs between trochanters',
+        groups:[
+          { code:'1', name:'Simple (2-part)', desc:'Single fracture line, minimal comminution — stable', tx:'DHS (dynamic hip screw) or SHS' },
+          { code:'2', name:'Multifragmentary (medial wall)', desc:'Posteromedial comminution — unstable', tx:'DHS with trochanteric stabilisation plate, or PFN' },
+          { code:'3', name:'Reverse oblique / subtrochanteric extension', desc:'Fracture line reverses — highly unstable', tx:'Intramedullary nail (PFN / PFNA)' },
+        ]},
+      { code:'B', name:'Neck (Subcapital / Transcervical)', desc:'Fracture line through femoral neck — intracapsular',
+        groups:[
+          { code:'1', name:'Subcapital, non-displaced (Garden I/II)', desc:'Incomplete or complete but non-displaced', tx:'Cannulated screws in situ (if < 65y) OR hemiarthroplasty' },
+          { code:'2', name:'Transcervical', desc:'Mid-neck fracture, displaced', tx:'Hemiarthroplasty (elderly) or ORIF+DHS (young)' },
+          { code:'3', name:'Subcapital, displaced (Garden III/IV)', desc:'Fully displaced intracapsular', tx:'Hemiarthroplasty or THR depending on functional status' },
+        ]},
+      { code:'C', name:'Subtrochanteric', desc:'Fracture within 5cm of lesser trochanter — high stress region',
+        groups:[
+          { code:'1', name:'Simple', desc:'Single fracture line, no comminution', tx:'Locked IM nail (cephalomedullary)' },
+          { code:'2', name:'With intact cortex', desc:'One comminuted fragment, one cortex intact', tx:'IM nail — reconstruction type' },
+          { code:'3', name:'Comminuted', desc:'Multi-fragmentary, no cortical continuity', tx:'Long cephalomedullary nail + consider cerclage wires' },
+        ]},
+    ]},
+  '32': { // Femoral Shaft
+    types:[
+      { code:'A', name:'Simple', desc:'Single fracture line, contact >90%',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Long oblique from torsion', tx:'Antegrade or retrograde IM nail' },
+          { code:'2', name:'Oblique (≥30°)', desc:'Oblique pattern', tx:'IM nail' },
+          { code:'3', name:'Transverse (<30°)', desc:'Transverse — high energy', tx:'IM nail; plate if nail contraindicated' },
+        ]},
+      { code:'B', name:'Wedge', desc:'Butterfly fragment present',
+        groups:[
+          { code:'1', name:'Spiral wedge', desc:'Butterfly from torsion', tx:'IM nail with cerclage or plate' },
+          { code:'2', name:'Bending wedge', desc:'Wedge from bending force', tx:'IM nail' },
+          { code:'3', name:'Fragmented wedge', desc:'Comminuted wedge', tx:'Bridging IM nail' },
+        ]},
+      { code:'C', name:'Complex', desc:'Multiple fragments, no contact between main parts',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Spiral multifragmentary', tx:'Locked IM nail' },
+          { code:'2', name:'Segmental', desc:'Two separate fracture lines creating isolated segment', tx:'Long IM nail — lock proximally and distally' },
+          { code:'3', name:'Irregular (comminuted)', desc:'Highly comminuted, no recognisable pattern', tx:'Locked bridging IM nail; consider traction + staged approach' },
+        ]},
+    ]},
+  '33': { // Distal Femur
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Fracture above articular surface',
+        groups:[
+          { code:'1', name:'Simple', desc:'Single supra-condylar line', tx:'Retrograde IM nail or lateral distal femoral plate' },
+          { code:'2', name:'Wedge', desc:'Metaphyseal wedge fragment', tx:'Lateral locking plate' },
+          { code:'3', name:'Multifragmentary', desc:'Comminuted metaphysis', tx:'Bridging distal femoral locking plate' },
+        ]},
+      { code:'B', name:'Partial articular', desc:'One condyle fractured, other intact',
+        groups:[
+          { code:'1', name:'Lateral condyle sagittal', desc:'Lateral condyle split — Hoffa type', tx:'ORIF with anteroposterior lag screws' },
+          { code:'2', name:'Medial condyle sagittal', desc:'Medial condyle split', tx:'ORIF with screws' },
+          { code:'3', name:'Frontal plane (Hoffa)', desc:'Coronal shear of condyle', tx:'Posterior to anterior screws; difficult approach' },
+        ]},
+      { code:'C', name:'Complete articular', desc:'Intercondylar split + metaphyseal involvement',
+        groups:[
+          { code:'1', name:'Articular simple + metaphyseal simple', desc:'Y/T intercondylar, no comminution', tx:'Retrograde nail or lateral locking plate; lag screw condyles' },
+          { code:'2', name:'Articular simple + metaphyseal complex', desc:'Simple intercondylar split, comminuted metaphysis', tx:'Lateral locking plate; MIPO technique' },
+          { code:'3', name:'Articular multifragmentary', desc:'Comminuted articular + metaphysis', tx:'Locking plate + bone graft; consider staged approach' },
+        ]},
+    ]},
+  '41': { // Proximal Tibia (Schatzker)
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Below articular surface — proximal metaphysis',
+        groups:[
+          { code:'1', name:'Avulsion', desc:'Tibial spine or Gerdy tubercle avulsion', tx:'Arthroscopic or open fixation' },
+          { code:'2', name:'Metaphyseal simple', desc:'Single metaphyseal fracture line', tx:'Plate fixation or cast if stable' },
+          { code:'3', name:'Metaphyseal complex', desc:'Comminuted without articular involvement', tx:'Bridging plate' },
+        ]},
+      { code:'B', name:'Partial articular (Schatzker I–III)', desc:'One plateau involved — Schatzker classification',
+        groups:[
+          { code:'1', name:'Schatzker I — Pure split', desc:'Lateral plateau split, no depression', tx:'Buttress plate if displaced; screws if good bone' },
+          { code:'2', name:'Schatzker II — Split-depression', desc:'Lateral plateau split + central depression', tx:'Elevate articular surface + bone graft + buttress plate' },
+          { code:'3', name:'Schatzker III — Pure depression', desc:'Central depression only, no peripheral split', tx:'Elevate + graft + screws or plate' },
+        ]},
+      { code:'C', name:'Complete articular (Schatzker IV–VI)', desc:'Both plateaus or complex pattern',
+        groups:[
+          { code:'1', name:'Schatzker IV — Medial plateau', desc:'Medial plateau split ± medial condyle', tx:'Medial buttress plate; assess vascular injury' },
+          { code:'2', name:'Schatzker V — Bicondylar', desc:'Both plateaus fractured, metaphysis intact', tx:'Dual plating (medial + lateral); MIPO technique' },
+          { code:'3', name:'Schatzker VI — Bicondylar + metadiaphyseal', desc:'Complete articular dissociation + diaphysis — highest severity', tx:'Spanning external fixator acute; definitive dual plate staged' },
+        ]},
+    ]},
+  '42': { // Tibial Shaft
+    types:[
+      { code:'A', name:'Simple', desc:'Single fracture line, contact >90%',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Torsional mechanism', tx:'IM nail; cast if closed, angulation <5°' },
+          { code:'2', name:'Oblique (≥30°)', desc:'Oblique pattern', tx:'IM nail' },
+          { code:'3', name:'Transverse (<30°)', desc:'High energy direct', tx:'IM nail; plate if nail not feasible' },
+        ]},
+      { code:'B', name:'Wedge', desc:'Butterfly fragment, some contact remains',
+        groups:[
+          { code:'1', name:'Spiral wedge', desc:'Butterfly from torsion', tx:'IM nail with cerclage or plate' },
+          { code:'2', name:'Bending wedge', desc:'Lateral wedge fragment', tx:'IM nail' },
+          { code:'3', name:'Fragmented wedge', desc:'Comminuted wedge', tx:'Bridging IM nail' },
+        ]},
+      { code:'C', name:'Complex', desc:'No contact between main fragments',
+        groups:[
+          { code:'1', name:'Spiral', desc:'Multispiral fracture', tx:'Locked IM nail' },
+          { code:'2', name:'Segmental', desc:'Two fracture levels', tx:'Long locked nail' },
+          { code:'3', name:'Comminuted', desc:'Highly comminuted shaft', tx:'Bridging IM nail; consider external fixator if open' },
+        ]},
+    ]},
+  '43': { // Distal Tibia / Ankle (Pilon)
+    types:[
+      { code:'A', name:'Extra-articular', desc:'Supramalleolar or distal tibial metaphysis only',
+        groups:[
+          { code:'1', name:'Simple', desc:'Single distal tibial line, no articular', tx:'IM nail or locking plate; fibula plate if unstable' },
+          { code:'2', name:'Wedge', desc:'Metaphyseal wedge', tx:'Medial distal tibial plate' },
+          { code:'3', name:'Multifragmentary', desc:'Comminuted metaphysis, articular intact', tx:'Bridging plate; consider spanning external fixator' },
+        ]},
+      { code:'B', name:'Partial articular (Pilon B)', desc:'Part of articular surface intact',
+        groups:[
+          { code:'1', name:'Pure split', desc:'Single articular split fragment', tx:'ORIF with lag screws + plate' },
+          { code:'2', name:'Split-depression', desc:'Articular split + impaction', tx:'Elevate + graft + plate' },
+          { code:'3', name:'Multi-fragment depression', desc:'Multiple impacted articular fragments', tx:'Staged: external fixator → definitive ORIF 7–14 days' },
+        ]},
+      { code:'C', name:'Complete articular (Pilon C)', desc:'Full articular and metaphyseal involvement — Ruedi-Allgöwer',
+        groups:[
+          { code:'1', name:'Articular simple + metaphyseal simple', desc:'Ruedi I — non-displaced articular', tx:'ORIF fibula + medial plate; lag screw articular fragments' },
+          { code:'2', name:'Articular simple + metaphyseal complex', desc:'Ruedi II — displaced articular, some comminution', tx:'Staged ORIF with fibula first; medial plate + graft' },
+          { code:'3', name:'Articular complex (Ruedi III)', desc:'Highly comminuted articular and metaphysis', tx:'Staged approach essential: Ex-fix → ORIF; consider fusion elderly' },
+        ]},
+    ]},
+};
+
+let aoState = { bone: null, type: null, group: null, breadcrumb: [] };
+let aoTagged = null; // placed AO tag on canvas
+
+function initAOWizard() {
+  aoState = { bone:null, type:null, group:null, breadcrumb:[] };
+  const w = document.getElementById('ao-wizard'); if(!w) return;
+  const r = document.getElementById('ao-result'); if(r) r.style.display='none';
+
+  const bones = AO_BONES;
+  const segs = [...new Set(bones.map(b=>b.seg))];
+
+  w.innerHTML = `
+    <div class="ao-q">Step 1 — Select the bone / segment:</div>
+    ${segs.map(seg => `
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:8px 0 4px">${seg}</div>
+      <div class="ao-bone-grid">
+        ${bones.filter(b=>b.seg===seg).map(b=>`
+          <button class="ao-opt" onclick="aoSelectBone('${b.code}')">
+            <span class="ao-code-badge">${b.code}</span>${b.name}
+          </button>`).join('')}
+      </div>`).join('')}`;
+}
+
+function aoSelectBone(code) {
+  aoState.bone = code;
+  aoState.breadcrumb = [AO_BONES.find(b=>b.code===code)?.name || code];
+  const tree = AO_TREE[code]; if(!tree) { aoShowResult(code,'A','1'); return; }
+  const w = document.getElementById('ao-wizard');
+  w.innerHTML = `
+    <button class="ao-back" onclick="initAOWizard()">← Back</button>
+    <div class="ao-breadcrumb">${aoState.breadcrumb.join(' › ')}</div>
+    <div class="ao-q">Step 2 — Fracture type (complexity):</div>
+    ${tree.types.map(t=>`
+      <button class="ao-opt" style="width:100%;margin-bottom:5px" onclick="aoSelectType('${t.code}')">
+        <span class="ao-code-badge">${aoState.bone}${t.code}</span>
+        <strong>${t.name}</strong><br>
+        <span style="font-size:10px;color:var(--muted);font-weight:400">${t.desc}</span>
+      </button>`).join('')}`;
+}
+
+function aoSelectType(typeCode) {
+  aoState.type = typeCode;
+  const tree = AO_TREE[aoState.bone];
+  const typeObj = tree.types.find(t=>t.code===typeCode);
+  aoState.breadcrumb = [AO_BONES.find(b=>b.code===aoState.bone)?.name, `Type ${typeCode} — ${typeObj?.name}`];
+  const w = document.getElementById('ao-wizard');
+  w.innerHTML = `
+    <button class="ao-back" onclick="aoSelectBone('${aoState.bone}')">← Back</button>
+    <div class="ao-breadcrumb">${aoState.breadcrumb.join(' › ')}</div>
+    <div class="ao-q">Step 3 — Fracture group:</div>
+    ${typeObj.groups.map(g=>`
+      <button class="ao-opt" style="width:100%;margin-bottom:5px" onclick="aoSelectGroup('${g.code}','${g.name.replace(/'/g,"\\'")}','${g.desc.replace(/'/g,"\\'")}','${g.tx.replace(/'/g,"\\'")}')">
+        <span class="ao-code-badge">${aoState.bone}${typeCode}.${g.code}</span>
+        <strong>${g.name}</strong><br>
+        <span style="font-size:10px;color:var(--muted);font-weight:400">${g.desc}</span>
+      </button>`).join('')}`;
+}
+
+function aoSelectGroup(groupCode, name, desc, tx) {
+  aoState.group = groupCode;
+  aoShowResult(`${aoState.bone}${aoState.type}.${groupCode}`, name, tx, desc);
+}
+
+function aoShowResult(code, name, tx, desc) {
+  const r = document.getElementById('ao-result'); if(!r) return;
+  const w = document.getElementById('ao-wizard'); if(w) w.innerHTML='';
+  document.getElementById('ao-code').textContent = code;
+  document.getElementById('ao-desc').textContent = desc || name;
+  document.getElementById('ao-treatment').innerHTML = `<strong style="color:var(--red);font-size:10px;letter-spacing:.5px;text-transform:uppercase">Suggested Management</strong><br>${tx}`;
+  r.style.display = 'block';
+}
+
+function resetAOWizard() {
+  aoTagged = null;
+  initAOWizard();
+  const r = document.getElementById('ao-result'); if(r) r.style.display='none';
+  redraw();
+}
+
+function tagAOOnImage() {
+  const code = document.getElementById('ao-code')?.textContent;
+  const desc = document.getElementById('ao-desc')?.textContent;
+  if (!code) return;
+  // Place an annotation tag in the center of the canvas
+  saveHistory();
+  objs.push({
+    type: 'annotate',
+    points: [{ x: W/2, y: H/2 - 40 }],
+    color: '#ef4444',
+    label: 'AO Classification',
+    value: code,
+    text: `AO ${code} — ${desc}`,
+  });
+  updateList(); redraw();
+  switchTab('measurements', document.querySelectorAll('.tab')[0]);
+}
+
+function drawAOTag() {
+  // AO tags are drawn as regular annotations — handled by drawObj
+}
+
+// ============================================================
+// PATCH redraw to include implants
+// ============================================================
+const _baseRedraw = redraw;
+function redraw() {
+  _baseRedraw();
+  drawImplants();
+}
+
 // ── INIT ────────────────────────────────────────────────────
 // Desktop
 cvs = document.getElementById('cvs');
@@ -2350,6 +2982,8 @@ setTool('select');
 redraw();
 initDesktopEvents();
 initKeyboard();
+initImplants();
+initAOWizard();
 window.addEventListener('resize', () => { resizeCvs(); if(bgImage) fitBg(); redraw(); mobResize(); mobFitBg(); mobRedraw(); });
 
 // Mobile
