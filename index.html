@@ -1463,6 +1463,9 @@ function redraw() {
 
   // Lens overlay
   if (dragPt && showLens) drawLens(mpos.x, mpos.y);
+
+  // Implant overlays (drawn last so they appear on top)
+  if (typeof drawImplants === 'function') drawImplants();
 }
 
 </script>
@@ -2961,15 +2964,6 @@ function tagAOOnImage() {
 
 function drawAOTag() {
   // AO tags are drawn as regular annotations — handled by drawObj
-}
-
-// ============================================================
-// PATCH redraw to include implants
-// ============================================================
-const _baseRedraw = redraw;
-function redraw() {
-  _baseRedraw();
-  drawImplants();
 }
 
 // ── INIT ────────────────────────────────────────────────────
