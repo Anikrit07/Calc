@@ -2132,8 +2132,16 @@ function initMobile() {
 
   setTimeout(() => { mobFitBg(); mobRedraw(); }, 100);
 
-  // Watch bgImage changes
-  setInterval(() => { mobFitBg(); mobRedraw(); updateMobDelBtn(); }, 300);
+  // Watch bgImage changes — only refit when image first appears, not on every tick
+  let _lastBg = null;
+  setInterval(() => {
+    if (bgImage !== _lastBg) {
+      _lastBg = bgImage;
+      if (bgImage) mobFitBg(); // only refit on new image
+      mobRedraw();
+      updateMobDelBtn();
+    }
+  }, 200);
 }
 
 function mobResize() {
@@ -2248,6 +2256,9 @@ function mobLbl(defaultPos, name, value, c, o) {
 function initMobileEvents() {
   mobCvs.addEventListener('touchstart', e => {
     e.preventDefault();
+    // If a point was selected from the picker, don't reset it on the next touchstart
+    if (mobDragPt) return;
+
     // Reset all drag states on new touch
     mobPanning = false; mobPanStart = null; mobDragPt = null; mobDragLbl = null;
 
@@ -2486,13 +2497,11 @@ function showPtPicker(nearby, screenX, screenY) {
     const name = item.o.label || item.o.type;
     const ptLabel = ['P1','P2','P3','P4'][item.idx] || `P${item.idx+1}`;
     const c = item.o.color;
-    return `<div onclick="selectPt(${i})" style="
+    return `<div ontouchstart="selectPt(${i},event)" style="
       display:flex;align-items:center;gap:10px;padding:9px 10px;
       border-radius:7px;cursor:pointer;margin-bottom:4px;
       background:var(--panel);border:1px solid var(--border);
-      transition:all .15s;active:border-color:${c}
-    " ontouchstart="this.style.background='rgba(192,57,43,.15)'"
-       ontouchend="selectPt(${i})">
+    ">
       <div style="width:12px;height:12px;border-radius:50%;background:${c};flex-shrink:0;border:2px solid rgba(255,255,255,.6)"></div>
       <div>
         <div style="font-size:11px;font-weight:700;color:${c}">${ptLabel}</div>
@@ -2517,12 +2526,24 @@ function showPtPicker(nearby, screenX, screenY) {
   setTimeout(() => document.addEventListener('touchstart', dismissPtPicker, { once: true }), 100);
 }
 
-function selectPt(i) {
+function selectPt(i, e) {
+  if (e) e.preventDefault();
   const item = ptPickerItems[i]; if (!item) return;
   dismissPtPicker();
   saveHistory();
   mobDragPt = { obj: item.o, idx: item.idx };
   mobShowLens = true;
+  // Set mpos to current touch position so lens appears immediately
+  if (e && e.touches && e.touches[0]) {
+    mobMpos = mobGpt(e.touches[0]);
+    mobPanning = false; mobPanStart = null;
+  }
+  mobRedraw();
+  // Hint
+  const badge = document.getElementById('mob-tool-badge');
+  const prev = badge ? badge.textContent : '';
+  if (badge) badge.textContent = 'DRAG TO MOVE POINT';
+  setTimeout(() => { if (badge) badge.textContent = prev; }, 1800);
 }
 
 function dismissPtPicker() {
