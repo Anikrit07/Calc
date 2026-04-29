@@ -1027,15 +1027,22 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     </div>
 
     <!-- CTA -->
-    <div style="margin:20px 16px 0">
-      <button id="pi-start-btn" onclick="confirmPresetInfo()" style="
-        width:100%;padding:15px;
+    <div style="margin:20px 16px 0;display:flex;gap:10px">
+      <button onclick="closePresetInfo()" style="
+        flex:1;padding:14px;
+        background:var(--panel);color:var(--muted);
+        border:1px solid var(--border);border-radius:10px;
+        font-size:14px;font-weight:700;cursor:pointer;
+        font-family:'IBM Plex Sans',sans-serif;
+      ">← Back</button>
+      <button onclick="startMeasuringFromInfo()" style="
+        flex:2;padding:14px;
         background:linear-gradient(160deg,var(--red) 0%,#8b1a14 100%);
         color:#fff;border:none;border-radius:10px;
-        font-size:15px;font-weight:700;cursor:pointer;
+        font-size:14px;font-weight:700;cursor:pointer;
         font-family:'IBM Plex Sans',sans-serif;
-        box-shadow:0 4px 20px var(--red-glow);
-      ">Start Measuring →</button>
+        box-shadow:0 4px 20px rgba(192,57,43,.35);
+      ">📐 Start Measuring</button>
     </div>
   </div>
 </div>
@@ -3722,6 +3729,10 @@ function closePresetInfo() {
 }
 
 function confirmPresetInfo() {
+  closePresetInfo();
+}
+
+function startMeasuringFromInfo() {
   const key = _piPresetKey;
   closePresetInfo();
   mobClose();
