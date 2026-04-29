@@ -2631,29 +2631,65 @@ function loadTemplate(name, el) {
 
 function loadFile(e) {
   const file = e.target.files[0]; if (!file) return;
-  // Reset input so same file can be selected again after delete
-  e.target.value = '';
+  e.target.value = ''; // reset so same file can be re-selected
+
+  // Check file type
+  const ok = ['image/jpeg','image/jpg','image/png','image/webp','image/gif','image/avif','image/bmp'];
+  if (!ok.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i)) {
+    showUploadError(`File type "${file.type || file.name.split('.').pop()}" is not supported.\n\nSupported formats: JPG, PNG, WebP, BMP\n\nNote: DICOM (.dcm) files cannot be displayed directly. Please export as JPG or PNG from your PACS viewer first.`);
+    return;
+  }
+
+  // Warn on large files
+  const mb = file.size / 1024 / 1024;
+  if (mb > 25) {
+    if (!confirm(`This file is ${mb.toFixed(1)}MB which may be slow to load on mobile.\n\nContinue?`)) return;
+  }
+
   const reader = new FileReader();
   reader.onload = ev => {
     const image = new Image();
     image.onload = () => {
       bgImage = image;
       objs=[]; wip=[]; selObj=null; zl=1; panX=0; panY=0; history=[];
-      // Desktop
       fitBg(); updateDelImgBtn(); updateList(); redraw(); updateDpad();
-      // Mobile
       mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn(); updateMobDpad();
-      // Auto-lock after load so measurements don't shift the image
       imageLocked = true;
       const lb = document.getElementById('lock-btn'); if(lb){lb.textContent='🔒 Locked';lb.classList.add('locked');}
       updateMobLockBtn();
-      // Close any open sheet
       mobClose();
       document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
     };
+    image.onerror = () => {
+      showUploadError(`Could not load this image.\n\nThe file may be:\n• Corrupted or incomplete\n• A DICOM file (.dcm) — not supported by browsers\n• An unsupported RAW format\n\nPlease try exporting as JPG or PNG from your imaging software.`);
+    };
     image.src = ev.target.result;
   };
+  reader.onerror = () => {
+    showUploadError('Could not read the file. Please try again.');
+  };
   reader.readAsDataURL(file);
+}
+
+function showUploadError(msg) {
+  // Show a styled error toast instead of a plain alert
+  let toast = document.getElementById('upload-error-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'upload-error-toast';
+    toast.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9000;
+      background:#1a0a0a;border:1px solid var(--red);border-radius:10px;
+      padding:14px 18px;max-width:320px;width:90%;
+      font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:1.6;
+      color:#e88a84;box-shadow:0 8px 32px rgba(0,0,0,.8);
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<div style="font-weight:700;margin-bottom:6px;color:var(--red)">⚠ Upload Failed</div>${msg.replace(/\n/g,'<br>')}`;
+  toast.style.display = 'block';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 7000);
 }
 
 function applyFilters() {
