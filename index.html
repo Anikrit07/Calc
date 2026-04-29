@@ -890,6 +890,23 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
 </div><!-- end #mob-ui -->
 
+<!-- Mobile export viewer — shows annotated image for long-press save -->
+<div id="mob-export-viewer" style="
+  display:none;pointer-events:none;
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.95);
+  flex-direction:column;align-items:center;justify-content:center;
+">
+  <div style="position:absolute;top:0;left:0;right:0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.7)">
+    <div style="font-size:14px;font-weight:700;color:#fff">Exported Image</div>
+    <button onclick="closeMobExport()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:13px;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">✕ Close</button>
+  </div>
+  <div style="padding:60px 16px 20px;text-align:center;width:100%">
+    <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:10px">Long-press the image below to Save to Photos</div>
+    <img id="mob-export-img" style="max-width:100%;max-height:70vh;border-radius:8px;border:1px solid rgba(255,255,255,.15)" src="" alt="Annotated X-ray">
+  </div>
+</div>
+
 <!-- Backdrop -->
 <div id="mob-backdrop" onclick="mobClose()" ontouchstart="mobClose()"></div>
 
@@ -991,7 +1008,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <!-- Preset Info Modal (full screen overlay on mobile) -->
 <div id="preset-info-modal" style="
   display:none;position:fixed;inset:0;z-index:500;
-  background:var(--bg);overflow-y:auto;
+  background:var(--bg);overflow-y:auto;pointer-events:none;
 ">
   <div style="max-width:480px;margin:0 auto;padding:0 0 40px">
     <!-- Header -->
@@ -2600,9 +2617,14 @@ function undoLast() {
 function clearAll() {
   if (!objs.length && !wip.length) return;
   saveHistory();
-  objs=[]; wip=[]; selObj=null; dragPt=null; dragLbl=null; showLens=false;
-  history=[];
-  updateList(); redraw();
+  objs=[]; wip=[]; selObj=null; dragPt=null; dragLbl=null;
+  mobDragPt=null; mobDragLbl=null; showLens=false; mobShowLens=false;
+  // Reset calibration since calib line is cleared too
+  calib = { pxPerMm:null, refName:'', refMm:null, refPx:null, lineObj:null };
+  calibMode=false;
+  updateList(); mobUpdateResults();
+  updateCalibUI(); updateMobCalib();
+  redraw(); mobRedraw();
 }
 
 // ── Delete image ─────────────────────────────────────────────
@@ -2929,7 +2951,44 @@ function rmSaved(i) { savedSnapshots.splice(i,1); renderSaved(); }
 // ── Export ────────────────────────────────────────────────────
 function exportPNG() {
   if (!bgImage) { alert('No image loaded.'); return; }
-  redraw(); cvs.toBlob(blob => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`orthomeasure_${Date.now()}.png`; a.click(); });
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    mobExportPNG();
+  } else {
+    redraw();
+    cvs.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `orthomeasure_${Date.now()}.png`;
+      a.click();
+    });
+  }
+}
+
+function mobExportPNG() {
+  // Draw full scene onto mobile canvas, then show the image for long-press save
+  if (!mobCvs || !bgImage) return;
+  mobRedraw();
+  // Convert to data URL and show in a full-screen viewer so user can long-press to save
+  const dataUrl = mobCvs.toDataURL('image/png');
+  const viewer = document.getElementById('mob-export-viewer');
+  const img = document.getElementById('mob-export-img');
+  if (!viewer || !img) return;
+  img.src = dataUrl;
+  viewer.style.display = 'flex';
+  viewer.style.pointerEvents = 'all';
+  // Also try programmatic download (works on Android Chrome)
+  try {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `orthomeasure_${Date.now()}.png`;
+    a.click();
+  } catch(e) {}
+}
+
+function closeMobExport() {
+  const v = document.getElementById('mob-export-viewer');
+  if (v) { v.style.display = 'none'; v.style.pointerEvents = 'none'; }
 }
 
 function exportPDF() {
@@ -3719,12 +3778,16 @@ function showPresetInfo(key) {
       text-decoration:none;border-bottom:1px solid rgba(59,130,246,.3);
     ">${info.source} ↗</a>`;
 
-  document.getElementById('preset-info-modal').style.display = 'block';
-  document.getElementById('preset-info-modal').scrollTop = 0;
+  const modal = document.getElementById('preset-info-modal');
+  modal.style.display = 'block';
+  modal.style.pointerEvents = 'all';
+  modal.scrollTop = 0;
 }
 
 function closePresetInfo() {
-  document.getElementById('preset-info-modal').style.display = 'none';
+  const modal = document.getElementById('preset-info-modal');
+  modal.style.display = 'none';
+  modal.style.pointerEvents = 'none';
   _piPresetKey = null;
 }
 
