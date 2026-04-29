@@ -816,6 +816,18 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <!-- Backdrop -->
 <div id="mob-backdrop" onclick="mobClose()" ontouchstart="mobClose()"></div>
 
+<!-- Point picker popup (shows when multiple points are close together) -->
+<div id="pt-picker" style="
+  display:none; position:fixed; z-index:200;
+  background:var(--surface); border:1px solid var(--border);
+  border-top:2px solid var(--red); border-radius:12px;
+  padding:10px; min-width:160px;
+  box-shadow:0 8px 32px rgba(0,0,0,.7);
+">
+  <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:center">Select Point</div>
+  <div id="pt-picker-list"></div>
+</div>
+
 <!-- X-Ray sheet -->
 <div class="mob-sheet" id="msheet-xray">
   <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
@@ -2243,14 +2255,13 @@ function initMobileEvents() {
       const t = mobGpt(e.touches[0]); mobMpos = t;
 
       if (tool === 'select') {
-        // ── Double-tap detection (check first, before anything else) ──
+        // ── Double-tap detection ──
         const now = Date.now();
         const isDoubleTap = (now - mobLastTap < 350) && mobLastTapPt &&
           Math.hypot(t.x - mobLastTapPt.x, t.y - mobLastTapPt.y) < 40;
 
         if (isDoubleTap) {
           mobLastTap = 0; mobLastTapPt = null;
-          // Check label box
           for (const o of objs) {
             if (o._lblBox) {
               const b = o._lblBox;
@@ -2259,7 +2270,6 @@ function initMobileEvents() {
               }
             }
           }
-          // Check near a point — open label of that object
           for (const o of objs) {
             if (o.points.some(p => Math.hypot(p.x - t.x, p.y - t.y) < 30)) {
               openLblModal(o); return;
@@ -2268,7 +2278,7 @@ function initMobileEvents() {
         }
         mobLastTap = now; mobLastTapPt = { x: t.x, y: t.y };
 
-        // 1. Check label box hit for drag
+        // 1. Label box hit
         let hitLbl = false;
         for (const o of objs) {
           if (o._lblBox) {
@@ -2280,19 +2290,25 @@ function initMobileEvents() {
         }
         if (hitLbl) return;
 
-        // 2. Check point hit (22px radius for fingers)
-        let hitPt = false;
+        // 2. Collect ALL nearby points
+        const nearby = [];
         for (const o of objs) {
           for (let idx = 0; idx < o.points.length; idx++) {
-            if (Math.hypot(o.points[idx].x - t.x, o.points[idx].y - t.y) < 22) {
-              saveHistory(); mobDragPt = { obj: o, idx }; mobShowLens = true; hitPt = true; break;
-            }
+            const dist = Math.hypot(o.points[idx].x - t.x, o.points[idx].y - t.y);
+            if (dist < 28) nearby.push({ o, idx, dist });
           }
-          if (hitPt) break;
         }
-        if (hitPt) return;
 
-        // 3. Pan image
+        if (nearby.length === 1) {
+          // Exactly one — grab it directly
+          saveHistory(); mobDragPt = { obj: nearby[0].o, idx: nearby[0].idx }; mobShowLens = true; return;
+        } else if (nearby.length > 1) {
+          // Multiple nearby — show picker popup
+          showPtPicker(nearby, e.touches[0].clientX, e.touches[0].clientY); return;
+        }
+
+        // 3. Pan
+        dismissPtPicker();
         mobPanning = true; mobPanStart = t;
       }
     }
@@ -2335,11 +2351,18 @@ function initMobileEvents() {
       if (mobWip.length > 0) mobRedraw();
     }
     if (e.touches.length === 2) {
-      const nd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      if (mobTouchDist) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const nd = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      if (mobTouchDist && nd > 0) {
         const f = nd / mobTouchDist;
-        const cx = mobW/2, cy = mobH/2;
-        mobOx = cx-(cx-mobOx)*f; mobOy = cy-(cy-mobOy)*f; mobZl *= f;
+        // Zoom origin = midpoint between fingers (in canvas coords)
+        const mx = ((t0.clientX + t1.clientX) / 2);
+        const my = ((t0.clientY + t1.clientY) / 2) - 48;
+        const cx = mx * (mobW / window.innerWidth);
+        const cy = my * (mobH / (window.innerHeight - 48 - 96));
+        mobOx = cx - (cx - mobOx) * f;
+        mobOy = cy - (cy - mobOy) * f;
+        mobZl *= f;
         objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
         mobRedraw();
       }
@@ -2450,12 +2473,70 @@ function mobGpt(touch) {
 }
 
 // ── Zoom buttons ─────────────────────────────────────────────
-function mobZoomIn()  { mobZoomBy(1.25); }
-function mobZoomOut() { mobZoomBy(0.8); }
+// ── Point picker popup ────────────────────────────────────────
+let ptPickerItems = []; // store nearby points for selection
+
+function showPtPicker(nearby, screenX, screenY) {
+  ptPickerItems = nearby;
+  const picker = document.getElementById('pt-picker');
+  const list   = document.getElementById('pt-picker-list');
+  if (!picker || !list) return;
+
+  list.innerHTML = nearby.map((item, i) => {
+    const name = item.o.label || item.o.type;
+    const ptLabel = ['P1','P2','P3','P4'][item.idx] || `P${item.idx+1}`;
+    const c = item.o.color;
+    return `<div onclick="selectPt(${i})" style="
+      display:flex;align-items:center;gap:10px;padding:9px 10px;
+      border-radius:7px;cursor:pointer;margin-bottom:4px;
+      background:var(--panel);border:1px solid var(--border);
+      transition:all .15s;active:border-color:${c}
+    " ontouchstart="this.style.background='rgba(192,57,43,.15)'"
+       ontouchend="selectPt(${i})">
+      <div style="width:12px;height:12px;border-radius:50%;background:${c};flex-shrink:0;border:2px solid rgba(255,255,255,.6)"></div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:${c}">${ptLabel}</div>
+        <div style="font-size:10px;color:var(--muted)">${name}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Position near the tap, avoid screen edges
+  const pw = 170, ph = nearby.length * 54 + 38;
+  let px = screenX - pw/2;
+  let py = screenY - ph - 12;
+  px = Math.max(8, Math.min(window.innerWidth - pw - 8, px));
+  py = Math.max(58, py); // above topbar
+  if (py + ph > window.innerHeight - 110) py = screenY + 12; // flip below
+
+  picker.style.left = px + 'px';
+  picker.style.top  = py + 'px';
+  picker.style.display = 'block';
+
+  // Dismiss on outside tap
+  setTimeout(() => document.addEventListener('touchstart', dismissPtPicker, { once: true }), 100);
+}
+
+function selectPt(i) {
+  const item = ptPickerItems[i]; if (!item) return;
+  dismissPtPicker();
+  saveHistory();
+  mobDragPt = { obj: item.o, idx: item.idx };
+  mobShowLens = true;
+}
+
+function dismissPtPicker() {
+  const picker = document.getElementById('pt-picker');
+  if (picker) picker.style.display = 'none';
+  ptPickerItems = [];
+}
+
+function mobZoomIn()  { mobZoomBy(1.35); }
+function mobZoomOut() { mobZoomBy(0.75); }
 function mobZoomBy(f) {
-  const cx=mobW/2, cy=mobH/2;
-  mobOx=cx-(cx-mobOx)*f; mobOy=cy-(cy-mobOy)*f; mobZl*=f;
-  objs.forEach(o=>{o.points=o.points.map(p=>({x:cx+(p.x-cx)*f,y:cy+(p.y-cy)*f}));});
+  const cx = mobW/2, cy = mobH/2;
+  mobOx = cx-(cx-mobOx)*f; mobOy = cy-(cy-mobOy)*f; mobZl *= f;
+  objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
   mobRedraw();
 }
 function mobZoomReset() { mobFitBg(); mobRedraw(); }
