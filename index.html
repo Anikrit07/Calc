@@ -1214,6 +1214,38 @@ const PRESETS = {
 
 const TYPE_LABEL = { angle3:'3-Point Angle', angle4:'4-Point Angle', cobb:'Cobb Angle', line:'Distance', annotate:'Annotation' };
 
+// ── Implant data (needed by both desktop and mobile) ─────────
+const PLATES = [
+  { id:'broad-dcp',   name:'Broad DCP',    sub:'Dynamic Compression', holes:8, w:220, h:18, color:'#b0bec5' },
+  { id:'narrow-dcp',  name:'Narrow DCP',   sub:'Dynamic Compression', holes:6, w:180, h:14, color:'#b0bec5' },
+  { id:'lc-dcp',      name:'LC-DCP',       sub:'Limited Contact',     holes:8, w:220, h:16, color:'#90a4ae' },
+  { id:'lcp',         name:'LCP',          sub:'Locking Compression', holes:8, w:220, h:18, color:'#78909c' },
+  { id:'recon',       name:'Recon Plate',  sub:'Reconstruction',      holes:8, w:200, h:14, color:'#9e9e9e' },
+  { id:'t-plate',     name:'T-Plate',      sub:'Proximal / Distal',   holes:6, w:130, h:60, color:'#b0bec5', shape:'T' },
+  { id:'l-plate',     name:'L-Plate',      sub:'Angled / Blade',      holes:6, w:120, h:60, color:'#b0bec5', shape:'L' },
+  { id:'blade-plate', name:'Blade Plate',  sub:'95° / 130° Angled',   holes:6, w:180, h:14, color:'#9e9e9e', shape:'blade' },
+];
+let implants = [];
+let selImplant = null;
+let implantDragging = false, implantDragStart = null;
+let implantIdCounter = 0;
+
+// ── AO data (needed by both desktop and mobile) ──────────────
+const AO_BONES = [
+  { code:'11', name:'Proximal Humerus',    seg:'Humerus' },
+  { code:'12', name:'Humeral Shaft',       seg:'Humerus' },
+  { code:'13', name:'Distal Humerus',      seg:'Humerus' },
+  { code:'21', name:'Proximal Radius/Ulna',seg:'Forearm' },
+  { code:'22', name:'Radial/Ulnar Shaft',  seg:'Forearm' },
+  { code:'23', name:'Distal Radius',       seg:'Forearm' },
+  { code:'31', name:'Proximal Femur',      seg:'Femur'   },
+  { code:'32', name:'Femoral Shaft',       seg:'Femur'   },
+  { code:'33', name:'Distal Femur',        seg:'Femur'   },
+  { code:'41', name:'Proximal Tibia',      seg:'Tibia'   },
+  { code:'42', name:'Tibial Shaft',        seg:'Tibia'   },
+  { code:'43', name:'Distal Tibia',        seg:'Tibia'   },
+];
+
 </script>
 <script>
 // ── Component: Math Helpers ─────────────────────────────────
@@ -2551,13 +2583,7 @@ function mobResetAO() {
   mobInitAO();
 }
 
-// ── Patch mobOpen to init new sheets ─────────────────────────
-const _origMobOpen = mobOpen;
-function mobOpen(name) {
-  _origMobOpen(name);
-  if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); }
-  if (name === 'ao') { mobInitAO(); }
-}
+// ── (mobOpen patch removed — merged into mobOpen in mobile.js) ──
 
 // ── Tool management ───────────────────────────────────────────
 function mobSetTool(t) {
@@ -2595,7 +2621,9 @@ function mobLoadTpl(name) {
 function mobOpen(name) {
   if (mobActiveSheet) { document.getElementById('msheet-'+mobActiveSheet)?.classList.remove('open'); }
   if (mobActiveSheet === name) { document.getElementById('mob-backdrop').classList.remove('on'); mobActiveSheet=null; return; }
-  if (name === 'results') mobUpdateResults();
+  if (name === 'results')  mobUpdateResults();
+  if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); }
+  if (name === 'ao')       mobInitAO();
   if (name === 'xray') {
     ['hip','knee'].forEach(t => {
       const src=TEMPLATE_SRCS[t], img=document.getElementById('mbt-'+t);
@@ -2645,24 +2673,8 @@ function mobDeleteImage() {
 
 </script>
 <script>
-// ============================================================
-// IMPLANT OVERLAYS
-// ============================================================
-const PLATES = [
-  { id:'broad-dcp',   name:'Broad DCP',       sub:'Dynamic Compression', holes:8,  w:220, h:18, color:'#b0bec5' },
-  { id:'narrow-dcp',  name:'Narrow DCP',       sub:'Dynamic Compression', holes:6,  w:180, h:14, color:'#b0bec5' },
-  { id:'lc-dcp',      name:'LC-DCP',           sub:'Limited Contact',     holes:8,  w:220, h:16, color:'#90a4ae' },
-  { id:'lcp',         name:'LCP',              sub:'Locking Compression', holes:8,  w:220, h:18, color:'#78909c' },
-  { id:'recon',       name:'Recon Plate',      sub:'Reconstruction',      holes:8,  w:200, h:14, color:'#9e9e9e' },
-  { id:'t-plate',     name:'T-Plate',          sub:'Proximal / Distal',   holes:6,  w:130, h:60, color:'#b0bec5', shape:'T' },
-  { id:'l-plate',     name:'L-Plate',          sub:'Angled / Blade',      holes:6,  w:120, h:60, color:'#b0bec5', shape:'L' },
-  { id:'blade-plate', name:'Blade Plate',      sub:'95° / 130° Angled',   holes:6,  w:180, h:14, color:'#9e9e9e', shape:'blade' },
-];
-
-let implants = [];        // placed implants: {id, x, y, angle, scale, plateId}
-let selImplant = null;    // selected implant
-let implantDragging = false, implantDragStart = null;
-let implantIdCounter = 0;
+// ── Component: Implants + AO Classifier ─────────────────────
+// (PLATES, AO_BONES, implant state defined in State block)
 
 function initImplants() {
   const grid = document.getElementById('plate-grid');
@@ -2862,24 +2874,9 @@ function handleImplantMouseUp() { implantDragging = false; }
 
 // ============================================================
 // AO/OTA FRACTURE CLASSIFICATION
+// (AO_BONES defined in State block above — AO_TREE follows)
 // ============================================================
-const AO_BONES = [
-  { code:'11', name:'Proximal Humerus',    seg:'Humerus' },
-  { code:'12', name:'Humeral Shaft',       seg:'Humerus' },
-  { code:'13', name:'Distal Humerus',      seg:'Humerus' },
-  { code:'21', name:'Proximal Radius/Ulna',seg:'Forearm' },
-  { code:'22', name:'Radial/Ulnar Shaft',  seg:'Forearm' },
-  { code:'23', name:'Distal Radius',       seg:'Forearm' },
-  { code:'31', name:'Proximal Femur',      seg:'Femur'   },
-  { code:'32', name:'Femoral Shaft',       seg:'Femur'   },
-  { code:'33', name:'Distal Femur',        seg:'Femur'   },
-  { code:'41', name:'Proximal Tibia',      seg:'Tibia'   },
-  { code:'42', name:'Tibial Shaft',        seg:'Tibia'   },
-  { code:'43', name:'Distal Tibia',        seg:'Tibia'   },
-];
-
 // AO type/group/subgroup decision tree
-// Structure: bone → type (A/B/C) → group (1/2/3) → subgroup (1/2/3)
 const AO_TREE = {
   '11': { // Proximal Humerus
     types: [
