@@ -1507,21 +1507,36 @@ function drawExtLine(a, b, color) {
   ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.restore();
 }
 
+// Draw arc at vertex b between rays ba and bc
+// Always draws the arc corresponding to the measured angle (not always the smaller one)
 function drawAngleArc(a, b, c, color, supp) {
   const a1 = Math.atan2(a.y - b.y, a.x - b.x);
   const a2 = Math.atan2(c.y - b.y, c.x - b.x);
-  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .6;
+  // Clockwise span (a1→a2 CW)
+  let cwSpan = a1 - a2; while (cwSpan < 0) cwSpan += 2*Math.PI;
+  // Counterclockwise span
+  let ccwSpan = 2*Math.PI - cwSpan;
+  // The measured angle (from ang3) is the smaller of the two spans
+  // acw=false means CW (smaller span if cwSpan < PI)
+  const useCW = cwSpan <= Math.PI; // CW gives the acute/measured angle
+  const acw = supp ? useCW : !useCW; // flip direction for supplement
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .65;
   ctx.beginPath();
-  ctx.arc(b.x, b.y, 24/zl, a1, a2, !!supp); // supp=true → anticlockwise = supplement
+  ctx.arc(b.x, b.y, 24/zl, a1, a2, acw);
   ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
 }
 
 function drawAngleArc4(a, b, c, d, ix, color, supp) {
   const a1 = Math.atan2(a.y - ix.y, a.x - ix.x);
   const a2 = Math.atan2(c.y - ix.y, c.x - ix.x);
-  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .6;
+  let cwSpan = a1 - a2; while (cwSpan < 0) cwSpan += 2*Math.PI;
+  const useCW = cwSpan <= Math.PI;
+  const acw = supp ? useCW : !useCW;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .65;
   ctx.beginPath();
-  ctx.arc(ix.x, ix.y, 24/zl, a1, a2, !!supp);
+  ctx.arc(ix.x, ix.y, 24/zl, a1, a2, acw);
   ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
 }
 
@@ -2597,18 +2612,24 @@ function mobDrawGeometry(o) {
   const arcR = 24 / mobZl; // arc radius compensates for scale transform
   if (o.type==='angle3' && p.length===3) {
     mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
-    mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
-    mobCtx.beginPath();
-    mobCtx.arc(p[1].x,p[1].y,arcR,Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x),Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x),!!o.showSupp);
+    const a1=Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x);
+    const a2=Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x);
+    let cwSpan=a1-a2; while(cwSpan<0)cwSpan+=2*Math.PI;
+    const acw = o.showSupp ? cwSpan<=Math.PI : cwSpan>Math.PI;
+    mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.65;
+    mobCtx.beginPath(); mobCtx.arc(p[1].x,p[1].y,arcR,a1,a2,acw);
     mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='angle4' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     const ix = lineIntersect(p[0],p[1],p[2],p[3]);
     if (ix) {
-      mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
-      mobCtx.beginPath();
-      mobCtx.arc(ix.x,ix.y,arcR,Math.atan2(p[0].y-ix.y,p[0].x-ix.x),Math.atan2(p[2].y-ix.y,p[2].x-ix.x),!!o.showSupp);
+      const a1=Math.atan2(p[0].y-ix.y,p[0].x-ix.x);
+      const a2=Math.atan2(p[2].y-ix.y,p[2].x-ix.x);
+      let cwSpan=a1-a2; while(cwSpan<0)cwSpan+=2*Math.PI;
+      const acw = o.showSupp ? cwSpan<=Math.PI : cwSpan>Math.PI;
+      mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.65;
+      mobCtx.beginPath(); mobCtx.arc(ix.x,ix.y,arcR,a1,a2,acw);
       mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     }
     p.forEach(q=>mobDot(q.x,q.y,c));
