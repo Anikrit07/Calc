@@ -1457,7 +1457,7 @@ function findObj(x, y) { return objs.find(o => isNear(o, x, y)); }
 // ── Primitives ───────────────────────────────────────────────
 function drawSeg(a, b, color, lw) {
   ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-  ctx.strokeStyle = color; ctx.lineWidth = lw || 2; ctx.stroke();
+  ctx.strokeStyle = color; ctx.lineWidth = (lw || 2) / zl; ctx.stroke();
 }
 
 function drawDot(x, y, color) {
@@ -1551,7 +1551,11 @@ function rrectStroke(x, y, w, h, r) {
 
 // ── Label rendering ──────────────────────────────────────────
 function getLblPos(o, defaultPt) {
-  return o.labelPos ? { x: o.labelPos.x, y: o.labelPos.y } : { x: defaultPt.x, y: defaultPt.y };
+  if (o.labelPos) {
+    // labelPos stored in image-space — convert to screen
+    return { x: panX + o.labelPos.x * zl, y: panY + o.labelPos.y * zl };
+  }
+  return { x: defaultPt.x, y: defaultPt.y };
 }
 
 function drawLabel(defaultPt, name, value, color, o) {
@@ -1600,46 +1604,73 @@ function drawAnnotLabel(p, text, color) {
 }
 
 // ── Object drawing ───────────────────────────────────────────
-function drawObj(o) {
+// Geometry only (lines, dots, arcs) — called inside transform
+function drawObjGeometry(o) {
   const p = o.points, c = o.color;
-
   if (o.type === 'angle3' && p.length === 3) {
-    drawSeg(p[0], p[1], c); drawSeg(p[1], p[2], c);
-    drawAngleArc(p[0], p[1], p[2], c);
-    p.forEach(q => drawDot(q.x, q.y, c));
-    drawLabel(mp(p[0], p[2]), o.label, o.value, c, o);
+    drawSeg(p[0],p[1],c); drawSeg(p[1],p[2],c);
+    drawAngleArc(p[0],p[1],p[2],c);
+    p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'angle4' && p.length === 4) {
-    drawSeg(p[0], p[1], c); drawSeg(p[2], p[3], c);
-    const ix = lineIntersect(p[0], p[1], p[2], p[3]);
-    if (ix) drawAngleArc4(p[0], p[1], p[2], p[3], ix, c);
-    p.forEach(q => drawDot(q.x, q.y, c));
-    drawLabel(midAll(p), o.label, o.value, c, o);
+    drawSeg(p[0],p[1],c); drawSeg(p[2],p[3],c);
+    const ix = lineIntersect(p[0],p[1],p[2],p[3]);
+    if (ix) drawAngleArc4(p[0],p[1],p[2],p[3],ix,c);
+    p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'cobb' && p.length === 4) {
-    drawSeg(p[0], p[1], c); drawSeg(p[2], p[3], c);
-    drawExtLine(p[0], p[1], c); drawExtLine(p[2], p[3], c);
-    p.forEach(q => drawDot(q.x, q.y, c));
-    drawLabel(midAll(p), o.label, o.value, c, o);
+    drawSeg(p[0],p[1],c); drawSeg(p[2],p[3],c);
+    drawExtLine(p[0],p[1],c); drawExtLine(p[2],p[3],c);
+    p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'line' && p.length === 2) {
-    drawTickLine(p[0], p[1], c);
-    p.forEach(q => drawDot(q.x, q.y, c));
-    drawLabel(mp(p[0], p[1]), o.label, o.value, c, o);
+    drawTickLine(p[0],p[1],c);
+    p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'annotate') {
-    ctx.beginPath(); ctx.arc(p[0].x, p[0].y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = c; ctx.fill();
-    drawAnnotLabel(p[0], o.text || '', c);
+    ctx.beginPath(); ctx.arc(p[0].x,p[0].y,5,0,Math.PI*2);
+    ctx.fillStyle=c; ctx.fill();
   }
-
-  // Selection ring on points
+  // Selection ring
   if (o === selObj) {
     o.points.forEach(q => {
-      ctx.beginPath(); ctx.arc(q.x, q.y, 9, 0, Math.PI * 2);
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(q.x,q.y,9,0,Math.PI*2);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2/zl; ctx.stroke();
     });
   }
+}
+
+// Label only — called OUTSIDE transform so text stays constant size
+function drawObjLabel(o) {
+  const p = o.points, c = o.color;
+  // Convert image-space point to screen for label position
+  const sc = pt => ({ x: panX + pt.x * zl, y: panY + pt.y * zl });
+  if (o.type === 'angle3' && p.length === 3) {
+    const mid = mp(p[0],p[2]); drawLabel(sc(mid), o.label, o.value, c, o);
+  }
+  else if (o.type === 'angle4' && p.length === 4) {
+    const mid = midAll(p); drawLabel(sc(mid), o.label, o.value, c, o);
+  }
+  else if (o.type === 'cobb' && p.length === 4) {
+    const mid = midAll(p); drawLabel(sc(mid), o.label, o.value, c, o);
+  }
+  else if (o.type === 'line' && p.length === 2) {
+    const mid = mp(p[0],p[1]); drawLabel(sc(mid), o.label, o.value, c, o);
+  }
+  else if (o.type === 'annotate') {
+    drawAnnotLabel(sc(p[0]), o.text||'', c);
+  }
+}
+
+// Keep drawObj for backwards compat (no-image mode)
+function drawObj(o) {
+  drawObjGeometry(o);
+  // Label drawn in same space when no image transform
+  const p = o.points, c = o.color;
+  if (o.type==='angle3'&&p.length===3) drawLabel(mp(p[0],p[2]),o.label,o.value,c,o);
+  else if ((o.type==='angle4'||o.type==='cobb')&&p.length===4) drawLabel(midAll(p),o.label,o.value,c,o);
+  else if (o.type==='line'&&p.length===2) drawLabel(mp(p[0],p[1]),o.label,o.value,c,o);
+  else if (o.type==='annotate') drawAnnotLabel(p[0],o.text||'',c);
 }
 
 // ── Ghost line while placing points ─────────────────────────
@@ -1719,17 +1750,21 @@ function redraw() {
 
   if (bgImage) {
     ctx.drawImage(bgImage, panX, panY, bgImage.width * zl, bgImage.height * zl);
-    // Apply transform so all objects draw in image-space
+
+    // Pass 1: geometry (lines, dots) — drawn in image-space via transform
     ctx.save();
     ctx.translate(panX, panY);
     ctx.scale(zl, zl);
-    objs.forEach(o => drawObj(o));
+    objs.forEach(o => drawObjGeometry(o));
     if (wip.length > 0) {
       wip.forEach(p => drawDot(p.x, p.y, col));
       for (let i = 1; i < wip.length; i++) drawSeg(wip[i-1], wip[i], col);
       drawGhost();
     }
     ctx.restore();
+
+    // Pass 2: labels — drawn in screen space so text is always readable
+    objs.forEach(o => drawObjLabel(o));
   } else {
     ctx.fillStyle = 'rgba(90,106,130,.3)';
     ctx.font = '14px "IBM Plex Sans",sans-serif';
@@ -1741,10 +1776,8 @@ function redraw() {
     ctx.textAlign = 'left';
   }
 
-  // Lens overlay (in screen space)
+  // Lens overlay (screen space)
   if (dragPt && showLens) drawLens(mpos.x, mpos.y);
-
-  // Implant overlays (drawn last so they appear on top)
   if (typeof drawImplants === 'function') drawImplants();
 }
 
@@ -1923,8 +1956,16 @@ function initDesktopEvents() {
     if (dragLbl && dragLblStart) {
       const dx = sx - dragLblStart.x, dy = sy - dragLblStart.y;
       dragLblStart = { x: sx, y: sy };
-      if (!dragLbl.labelPos) { const b = dragLbl._lblBox; dragLbl.labelPos = { x: b ? b.x + b.w/2 : sx, y: b ? b.y + b.h/2 : sy }; }
-      dragLbl.labelPos.x += dx; dragLbl.labelPos.y += dy;
+      // Convert drag delta from screen to image-space
+      const dix = dx / zl, diy = dy / zl;
+      if (!dragLbl.labelPos) {
+        // Initialise labelPos in image-space from current _lblBox screen position
+        const b = dragLbl._lblBox;
+        const ssx = b ? b.x + b.w/2 : sx, ssy = b ? b.y + b.h/2 : sy;
+        dragLbl.labelPos = { x: (ssx - panX) / zl, y: (ssy - panY) / zl };
+      }
+      dragLbl.labelPos.x += dix;
+      dragLbl.labelPos.y += diy;
       redraw(); return;
     }
     if (dragPt) {
@@ -2480,11 +2521,11 @@ function mobRedraw() {
 
   if (bgImage) {
     mobCtx.drawImage(bgImage, mobOx, mobOy, bgImage.width * mobZl, bgImage.height * mobZl);
-    // Apply transform so objects draw in image-space
+    // Pass 1: geometry in image-space
     mobCtx.save();
     mobCtx.translate(mobOx, mobOy);
     mobCtx.scale(mobZl, mobZl);
-    objs.forEach(o => mobDrawObj(o));
+    objs.forEach(o => mobDrawGeometry(o));
     if (mobWip.length > 0) {
       mobWip.forEach(p => mobDot(p.x, p.y, col));
       for (let i = 1; i < mobWip.length; i++) mobSeg(mobWip[i-1], mobWip[i], col);
@@ -2497,6 +2538,8 @@ function mobRedraw() {
       }
     }
     mobCtx.restore();
+    // Pass 2: labels in screen space
+    objs.forEach(o => mobDrawLabel(o));
   } else {
     mobCtx.fillStyle = 'rgba(90,106,130,.25)';
     mobCtx.font = '13px IBM Plex Sans, sans-serif';
@@ -2512,33 +2555,51 @@ function mobRedraw() {
   }
 }
 
-function mobDrawObj(o) {
+// Geometry only — called inside canvas transform
+function mobDrawGeometry(o) {
   const p = o.points, c = o.color;
   if (o.type==='angle3' && p.length===3) {
-    mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
-    p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(mp(p[0],p[2]), o.label, o.value, c, o);
+    mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c); p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='angle4' && p.length===4) {
-    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
-    p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(midAll(p), o.label, o.value, c, o);
+    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c); p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='cobb' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     mobExtLine(p[0],p[1],c); mobExtLine(p[2],p[3],c);
     p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(midAll(p), o.label, o.value, c, o);
   } else if (o.type==='line' && p.length===2) {
     mobSeg(p[0],p[1],c); p.forEach(q=>mobDot(q.x,q.y,c));
-    mobLbl(mp(p[0],p[1]), o.label, o.value, c, o);
   } else if (o.type==='annotate') {
     mobCtx.beginPath(); mobCtx.arc(p[0].x,p[0].y,6,0,Math.PI*2);
     mobCtx.fillStyle=c; mobCtx.fill();
-    mobCtx.fillStyle=c; mobCtx.font='600 12px IBM Plex Sans,sans-serif';
-    mobCtx.fillText(o.text||'', p[0].x+10, p[0].y+5);
   }
 }
 
-function mobSeg(a,b,c) { mobCtx.beginPath(); mobCtx.moveTo(a.x,a.y); mobCtx.lineTo(b.x,b.y); mobCtx.strokeStyle=c; mobCtx.lineWidth=2.5; mobCtx.stroke(); }
+// Labels in screen space — called OUTSIDE transform
+function mobDrawLabel(o) {
+  const p = o.points, c = o.color;
+  const sc = pt => ({ x: mobOx + pt.x * mobZl, y: mobOy + pt.y * mobZl });
+  // Use labelPos in image-space if set
+  const getLblSc = defaultImgPt => {
+    if (o.labelPos) return { x: mobOx + o.labelPos.x * mobZl, y: mobOy + o.labelPos.y * mobZl };
+    return sc(defaultImgPt);
+  };
+  if (o.type==='angle3' && p.length===3) {
+    mobLbl(getLblSc(mp(p[0],p[2])), o.label, o.value, c, o);
+  } else if ((o.type==='angle4'||o.type==='cobb') && p.length===4) {
+    mobLbl(getLblSc(midAll(p)), o.label, o.value, c, o);
+  } else if (o.type==='line' && p.length===2) {
+    mobLbl(getLblSc(mp(p[0],p[1])), o.label, o.value, c, o);
+  } else if (o.type==='annotate') {
+    const sp = sc(p[0]);
+    mobCtx.fillStyle=c; mobCtx.font='600 12px IBM Plex Sans,sans-serif';
+    mobCtx.fillText(o.text||'', sp.x+10, sp.y+5);
+  }
+}
+
+// Keep mobDrawObj for any legacy calls
+function mobDrawObj(o) { mobDrawGeometry(o); mobDrawLabel(o); }
+
+function mobSeg(a,b,c) { mobCtx.beginPath(); mobCtx.moveTo(a.x,a.y); mobCtx.lineTo(b.x,b.y); mobCtx.strokeStyle=c; mobCtx.lineWidth=2.5/mobZl; mobCtx.stroke(); }
 function mobDot(x, y, c) {
   const r = ptRadius;
   mobCtx.save();
@@ -2573,9 +2634,8 @@ function mobExtLine(a,b,c) {
   mobCtx.beginPath(); mobCtx.moveTo(a.x-ux*ext,a.y-uy*ext); mobCtx.lineTo(b.x+ux*ext,b.y+uy*ext); mobCtx.stroke();
   mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
 }
-function mobLbl(defaultPos, name, value, c, o) {
-  // respect custom label position
-  const pos = (o && o.labelPos) ? o.labelPos : defaultPos;
+function mobLbl(pos, name, value, c, o) {
+  // pos is already in screen space (caller converts labelPos from image-space)
   mobCtx.save();
   mobCtx.font='bold 13px IBM Plex Mono,monospace'; const vw=mobCtx.measureText(value).width;
   mobCtx.font='500 10px IBM Plex Sans,sans-serif'; const nw=mobCtx.measureText(name).width;
@@ -2587,7 +2647,6 @@ function mobLbl(defaultPos, name, value, c, o) {
   mobCtx.fillStyle='rgba(138,154,184,.8)'; mobCtx.font='10px IBM Plex Sans,sans-serif'; mobCtx.fillText(name,bx+7,by+13);
   mobCtx.fillStyle=c; mobCtx.font='bold 13px IBM Plex Mono,monospace'; mobCtx.fillText(value,bx+7,by+28);
   mobCtx.restore();
-  // Store bounding box for hit-test
   if (o) o._lblBox = { x: bx, y: by, w, h };
 }
 
@@ -2681,12 +2740,14 @@ function initMobileEvents() {
       if (mobDragLbl && mobDragLblStart) {
         const dx = ts.x - mobDragLblStart.x, dy = ts.y - mobDragLblStart.y;
         mobDragLblStart = { x: ts.x, y: ts.y };
+        const dix = dx / mobZl, diy = dy / mobZl;
         if (!mobDragLbl.labelPos) {
           const b = mobDragLbl._lblBox;
-          mobDragLbl.labelPos = { x: b ? b.x + b.w/2 : ts.x, y: b ? b.y + b.h/2 : ts.y };
+          const ssx = b ? b.x + b.w/2 : ts.x, ssy = b ? b.y + b.h/2 : ts.y;
+          mobDragLbl.labelPos = { x: (ssx - mobOx) / mobZl, y: (ssy - mobOy) / mobZl };
         }
-        mobDragLbl.labelPos.x += dx;
-        mobDragLbl.labelPos.y += dy;
+        mobDragLbl.labelPos.x += dix;
+        mobDragLbl.labelPos.y += diy;
         mobRedraw(); return;
       }
 
