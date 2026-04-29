@@ -1719,6 +1719,17 @@ function redraw() {
 
   if (bgImage) {
     ctx.drawImage(bgImage, panX, panY, bgImage.width * zl, bgImage.height * zl);
+    // Apply transform so all objects draw in image-space
+    ctx.save();
+    ctx.translate(panX, panY);
+    ctx.scale(zl, zl);
+    objs.forEach(o => drawObj(o));
+    if (wip.length > 0) {
+      wip.forEach(p => drawDot(p.x, p.y, col));
+      for (let i = 1; i < wip.length; i++) drawSeg(wip[i-1], wip[i], col);
+      drawGhost();
+    }
+    ctx.restore();
   } else {
     ctx.fillStyle = 'rgba(90,106,130,.3)';
     ctx.font = '14px "IBM Plex Sans",sans-serif';
@@ -1730,16 +1741,7 @@ function redraw() {
     ctx.textAlign = 'left';
   }
 
-  objs.forEach(o => drawObj(o));
-
-  // WIP points
-  if (wip.length > 0) {
-    wip.forEach(p => drawDot(p.x, p.y, col));
-    for (let i = 1; i < wip.length; i++) drawSeg(wip[i-1], wip[i], col);
-    drawGhost();
-  }
-
-  // Lens overlay
+  // Lens overlay (in screen space)
   if (dragPt && showLens) drawLens(mpos.x, mpos.y);
 
   // Implant overlays (drawn last so they appear on top)
@@ -1782,6 +1784,22 @@ function usePreset(key, el) {
 }
 
 // ── Canvas geometry ──────────────────────────────────────────
+// Points are stored in IMAGE-SPACE (pixels on the original image).
+// Convert to screen for drawing, and back to image-space on click.
+
+function toScreen(p) {
+  return { x: panX + p.x * zl, y: panY + p.y * zl };
+}
+function toImage(sx, sy) {
+  return { x: (sx - panX) / zl, y: (sy - panY) / zl };
+}
+// For mobile
+function mobToScreen(p) {
+  return { x: mobOx + p.x * mobZl, y: mobOy + p.y * mobZl };
+}
+function mobToImage(sx, sy) {
+  return { x: (sx - mobOx) / mobZl, y: (sy - mobOy) / mobZl };
+}
 function resizeCvs() {
   const a = document.querySelector('.canvas-wrap');
   if (!a) return;
@@ -1811,21 +1829,18 @@ function doZoom(f) {
   panX = cx - (cx - panX) * f;
   panY = cy - (cy - panY) * f;
   zl *= f;
-  // Points move with the image - scale them relative to canvas center
-  objs.forEach(o => { o.points = o.points.map(p => ({ x: cx + (p.x - cx) * f, y: cy + (p.y - cy) * f })); });
+  // Points are in image-space — no mutation needed
   updateZlbl(); updateDpad(); redraw();
 }
 
-// Pan the viewport — moves image AND points together (they stay on the image)
+// Pan the viewport — image and points move together (points are image-relative)
 function panBy(dx, dy) {
   panX += dx; panY += dy;
-  objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
   redraw();
 }
 
 function mobPanBy(dx, dy) {
   mobOx += dx; mobOy += dy;
-  objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
   mobRedraw();
 }
 
@@ -1845,6 +1860,16 @@ function updateMobDpad() {
   if (dp) dp.style.display = zoomed ? 'grid' : 'none';
 }
 function gp(e) {
+  const r = cvs.getBoundingClientRect();
+  const sx = (e.clientX - r.left) * (W / r.width);
+  const sy = (e.clientY - r.top)  * (H / r.height);
+  // Return image-space coords when image is loaded, screen otherwise
+  if (bgImage) return toImage(sx, sy);
+  return { x: sx, y: sy };
+}
+
+// Always get raw screen coords (for hit testing labels, lens etc)
+function gpScreen(e) {
   const r = cvs.getBoundingClientRect();
   return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
 }
@@ -1885,25 +1910,26 @@ function initDesktopEvents() {
   });
 
   cvs.addEventListener('mousemove', e => {
-    const { x, y } = gp(e); mpos = { x, y };
+    const { x: sx, y: sy } = gpScreen(e);
+    const { x, y } = gp(e); // image coords
+    mpos = { x, y };
 
-    if (implantDragging) { handleImplantMouseMove(x, y); return; }
+    if (implantDragging) { handleImplantMouseMove(sx, sy); return; }
 
     if (panning && panStart) {
-      const dx = x - panStart.x, dy = y - panStart.y;
-      panX += dx; panY += dy; panStart = { x, y };
-      objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
+      panX += sx - panStart.x; panY += sy - panStart.y; panStart = { x: sx, y: sy };
       redraw(); return;
     }
     if (dragLbl && dragLblStart) {
-      const dx = x - dragLblStart.x, dy = y - dragLblStart.y; dragLblStart = { x, y };
-      if (!dragLbl.labelPos) { const b = dragLbl._lblBox; dragLbl.labelPos = { x: b ? b.x + b.w/2 : x, y: b ? b.y + b.h/2 : y }; }
+      const dx = sx - dragLblStart.x, dy = sy - dragLblStart.y;
+      dragLblStart = { x: sx, y: sy };
+      if (!dragLbl.labelPos) { const b = dragLbl._lblBox; dragLbl.labelPos = { x: b ? b.x + b.w/2 : sx, y: b ? b.y + b.h/2 : sy }; }
       dragLbl.labelPos.x += dx; dragLbl.labelPos.y += dy;
       redraw(); return;
     }
     if (dragPt) {
-      dragPt.obj.points[dragPt.idx] = { x, y };
-      recalcObj(dragPt.obj); redraw(); drawLens(x, y); return;
+      dragPt.obj.points[dragPt.idx] = { x, y }; // image coords
+      recalcObj(dragPt.obj); redraw(); drawLens(sx, sy); return;
     }
     if (dragging && dobj) {
       const dx = x - dstart.x, dy = y - dstart.y; dstart = { x, y };
@@ -1918,17 +1944,20 @@ function initDesktopEvents() {
       for (const o of objs) {
         if (o._lblBox) {
           const b = o._lblBox;
-          if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+          if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
             cvs.style.cursor = 'move'; overLbl = true; break;
           }
         }
       }
       if (!overLbl) {
-        let nearest = null, nearDist = 18;
+        const hitThresh = bgImage ? 18/zl : 18;
+        let nearest = null, nearDist = hitThresh;
         for (const o of objs) for (const p of o.points) { const d = Math.hypot(p.x-x,p.y-y); if (d < nearDist) { nearest = p; nearDist = d; } }
         if (nearest) {
           cvs.style.cursor = 'crosshair'; redraw();
-          ctx.save(); ctx.beginPath(); ctx.arc(nearest.x,nearest.y,10,0,Math.PI*2);
+          // Draw highlight in screen space
+          const ns = toScreen(nearest);
+          ctx.save(); ctx.beginPath(); ctx.arc(ns.x, ns.y, 10, 0, Math.PI*2);
           ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
         } else {
           const handC = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 3.5C9 2.67 9.67 2 10.5 2S12 2.67 12 3.5V11h.5C12.5 9.07 13.57 8 14.5 8s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 12.88V3.5z'/%3E%3C/svg%3E") 4 0, pointer`;
@@ -1939,28 +1968,37 @@ function initDesktopEvents() {
   });
 
   cvs.addEventListener('mousedown', e => {
-    const { x, y } = gp(e);
+    const { x: sx, y: sy } = gpScreen(e); // screen coords
+    const { x, y } = gp(e);               // image coords (or screen if no image)
     const grabbingCursor = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='white' stroke='%23333' stroke-width='1' d='M9 11.5C9 10.67 9.67 10 10.5 10S12 10.67 12 11.5v.5h.5c0-1.93 1.07-3 2-3s2 .67 2 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5v.5c.5-.33 1-.5 1.5-.5.83 0 1.5.67 1.5 1.5V17c0 2.76-2.24 5-5 5h-3c-1.8 0-3.37-.95-4.24-2.37L6 14.5l-.73-.73c-.59-.59-.59-1.54 0-2.12.59-.59 1.54-.59 2.12 0L9 13.88V11.5z'/%3E%3C/svg%3E") 4 0, grabbing`;
     if (tool !== 'select') return;
 
-    // 0. Implant drag
-    if (implants.length && handleImplantMouseDown(x, y)) return;
+    // 0. Implant drag (screen coords)
+    if (implants.length && handleImplantMouseDown(sx, sy)) return;
 
-    // 1. Label box
+    // 1. Label box (screen coords — _lblBox is in screen space after canvas transform)
     for (const o of objs) {
-      if (o._lblBox) { const b = o._lblBox; if (x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h) { saveHistory(); dragLbl=o; dragLblStart={x,y}; selObj=o; cvs.style.cursor='move'; return; } }
-    }
-    // 2. Point
-    for (const o of objs) {
-      for (let idx=0; idx<o.points.length; idx++) {
-        if (Math.hypot(o.points[idx].x-x, o.points[idx].y-y) < 14) { saveHistory(); dragPt={obj:o,idx}; showLens=true; selObj=o; cvs.style.cursor='none'; return; }
+      if (o._lblBox) {
+        const b = o._lblBox;
+        if (sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h) {
+          saveHistory(); dragLbl=o; dragLblStart={x:sx,y:sy}; selObj=o; cvs.style.cursor='move'; return;
+        }
       }
     }
-    // 3. Object
+    // 2. Point (image coords, hit threshold scaled by zoom)
+    const hitThresh = bgImage ? 14/zl : 14;
+    for (const o of objs) {
+      for (let idx=0; idx<o.points.length; idx++) {
+        if (Math.hypot(o.points[idx].x-x, o.points[idx].y-y) < hitThresh) {
+          saveHistory(); dragPt={obj:o,idx}; showLens=true; selObj=o; cvs.style.cursor='none'; return;
+        }
+      }
+    }
+    // 3. Object (image coords)
     const hit = findObj(x, y);
     if (hit) { saveHistory(); dragging=true; dobj=hit; dstart={x,y}; selObj=hit; return; }
-    // 4. Pan (only when image is unlocked)
-    if (!imageLocked) { panning=true; panStart={x,y}; cvs.style.cursor=grabbingCursor; }
+    // 4. Pan (screen coords, only when image is unlocked)
+    if (!imageLocked) { panning=true; panStart={x:sx,y:sy}; cvs.style.cursor=grabbingCursor; }
   });
 
   cvs.addEventListener('mouseup', () => {
@@ -1977,9 +2015,9 @@ function initDesktopEvents() {
   // Double-click on label → edit
   cvs.addEventListener('dblclick', e => {
     if (tool !== 'select') return;
-    const { x, y } = gp(e);
+    const { x: sx, y: sy } = gpScreen(e);
     for (const o of objs) {
-      if (o._lblBox) { const b = o._lblBox; if (x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h) { openLblModal(o); return; } }
+      if (o._lblBox) { const b = o._lblBox; if (sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h) { openLblModal(o); return; } }
     }
   });
 }
@@ -2442,6 +2480,23 @@ function mobRedraw() {
 
   if (bgImage) {
     mobCtx.drawImage(bgImage, mobOx, mobOy, bgImage.width * mobZl, bgImage.height * mobZl);
+    // Apply transform so objects draw in image-space
+    mobCtx.save();
+    mobCtx.translate(mobOx, mobOy);
+    mobCtx.scale(mobZl, mobZl);
+    objs.forEach(o => mobDrawObj(o));
+    if (mobWip.length > 0) {
+      mobWip.forEach(p => mobDot(p.x, p.y, col));
+      for (let i = 1; i < mobWip.length; i++) mobSeg(mobWip[i-1], mobWip[i], col);
+      if (mobMpos.x) {
+        const l = mobWip[mobWip.length-1];
+        mobCtx.save(); mobCtx.strokeStyle=col; mobCtx.lineWidth=1.5/mobZl;
+        mobCtx.setLineDash([6/mobZl,4/mobZl]); mobCtx.globalAlpha=.4;
+        mobCtx.beginPath(); mobCtx.moveTo(l.x,l.y); mobCtx.lineTo(mobMpos.x,mobMpos.y); mobCtx.stroke();
+        mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
+      }
+    }
+    mobCtx.restore();
   } else {
     mobCtx.fillStyle = 'rgba(90,106,130,.25)';
     mobCtx.font = '13px IBM Plex Sans, sans-serif';
@@ -2450,24 +2505,11 @@ function mobRedraw() {
     mobCtx.textAlign = 'left';
   }
 
-  // Draw all measurement objects
-  objs.forEach(o => mobDrawObj(o));
-
-  // WIP points + ghost
-  if (mobWip.length > 0) {
-    mobWip.forEach(p => mobDot(p.x, p.y, col));
-    for (let i = 1; i < mobWip.length; i++) mobSeg(mobWip[i-1], mobWip[i], col);
-    if (mobMpos.x) {
-      const l = mobWip[mobWip.length-1];
-      mobCtx.save(); mobCtx.strokeStyle=col; mobCtx.lineWidth=1.5;
-      mobCtx.setLineDash([6,4]); mobCtx.globalAlpha=.4;
-      mobCtx.beginPath(); mobCtx.moveTo(l.x,l.y); mobCtx.lineTo(mobMpos.x,mobMpos.y); mobCtx.stroke();
-      mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
-    }
+  // Lens in screen space
+  if (mobShowLens && mobDragPt) {
+    const sp = mobToScreen(mobDragPt.obj.points[mobDragPt.idx]);
+    mobDrawLens(sp.x, sp.y);
   }
-
-  // Magnifier lens when dragging a point
-  if (mobShowLens && mobDragPt) mobDrawLens(mobMpos.x, mobMpos.y);
 }
 
 function mobDrawObj(o) {
@@ -2560,7 +2602,9 @@ function initMobileEvents() {
     mobPanning = false; mobPanStart = null; mobDragPt = null; mobDragLbl = null;
 
     if (e.touches.length === 1) {
-      const t = mobGpt(e.touches[0]); mobMpos = t;
+      const t  = mobGpt(e.touches[0]);       // image coords
+      const ts = mobGptScreen(e.touches[0]); // screen coords
+      mobMpos = t;
 
       if (tool === 'select') {
         // ── Double-tap detection ──
@@ -2617,7 +2661,7 @@ function initMobileEvents() {
 
         // 3. Pan (only when image is unlocked)
         dismissPtPicker();
-        if (!imageLocked) { mobPanning = true; mobPanStart = t; }
+        if (!imageLocked) { mobPanning = true; mobPanStart = ts; } // screen coords for pan
       }
     }
     if (e.touches.length === 2) {
@@ -2629,32 +2673,32 @@ function initMobileEvents() {
   mobCvs.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 1) {
-      const t = mobGpt(e.touches[0]); mobMpos = t;
+      const t  = mobGpt(e.touches[0]);       // image coords
+      const ts = mobGptScreen(e.touches[0]); // screen coords
+      mobMpos = t;
 
-      // Label drag
+      // Label drag (screen coords)
       if (mobDragLbl && mobDragLblStart) {
-        const dx = t.x - mobDragLblStart.x, dy = t.y - mobDragLblStart.y;
-        mobDragLblStart = { x: t.x, y: t.y };
+        const dx = ts.x - mobDragLblStart.x, dy = ts.y - mobDragLblStart.y;
+        mobDragLblStart = { x: ts.x, y: ts.y };
         if (!mobDragLbl.labelPos) {
           const b = mobDragLbl._lblBox;
-          mobDragLbl.labelPos = { x: b ? b.x + b.w/2 : t.x, y: b ? b.y + b.h/2 : t.y };
+          mobDragLbl.labelPos = { x: b ? b.x + b.w/2 : ts.x, y: b ? b.y + b.h/2 : ts.y };
         }
         mobDragLbl.labelPos.x += dx;
         mobDragLbl.labelPos.y += dy;
         mobRedraw(); return;
       }
 
-      // Point drag
+      // Point drag (image coords)
       if (mobDragPt) {
         mobDragPt.obj.points[mobDragPt.idx] = t;
         recalcObj(mobDragPt.obj); mobRedraw(); return;
       }
 
-      // Pan
+      // Pan (screen coords)
       if (mobPanning && mobPanStart) {
-        const dx = t.x - mobPanStart.x, dy = t.y - mobPanStart.y;
-        mobOx += dx; mobOy += dy; mobPanStart = t;
-        objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
+        mobOx += ts.x - mobPanStart.x; mobOy += ts.y - mobPanStart.y; mobPanStart = ts;
         mobRedraw(); return;
       }
 
@@ -2673,7 +2717,7 @@ function initMobileEvents() {
         mobOx = cx - (cx - mobOx) * f;
         mobOy = cy - (cy - mobOy) * f;
         mobZl *= f;
-        objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
+        // Points are in image-space — no mutation needed
         updateMobDpad(); mobRedraw();      }
       mobTouchDist = nd;
     }
@@ -2773,6 +2817,16 @@ function mobDrawLens(cx, cy) {
 }
 
 function mobGpt(touch) {
+  const x = touch.clientX;
+  const y = touch.clientY - 48;
+  const sx = x * (mobW / window.innerWidth);
+  const sy = y * (mobH / (window.innerHeight - 48 - 96));
+  // Return image coords when image loaded
+  if (bgImage) return mobToImage(sx, sy);
+  return { x: sx, y: sy };
+}
+
+function mobGptScreen(touch) {
   const x = touch.clientX;
   const y = touch.clientY - 48;
   return {
