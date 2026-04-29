@@ -1181,6 +1181,7 @@ let ptStyle  = 'filled'; // 'filled' | 'ring' | 'cross' | 'diamond'
 
 // ── View state ───────────────────────────────────────────────
 let zl = 1, panX = 0, panY = 0;
+let fitZl = 1; // baseline zoom at fit-to-screen
 let W  = 0, H = 0;
 
 // ── History ──────────────────────────────────────────────────
@@ -1794,6 +1795,7 @@ function fitBg() {
   if (!a) return;
   const cw = a.clientWidth, ch = a.clientHeight;
   zl = Math.min(cw / bgImage.width, ch / bgImage.height) * 0.92;
+  fitZl = zl; // store fit baseline
   panX = (cw - bgImage.width  * zl) / 2;
   panY = (ch - bgImage.height * zl) / 2;
   updateZlbl();
@@ -1827,13 +1829,14 @@ function mobPanBy(dx, dy) {
 
 // Show/hide D-pads based on zoom level
 function updateDpad() {
-  const zoomed = zl > 1.08;
+  const zoomed = zl > fitZl * 1.15;
   const dp = document.getElementById('dpad');
   if (dp) dp.style.display = zoomed ? 'grid' : 'none';
 }
 
 function updateMobDpad() {
-  const zoomed = mobZl > 1.08;
+  // Show dpad when zoomed more than 15% above the fit-to-screen level
+  const zoomed = mobZl > mobFitZl * 1.15;
   const dp = document.getElementById('mob-dpad');
   if (dp) dp.style.display = zoomed ? 'grid' : 'none';
 }
@@ -2359,6 +2362,7 @@ function exportPDF() {
 
 let mobCvs, mobCtx, mobW = 0, mobH = 0;
 let mobZl = 1, mobOx = 0, mobOy = 0;
+let mobFitZl = 1; // zoom level at fit-to-screen, used as baseline for dpad
 let mobPanning = false, mobPanStart = null, mobTouchDist = 0;
 let mobDragPt = null, mobDragLbl = null, mobDragLblStart = null;
 let mobShowLens = false;
@@ -2405,6 +2409,7 @@ function mobResize() {
 function mobFitBg() {
   if (!bgImage || !mobW) return;
   mobZl = Math.min(mobW / bgImage.width, mobH / bgImage.height) * 0.94;
+  mobFitZl = mobZl; // remember the fit zoom as baseline
   mobOx = (mobW - bgImage.width  * mobZl) / 2;
   mobOy = (mobH - bgImage.height * mobZl) / 2;
 }
@@ -2846,7 +2851,7 @@ function mobZoomBy(f) {
   objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
   updateMobDpad(); mobRedraw();
 }
-function mobZoomReset() { mobFitBg(); mobZl = Math.min(mobW/bgImage?.width||1, mobH/bgImage?.height||1)*0.94||1; updateMobDpad(); mobRedraw(); }
+function mobZoomReset() { if(bgImage){mobFitBg();} updateMobDpad(); mobRedraw(); }
 
 // ── Mobile implant controls ───────────────────────────────────
 function mobInitPlateGrid() {
