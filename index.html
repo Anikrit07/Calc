@@ -1066,6 +1066,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         <button class="tbtn on" id="lbl-bold"   onclick="this.classList.toggle('on')">B</button>
         <button class="tbtn"    id="lbl-italic" onclick="this.classList.toggle('on')"><i>I</i></button>
         <button class="tbtn on" id="lbl-bg"     onclick="this.classList.toggle('on')">BG</button>
+        <button class="tbtn"    id="lbl-supp"   onclick="this.classList.toggle('on')" title="Show supplementary angle (180−∠)" style="display:none">180−</button>
       </div>
     </div>
     <div class="lrow"><label>Color</label>
@@ -1506,17 +1507,21 @@ function drawExtLine(a, b, color) {
   ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.restore();
 }
 
-function drawAngleArc(a, b, c, color) {
-  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = .6;
+function drawAngleArc(a, b, c, color, supp) {
+  const a1 = Math.atan2(a.y - b.y, a.x - b.x);
+  const a2 = Math.atan2(c.y - b.y, c.x - b.x);
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .6;
   ctx.beginPath();
-  ctx.arc(b.x, b.y, 24, Math.atan2(a.y - b.y, a.x - b.x), Math.atan2(c.y - b.y, c.x - b.x));
+  ctx.arc(b.x, b.y, 24/zl, a1, a2, !!supp); // supp=true → anticlockwise = supplement
   ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
 }
 
-function drawAngleArc4(a, b, c, d, ix, color) {
-  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = .6;
+function drawAngleArc4(a, b, c, d, ix, color, supp) {
+  const a1 = Math.atan2(a.y - ix.y, a.x - ix.x);
+  const a2 = Math.atan2(c.y - ix.y, c.x - ix.x);
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .6;
   ctx.beginPath();
-  ctx.arc(ix.x, ix.y, 24, Math.atan2(a.y - ix.y, a.x - ix.x), Math.atan2(c.y - ix.y, c.x - ix.x));
+  ctx.arc(ix.x, ix.y, 24/zl, a1, a2, !!supp);
   ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
 }
 
@@ -1609,13 +1614,13 @@ function drawObjGeometry(o) {
   const p = o.points, c = o.color;
   if (o.type === 'angle3' && p.length === 3) {
     drawSeg(p[0],p[1],c); drawSeg(p[1],p[2],c);
-    drawAngleArc(p[0],p[1],p[2],c);
+    drawAngleArc(p[0],p[1],p[2],c,o.showSupp);
     p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'angle4' && p.length === 4) {
     drawSeg(p[0],p[1],c); drawSeg(p[2],p[3],c);
     const ix = lineIntersect(p[0],p[1],p[2],p[3]);
-    if (ix) drawAngleArc4(p[0],p[1],p[2],p[3],ix,c);
+    if (ix) drawAngleArc4(p[0],p[1],p[2],p[3],ix,c,o.showSupp);
     p.forEach(q => drawDot(q.x,q.y,c));
   }
   else if (o.type === 'cobb' && p.length === 4) {
@@ -2372,6 +2377,12 @@ function openLblModal(o) {
   document.getElementById('lbl-bold').classList.toggle('on',   o.bold !== false);
   document.getElementById('lbl-italic').classList.toggle('on', !!o.italic);
   document.getElementById('lbl-bg').classList.toggle('on',     o.showBg !== false);
+  // Show supplementary toggle only for angle objects
+  const suppBtn = document.getElementById('lbl-supp');
+  if (suppBtn) {
+    suppBtn.style.display = o.angle != null ? 'inline-flex' : 'none';
+    suppBtn.classList.toggle('on', !!o.showSupp);
+  }
   document.querySelectorAll('#lbl-chips .chip').forEach(c => {
     c.classList.toggle('sel', c.style.background === lblPickedColor || c.style.backgroundColor === lblPickedColor);
   });
@@ -2383,13 +2394,30 @@ function confirmLbl() {
   if (!lblEditObj) { closeLblModal(); return; }
   saveHistory();
   lblEditObj.label    = document.getElementById('lbl-text').value.trim()  || lblEditObj.label;
-  lblEditObj.value    = document.getElementById('lbl-value').value.trim() || lblEditObj.value;
   lblEditObj.fontSize = parseInt(document.getElementById('lbl-size').value) || 13;
   lblEditObj.bold     = document.getElementById('lbl-bold').classList.contains('on');
   lblEditObj.italic   = document.getElementById('lbl-italic').classList.contains('on');
   lblEditObj.showBg   = document.getElementById('lbl-bg').classList.contains('on');
   lblEditObj.lblColor = lblPickedColor;
-  closeLblModal(); updateList(); redraw();
+  // Apply supplementary angle if it changed
+  const suppBtn = document.getElementById('lbl-supp');
+  if (suppBtn && lblEditObj.angle != null) {
+    const newSupp = suppBtn.classList.contains('on');
+    if (newSupp !== !!lblEditObj.showSupp) {
+      lblEditObj.showSupp = newSupp;
+      lblEditObj.value = newSupp
+        ? (180 - lblEditObj.angle).toFixed(1) + '°'
+        : lblEditObj.angle.toFixed(1) + '°';
+    } else {
+      // Also allow manual value override if supp wasn't toggled
+      const manualVal = document.getElementById('lbl-value').value.trim();
+      if (manualVal) lblEditObj.value = manualVal;
+    }
+  } else {
+    const manualVal = document.getElementById('lbl-value').value.trim();
+    if (manualVal) lblEditObj.value = manualVal;
+  }
+  closeLblModal(); updateList(); mobUpdateResults(); redraw(); mobRedraw();
 }
 function selectChip(el, color) {
   lblPickedColor = color;
@@ -2569,20 +2597,18 @@ function mobDrawGeometry(o) {
   const arcR = 24 / mobZl; // arc radius compensates for scale transform
   if (o.type==='angle3' && p.length===3) {
     mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
-    // Angle arc at vertex (p[1])
     mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
     mobCtx.beginPath();
-    mobCtx.arc(p[1].x,p[1].y,arcR,Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x),Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x));
+    mobCtx.arc(p[1].x,p[1].y,arcR,Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x),Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x),!!o.showSupp);
     mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='angle4' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
-    // Arc at intersection
     const ix = lineIntersect(p[0],p[1],p[2],p[3]);
     if (ix) {
       mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
       mobCtx.beginPath();
-      mobCtx.arc(ix.x,ix.y,arcR,Math.atan2(p[0].y-ix.y,p[0].x-ix.x),Math.atan2(p[2].y-ix.y,p[2].x-ix.x));
+      mobCtx.arc(ix.x,ix.y,arcR,Math.atan2(p[0].y-ix.y,p[0].x-ix.x),Math.atan2(p[2].y-ix.y,p[2].x-ix.x),!!o.showSupp);
       mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     }
     p.forEach(q=>mobDot(q.x,q.y,c));
