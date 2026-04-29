@@ -2669,33 +2669,35 @@ function initMobileEvents() {
         // ── Double-tap detection ──
         const now = Date.now();
         const isDoubleTap = (now - mobLastTap < 350) && mobLastTapPt &&
-          Math.hypot(t.x - mobLastTapPt.x, t.y - mobLastTapPt.y) < 40;
+          Math.hypot(ts.x - mobLastTapPt.x, ts.y - mobLastTapPt.y) < 50;
 
         if (isDoubleTap) {
           mobLastTap = 0; mobLastTapPt = null;
+          // Check label box (screen coords)
           for (const o of objs) {
             if (o._lblBox) {
               const b = o._lblBox;
-              if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
+              if (ts.x >= b.x && ts.x <= b.x + b.w && ts.y >= b.y && ts.y <= b.y + b.h) {
                 openLblModal(o); return;
               }
             }
           }
+          // Check near a point (image coords)
           for (const o of objs) {
-            if (o.points.some(p => Math.hypot(p.x - t.x, p.y - t.y) < 30)) {
+            if (o.points.some(p => Math.hypot(p.x - t.x, p.y - t.y) < 30 / mobZl)) {
               openLblModal(o); return;
             }
           }
         }
-        mobLastTap = now; mobLastTapPt = { x: t.x, y: t.y };
+        mobLastTap = now; mobLastTapPt = { x: ts.x, y: ts.y };
 
-        // 1. Label box hit
+        // 1. Label box hit (screen coords — _lblBox is in screen space)
         let hitLbl = false;
         for (const o of objs) {
           if (o._lblBox) {
             const b = o._lblBox;
-            if (t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h) {
-              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: t.x, y: t.y }; hitLbl = true; break;
+            if (ts.x >= b.x && ts.x <= b.x + b.w && ts.y >= b.y && ts.y <= b.y + b.h) {
+              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: ts.x, y: ts.y }; hitLbl = true; break;
             }
           }
         }
