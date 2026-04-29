@@ -792,54 +792,25 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <!-- CALIBRATION TAB -->
     <div class="tab-pane" id="tab-calib">
       <div style="padding:12px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Calibration</div>
-        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">Draw a line over a reference object of known real-world size (e.g. a nail, a coin, a marker).</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scale Calibration</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">Place two points on a reference object of known size. The app will calculate the px/mm ratio and convert all distance measurements automatically.</div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:9px" onclick="startCalibLine()">
+          📏 Place Calibration Points
+        </button>
+        <div id="calib-line-status" style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">No calibration set</div>
 
-        <!-- Step 1: Draw calibration line -->
-        <div class="calib-step" id="calib-step1">
-          <div style="font-size:10px;font-weight:700;color:var(--text);margin-bottom:6px">① Draw Reference Line</div>
-          <button class="btn" style="width:100%;justify-content:center;margin-bottom:6px" onclick="startCalibLine()">✏ Draw Line on Image</button>
-          <div id="calib-line-status" style="font-size:10px;color:var(--muted);text-align:center">No line drawn yet</div>
-        </div>
-
-        <!-- Step 2: Enter real size -->
-        <div class="calib-step" id="calib-step2" style="margin-top:10px;display:none">
-          <div style="font-size:10px;font-weight:700;color:var(--text);margin-bottom:6px">② Enter Real-World Size</div>
-
-          <!-- Quick presets -->
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Common References</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px" id="calib-presets">
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(8,'Nail 8mm')">Nail 8mm</button>
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(9,'Nail 9mm')">Nail 9mm</button>
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(10,'Nail 10mm')">Nail 10mm</button>
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(11,'Nail 11mm')">Nail 11mm</button>
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(12,'Nail 12mm')">Nail 12mm</button>
-            <button class="btn" style="font-size:9px;padding:5px 4px;justify-content:center" onclick="setCalibPreset(25,'Coin 25mm')">Coin 25mm</button>
-          </div>
-
-          <!-- Custom input -->
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Custom Size</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-            <input type="number" id="calib-real-mm" placeholder="e.g. 10" min="0.1" step="0.1"
-              style="flex:1;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none">
-            <span style="font-size:12px;color:var(--muted);flex-shrink:0">mm</span>
-          </div>
-          <div id="calib-ref-name" style="font-size:10px;color:var(--muted);margin-bottom:8px"></div>
-          <button class="btn primary" style="width:100%;justify-content:center" onclick="applyCalibration()">✓ Set Calibration</button>
-        </div>
-
-        <!-- Current calibration status -->
-        <div id="calib-status" style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;border:1px solid var(--border);display:none">
+        <!-- Active calibration status -->
+        <div id="calib-status" style="margin-top:10px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--green);display:none">
           <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Active Calibration</div>
-          <div id="calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green)"></div>
-          <button class="btn danger-outline" style="width:100%;justify-content:center;margin-top:6px;font-size:10px;padding:5px" onclick="clearCalibration()">✕ Clear Calibration</button>
+          <div id="calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green);margin-bottom:6px"></div>
+          <button class="btn danger-outline" style="width:100%;justify-content:center;font-size:10px;padding:5px" onclick="clearCalibration()">✕ Clear Calibration</button>
         </div>
       </div>
 
-      <!-- Calibrated distances -->
-      <div style="padding:10px;flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Calibrated Distances</div>
-        <div id="calib-distances"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">Set calibration then draw distance lines to see real-world measurements.</div></div>
+      <!-- Calibrated distances list -->
+      <div style="padding:10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Calibrated Distances</div>
+        <div id="calib-distances"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px;line-height:1.7">Calibrate first, then draw<br>Distance lines to see real measurements.</div></div>
       </div>
     </div>
 
@@ -1081,45 +1052,27 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
   <div class="mob-sheet-title">📏 Calibration</div>
   <div class="mob-sheet-inner">
-    <div style="padding:12px 14px">
-      <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">Draw a line over a reference object of known size on the X-ray, then enter its real dimensions.</div>
+    <div style="padding:14px">
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px">Tap two points on a reference object of known size. A dialog will ask for the real dimensions, then you can immediately draw measurements.</div>
 
-      <!-- Draw line button -->
-      <button class="btn" style="width:100%;justify-content:center;margin-bottom:10px;padding:10px" onclick="startCalibLine();mobClose()">✏ Draw Calibration Line</button>
+      <button class="btn primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="startCalibLine();mobClose()">
+        📏 Place Calibration Points
+      </button>
 
-      <!-- Line status -->
-      <div id="mob-calib-line-status" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px">No line drawn yet</div>
+      <div id="mob-calib-line-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px">No calibration set</div>
 
-      <!-- Presets -->
-      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Common References</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(8,'Nail 8mm');updateMobCalib()">8mm nail</button>
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(9,'Nail 9mm');updateMobCalib()">9mm nail</button>
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(10,'Nail 10mm');updateMobCalib()">10mm nail</button>
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(11,'Nail 11mm');updateMobCalib()">11mm nail</button>
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(12,'Nail 12mm');updateMobCalib()">12mm nail</button>
-        <button class="btn" style="font-size:11px;padding:8px 4px;justify-content:center" onclick="setCalibPreset(25,'Coin 25mm');updateMobCalib()">25mm coin</button>
-      </div>
-
-      <!-- Custom -->
-      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Custom</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <input type="number" id="mob-calib-mm" placeholder="mm" min="0.1" step="0.1"
-          style="flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;outline:none">
-        <span style="color:var(--muted);font-size:13px">mm</span>
-        <button class="btn primary" style="padding:10px 14px" onclick="mobApplyCustomCalib()">Set</button>
-      </div>
-
-      <!-- Status -->
-      <div id="mob-calib-status" style="padding:10px;background:var(--bg);border-radius:7px;border:1px solid var(--border);display:none;margin-bottom:10px">
+      <!-- Active status -->
+      <div id="mob-calib-status" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:9px;border:1px solid var(--green);display:none">
         <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Active Calibration</div>
-        <div id="mob-calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green)"></div>
-        <button class="btn danger-outline" style="width:100%;justify-content:center;margin-top:8px;padding:8px" onclick="clearCalibration();updateMobCalib()">✕ Clear</button>
+        <div id="mob-calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green);margin-bottom:8px"></div>
+        <button class="btn danger-outline" style="width:100%;justify-content:center;padding:8px" onclick="clearCalibration();updateMobCalib()">✕ Clear</button>
       </div>
 
-      <!-- Calibrated results -->
-      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Calibrated Distances</div>
-      <div id="mob-calib-distances"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">Draw distance lines after calibrating.</div></div>
+      <!-- Calibrated distances -->
+      <div style="margin-top:14px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Calibrated Distances</div>
+        <div id="mob-calib-distances"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px;line-height:1.7">Calibrate first, then draw distance lines.</div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1201,6 +1154,37 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="btn-cx" onclick="closeSaveModal()">Cancel</button>
       <button class="btn-ok" style="background:linear-gradient(160deg,#166534 0%,#0f4a28 100%);box-shadow:0 2px 12px rgba(34,197,94,.2)" onclick="confirmSave()">Save</button>
     </div>
+  </div>
+</div>
+
+<!-- Calibration input modal -->
+<div class="overlay" id="calib-modal">
+  <div class="modal" style="max-width:300px">
+    <h3>📏 Set Calibration</h3>
+    <div style="background:var(--bg);border-radius:7px;padding:10px 12px;margin-bottom:14px;border:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Measured line length</div>
+      <div id="calib-px-disp" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--green)">— px</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Enter the real-world length of this reference:</div>
+    <!-- Quick presets -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px">
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(8)">8 mm</button>
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(9)">9 mm</button>
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(10)">10 mm</button>
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(11)">11 mm</button>
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(12)">12 mm</button>
+      <button class="btn" style="font-size:10px;padding:6px 3px;justify-content:center" onclick="quickCalibPreset(25)">25 mm</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <input type="number" id="calib-mm-inp" placeholder="e.g. 10.5" min="0.1" step="0.1"
+        style="flex:1;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:15px;outline:none;transition:border-color .15s">
+      <span style="font-size:13px;color:var(--muted);flex-shrink:0">mm</span>
+    </div>
+    <div class="mbtns">
+      <button class="btn-cx" onclick="cancelCalibModal()">Cancel</button>
+      <button class="btn-ok" onclick="confirmCalibModal()">✓ Apply &amp; Measure</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:10px;text-align:center">After applying, the line tool will activate so you can draw your measurement immediately.</div>
   </div>
 </div>
 
@@ -2059,29 +2043,18 @@ function finalise() {
   saveHistory();
   objs.push(o); wip = [];
 
-  // If this was a calibration line, switch to calibration tab and show step 2
+  // Calibration line — pop modal for user to enter real-world size
   if (calibMode && tool === 'line') {
-    calibMode = false;
-    col = '#3b82f6'; // reset colour
-    calib.lineObj = o;
-    const px = o.dist;
-    calib.refPx = px;
     o.label = '📏 Calibration Ref';
     o.lblColor = '#22c55e';
-    // Show step 2
-    const step2 = document.getElementById('calib-step2');
-    if (step2) step2.style.display = 'block';
-    const lst = document.getElementById('calib-line-status');
-    if (lst) { lst.textContent = `✅ Line drawn (${px.toFixed(0)} px) — enter real size below`; lst.style.color = 'var(--green)'; }
-    const mlst = document.getElementById('mob-calib-line-status');
-    if (mlst) { mlst.textContent = `✅ Line drawn (${px.toFixed(0)} px)`; mlst.style.color = 'var(--green)'; }
-    switchTab('calib', document.querySelectorAll('.tab')[4]);
-    updateList(); setTool('select'); redraw(); return;
+    o.value = o.dist.toFixed(0) + ' px';
+    updateList(); setTool('select'); redraw(); mobRedraw();
+    handleCalibFinish(o);
+    return;
   }
 
   updateList(); setTool('select');
   switchTab('measurements', document.querySelectorAll('.tab')[0]);
-  // Update calibration distances panel
   if (calib.pxPerMm) { updateCalibUI(); updateMobCalib(); }
   redraw();
 }
@@ -2225,23 +2198,75 @@ function initDesktopEvents() {
 // CALIBRATION SYSTEM
 // ============================================================
 let calib = {
-  pxPerMm: null,      // pixels per mm (image-space)
-  refName: '',        // e.g. "Nail 10mm"
-  refMm: null,        // real-world mm
-  refPx: null,        // measured pixels on image
-  lineObj: null,      // the line object used for calibration
+  pxPerMm: null,
+  refName: '',
+  refMm: null,
+  refPx: null,
+  lineObj: null,
 };
-let calibMode = false; // true when waiting for user to draw a calib line
+let calibMode = false; // true while user places calibration points
 
 function startCalibLine() {
   calibMode = true;
   setTool('line');
-  col = '#22c55e'; // green for calibration line
-  // Highlight the tool
+  col = '#22c55e';
   document.querySelectorAll('.sw').forEach(s=>s.classList.remove('sel'));
-  switchTab('calib', document.querySelectorAll('.tab')[4]);
+  // Show hint in badge
+  const badge = document.getElementById('mob-tool-badge');
+  if (badge) badge.textContent = 'CALIBRATE: TAP 2 POINTS';
+  // Update status
   const st = document.getElementById('calib-line-status');
-  if (st) { st.textContent = '🟢 Draw a line — click two points on the reference object'; st.style.color = 'var(--green)'; }
+  if (st) { st.textContent = '🟢 Click two points on the reference object'; st.style.color = 'var(--green)'; }
+  const mst = document.getElementById('mob-calib-line-status');
+  if (mst) { mst.textContent = '🟢 Tap two points on the reference object'; mst.style.color = 'var(--green)'; }
+}
+
+// Called from finalise() when calibMode is active
+function handleCalibFinish(lineObj) {
+  calibMode = false;
+  col = '#3b82f6';
+  calib.lineObj = lineObj;
+  const p = lineObj.points;
+  calib.refPx = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
+  // Open the calibration input modal
+  openCalibModal();
+}
+
+function openCalibModal() {
+  document.getElementById('calib-mm-inp').value = '';
+  document.getElementById('calib-px-disp').textContent = calib.refPx.toFixed(0) + ' px';
+  document.getElementById('calib-modal').classList.add('on');
+  setTimeout(() => document.getElementById('calib-mm-inp').focus(), 80);
+}
+function closeCalibModal() { document.getElementById('calib-modal').classList.remove('on'); }
+function confirmCalibModal() {
+  const mm = parseFloat(document.getElementById('calib-mm-inp').value);
+  if (!mm || mm <= 0) { document.getElementById('calib-mm-inp').style.borderColor='var(--red)'; return; }
+  const name = `${mm} mm`;
+  closeCalibModal();
+  _applyCalib(mm, name);
+  // Auto-switch to line tool so user can immediately measure
+  col = '#ef4444';
+  setTool('line');
+  // Hint
+  const badge = document.getElementById('mob-tool-badge');
+  if (badge) badge.textContent = 'DRAW DISTANCE LINE';
+}
+
+function quickCalibPreset(mm) {
+  document.getElementById('calib-mm-inp').value = mm;
+  document.getElementById('calib-mm-inp').style.borderColor = '';
+}
+function cancelCalibModal() {
+  closeCalibModal();
+  // Remove the calibration line object since user cancelled
+  if (calib.lineObj) {
+    const i = objs.indexOf(calib.lineObj);
+    if (i >= 0) objs.splice(i, 1);
+    calib.lineObj = null; calib.refPx = null;
+  }
+  calibMode = false; col = '#3b82f6';
+  setTool('select'); updateList(); redraw(); mobRedraw();
 }
 
 function setCalibPreset(mm, name) {
@@ -2319,35 +2344,29 @@ function clearCalibration() {
 }
 
 function updateCalibUI() {
-  const step1 = document.getElementById('calib-step1');
-  const step2 = document.getElementById('calib-step2');
-  const status = document.getElementById('calib-status');
+  const status    = document.getElementById('calib-status');
   const statusTxt = document.getElementById('calib-status-text');
   const lineStatus = document.getElementById('calib-line-status');
-  const distDiv = document.getElementById('calib-distances');
+  const distDiv   = document.getElementById('calib-distances');
 
   if (calib.pxPerMm) {
-    if (status) status.style.display = 'block';
-    if (statusTxt) statusTxt.textContent = `${calib.refName} · ${calib.pxPerMm.toFixed(2)} px/mm`;
-    if (lineStatus) { lineStatus.textContent = `✅ Line drawn (${calib.refPx?.toFixed(0)} px)`; lineStatus.style.color = 'var(--green)'; }
-    if (step2) step2.style.display = 'block';
-    // List calibrated distances
+    if (status)    { status.style.display = 'block'; }
+    if (statusTxt) { statusTxt.textContent = `${calib.refName}  ·  ${calib.pxPerMm.toFixed(2)} px/mm`; }
+    if (lineStatus){ lineStatus.textContent = `✅ Calibrated — ${calib.refMm}mm = ${calib.refPx?.toFixed(0)}px`; lineStatus.style.color = 'var(--green)'; }
     const lines = objs.filter(o => o.type === 'line' && o !== calib.lineObj);
     if (distDiv) {
-      if (!lines.length) {
-        distDiv.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px">Draw distance lines to see real-world measurements.</div>';
-      } else {
-        distDiv.innerHTML = lines.map((o,i) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:11px;color:${o.lblColor||o.color}">${o.label||'Distance'}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${o.lblColor||o.color}">${o.value}</span>
-          </div>`).join('');
-      }
+      distDiv.innerHTML = lines.length
+        ? lines.map(o => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:11px;color:${o.lblColor||o.color}">${o.label||'Distance'}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:${o.lblColor||o.color}">${o.value}</span>
+            </div>`).join('')
+        : '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px">Draw Distance lines to measure.</div>';
     }
   } else {
-    if (status) status.style.display = 'none';
-    if (step2) step2.style.display = calib.lineObj ? 'block' : 'none';
-    if (distDiv) distDiv.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px">Set calibration then draw distance lines.</div>';
+    if (status)    status.style.display = 'none';
+    if (lineStatus && !calib.refPx) { lineStatus.textContent = 'No calibration set'; lineStatus.style.color = 'var(--muted)'; }
+    if (distDiv)   distDiv.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px;line-height:1.7">Calibrate first, then draw<br>Distance lines to see real measurements.</div>';
   }
 }
 
@@ -4175,6 +4194,7 @@ initMobile();
 document.getElementById('ann-inp').addEventListener('keydown', e => { if(e.key==='Enter')confirmAnn(); if(e.key==='Escape')closeAnnModal(); });
 document.getElementById('lbl-text').addEventListener('keydown', e => { if(e.key==='Escape')closeLblModal(); });
 document.getElementById('save-inp').addEventListener('keydown', e => { if(e.key==='Enter')confirmSave(); if(e.key==='Escape')closeSaveModal(); });
+document.getElementById('calib-mm-inp').addEventListener('keydown', e => { if(e.key==='Enter')confirmCalibModal(); if(e.key==='Escape')cancelCalibModal(); });
 
 // Loading screen
 (function(){
