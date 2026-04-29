@@ -2064,7 +2064,14 @@ function initDesktopEvents() {
 }
 
 // ── Select / Erase ───────────────────────────────────────────
-function doSelect(x, y) { selObj = findObj(x, y) || null; updateList(); redraw(); }
+function toggleSupp(i) {
+  const o = objs[i]; if (!o || !o.angle) return;
+  o.showSupp = !o.showSupp;
+  o.value = o.showSupp
+    ? (180 - o.angle).toFixed(1) + '°'
+    : o.angle.toFixed(1) + '°';
+  updateList(); mobUpdateResults(); redraw(); mobRedraw();
+}
 
 function doErase(x, y) {
   const i = objs.findIndex(o => isNear(o, x, y));
@@ -2120,12 +2127,13 @@ function updateList() {
       <div class="mrow">
         <div class="mname" style="color:${o.lblColor||o.color}">${o.label||o.type}</div>
         <div style="display:flex;gap:3px">
+          ${o.angle!=null ? `<button class="mdel" style="color:#f97316;font-size:10px;padding:2px 5px" onclick="event.stopPropagation();toggleSupp(${i})" title="Toggle supplementary angle">${o.showSupp?'∠':'180−'}</button>` : ''}
           <button class="mdel" style="color:#3b82f6;font-size:11px" onclick="event.stopPropagation();openLblModal(objs[${i}])" title="Edit label">✎</button>
           <button class="mdel" onclick="event.stopPropagation();delObj(${i})" title="Delete">✕</button>
         </div>
       </div>
       <div class="mval" style="color:${o.lblColor||o.color}">${o.value||o.text||'—'}</div>
-      <div class="msub">${TYPE_LABEL[o.type]||o.type} · drag label to move</div>
+      <div class="msub">${TYPE_LABEL[o.type]||o.type}${o.showSupp?' · showing 180−∠':''} · drag label to move</div>
     </div>`).join('');
 }
 
@@ -2558,10 +2566,26 @@ function mobRedraw() {
 // Geometry only — called inside canvas transform
 function mobDrawGeometry(o) {
   const p = o.points, c = o.color;
+  const arcR = 24 / mobZl; // arc radius compensates for scale transform
   if (o.type==='angle3' && p.length===3) {
-    mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c); p.forEach(q=>mobDot(q.x,q.y,c));
+    mobSeg(p[0],p[1],c); mobSeg(p[1],p[2],c);
+    // Angle arc at vertex (p[1])
+    mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
+    mobCtx.beginPath();
+    mobCtx.arc(p[1].x,p[1].y,arcR,Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x),Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x));
+    mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
+    p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='angle4' && p.length===4) {
-    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c); p.forEach(q=>mobDot(q.x,q.y,c));
+    mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
+    // Arc at intersection
+    const ix = lineIntersect(p[0],p[1],p[2],p[3]);
+    if (ix) {
+      mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.6;
+      mobCtx.beginPath();
+      mobCtx.arc(ix.x,ix.y,arcR,Math.atan2(p[0].y-ix.y,p[0].x-ix.x),Math.atan2(p[2].y-ix.y,p[2].x-ix.x));
+      mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
+    }
+    p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='cobb' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     mobExtLine(p[0],p[1],c); mobExtLine(p[2],p[3],c);
@@ -3171,9 +3195,12 @@ function mobUpdateResults() {
       <div style="flex:1">
         <div class="mob-ri-name" style="color:${o.lblColor||o.color}">${o.label||o.type}</div>
         <div class="mob-ri-val"  style="color:${o.lblColor||o.color}">${o.value||o.text||'—'}</div>
-        <div class="mob-ri-sub">${TYPE_LABEL[o.type]||o.type}</div>
+        <div class="mob-ri-sub">${TYPE_LABEL[o.type]||o.type}${o.showSupp?' · 180−∠':''}</div>
       </div>
-      <button class="mob-del-btn" onclick="saveHistory();objs.splice(${i},1);updateList();mobUpdateResults();mobRedraw()">✕</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${o.angle!=null ? `<button onclick="toggleSupp(${i})" style="width:40px;height:40px;border-radius:7px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">${o.showSupp?'∠':'180−'}</button>` : ''}
+        <button class="mob-del-btn" onclick="saveHistory();objs.splice(${i},1);updateList();mobUpdateResults();mobRedraw()">✕</button>
+      </div>
     </div>`).join('');
 }
 
