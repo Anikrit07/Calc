@@ -965,23 +965,78 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
   <div class="mob-sheet-title">Measurement Presets</div>
   <div class="mob-sheet-inner">
+    <div style="font-size:11px;color:var(--muted);padding:8px 14px 4px;line-height:1.5">Tap a preset to learn what it measures and its normal range, then start measuring.</div>
     <div class="mob-pcat">Hip / Pelvis</div>
-    <div class="mob-pr" onclick="mobUsePreset('nsa')"> <div class="mob-pd" style="background:#3b82f6"></div>Neck-Shaft Angle<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('ce')">  <div class="mob-pd" style="background:#ef4444"></div>Center-Edge Angle<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('acetab')"><div class="mob-pd" style="background:#22c55e"></div>Acetabular Index<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('tonnis')"><div class="mob-pd" style="background:#eab308"></div>Tönnis Angle<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('shenton')"><div class="mob-pd" style="background:#a855f7"></div>Shenton's Line<span class="badge">line</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('wiberg')"><div class="mob-pd" style="background:#f97316"></div>Wiberg / VCA<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('nsa')"> <div class="mob-pd" style="background:#3b82f6"></div>Neck-Shaft Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('ce')">  <div class="mob-pd" style="background:#ef4444"></div>Center-Edge Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('tonnis')"><div class="mob-pd" style="background:#eab308"></div>Tönnis Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('sharp')"><div class="mob-pd" style="background:#a855f7"></div>Sharp's Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('acetab')"><div class="mob-pd" style="background:#22c55e"></div>Acetabular Index<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('wiberg')"><div class="mob-pd" style="background:#f97316"></div>Wiberg / VCA<span class="badge">3-pt</span></div>
     <div class="mob-pcat">Knee / Alignment</div>
-    <div class="mob-pr" onclick="mobUsePreset('tfa')">  <div class="mob-pd" style="background:#3b82f6"></div>Tibiofemoral Angle<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('mech')"> <div class="mob-pd" style="background:#ef4444"></div>Mechanical Axis<span class="badge">line</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('mpta')"> <div class="mob-pd" style="background:#22c55e"></div>MPTA<span class="badge">3-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('ldfa')"> <div class="mob-pd" style="background:#eab308"></div>LDFA<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('hka')">  <div class="mob-pd" style="background:#3b82f6"></div>HKA Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('ldfa')"> <div class="mob-pd" style="background:#ef4444"></div>mLDFA<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('mpta')"> <div class="mob-pd" style="background:#22c55e"></div>MPTA<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('tfa')">  <div class="mob-pd" style="background:#eab308"></div>Tibiofemoral Angle<span class="badge">3-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('tibslope')"><div class="mob-pd" style="background:#a855f7"></div>Tibial Slope<span class="badge">4-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('insall')"><div class="mob-pd" style="background:#f97316"></div>Insall-Salvati<span class="badge">line</span></div>
     <div class="mob-pcat">Spine</div>
-    <div class="mob-pr" onclick="mobUsePreset('cobbs')">   <div class="mob-pd" style="background:#3b82f6"></div>Cobb Angle<span class="badge">4-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('lordosis')"><div class="mob-pd" style="background:#ef4444"></div>Lumbar Lordosis<span class="badge">4-pt</span></div>
-    <div class="mob-pr" onclick="mobUsePreset('cervical')"><div class="mob-pd" style="background:#22c55e"></div>Cervical Lordosis<span class="badge">4-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('cobbs')">   <div class="mob-pd" style="background:#3b82f6"></div>Cobb Angle<span class="badge">4-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('lordosis')"><div class="mob-pd" style="background:#ef4444"></div>Lumbar Lordosis<span class="badge">4-pt</span></div>
+    <div class="mob-pr" onclick="showPresetInfo('cervical')"><div class="mob-pd" style="background:#22c55e"></div>Cervical Lordosis<span class="badge">4-pt</span></div>
     <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- Preset Info Modal (full screen overlay on mobile) -->
+<div id="preset-info-modal" style="
+  display:none;position:fixed;inset:0;z-index:500;
+  background:var(--bg);overflow-y:auto;
+">
+  <div style="max-width:480px;margin:0 auto;padding:0 0 40px">
+    <!-- Header -->
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:2">
+      <button onclick="closePresetInfo()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
+      <div id="pi-title" style="font-size:16px;font-weight:700;color:var(--text);flex:1"></div>
+    </div>
+
+    <!-- Normal range badge -->
+    <div style="margin:16px 16px 0">
+      <div id="pi-normal" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:9px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:rgba(34,197,94,.7);margin-bottom:4px">Normal Range</div>
+        <div id="pi-normal-val" style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#22c55e"></div>
+      </div>
+    </div>
+
+    <!-- How it is measured -->
+    <div style="margin:14px 16px 0">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">How It Is Measured</div>
+      <div id="pi-how" style="font-size:13px;color:var(--subtle);line-height:1.7"></div>
+    </div>
+
+    <!-- Clinical significance -->
+    <div style="margin:14px 16px 0">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Clinical Significance</div>
+      <div id="pi-points" style="font-size:13px;color:var(--subtle);line-height:1.8"></div>
+    </div>
+
+    <!-- Source -->
+    <div style="margin:14px 16px 0">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Source</div>
+      <div id="pi-source"></div>
+    </div>
+
+    <!-- CTA -->
+    <div style="margin:20px 16px 0">
+      <button id="pi-start-btn" onclick="confirmPresetInfo()" style="
+        width:100%;padding:15px;
+        background:linear-gradient(160deg,var(--red) 0%,#8b1a14 100%);
+        color:#fff;border:none;border-radius:10px;
+        font-size:15px;font-weight:700;cursor:pointer;
+        font-family:'IBM Plex Sans',sans-serif;
+        box-shadow:0 4px 20px var(--red-glow);
+      ">Start Measuring →</button>
+    </div>
   </div>
 </div>
 
@@ -3428,6 +3483,249 @@ function dismissPtPicker() {
   const picker = document.getElementById('pt-picker');
   if (picker) picker.style.display = 'none';
   ptPickerItems = [];
+}
+
+// ============================================================
+// PRESET INFO CARDS
+// ============================================================
+const PRESET_INFO = {
+  nsa: {
+    title: 'Neck-Shaft Angle',
+    normal: '120 – 135°',
+    how: 'Measured on AP pelvis X-ray. Draw a line along the femoral shaft axis and another along the femoral neck axis. The angle between these two lines at their intersection is the neck-shaft angle.',
+    points: [
+      'Coxa vara (<120°): limb shortening, Trendelenburg gait, abductor weakness, increased risk of femoral neck fracture',
+      'Coxa valga (>135°): lateral hip loading, predisposes to dysplasia and lateral compartment wear',
+      'Relevant for pre-operative planning of corrective osteotomy and hip arthroplasty templating',
+    ],
+    source: "Gray's Anatomy; AO Surgery Reference",
+    url: 'https://surgeryreference.aofoundation.org',
+  },
+  ce: {
+    title: 'Centre-Edge Angle (Wiberg)',
+    normal: '25 – 40°',
+    how: 'On AP pelvis X-ray. One line is drawn vertically through the centre of the femoral head. A second line connects the centre of the femoral head to the superolateral edge of the acetabular roof. The angle between them is the CE angle.',
+    points: [
+      '<20°: acetabular dysplasia — femoral head insufficiently covered, risk of instability and OA',
+      '20–25°: borderline coverage — monitor closely',
+      '>40°: overcoverage — pincer-type femoroacetabular impingement (FAI)',
+      'Used in planning PAO (periacetabular osteotomy) for dysplasia',
+    ],
+    source: 'Wiberg G. Acta Chir Scand. 1939;83(Suppl 58)',
+    url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4765297/',
+  },
+  tonnis: {
+    title: 'Tönnis Angle (Acetabular Index)',
+    normal: '0 – 10°',
+    how: 'On AP pelvis. A horizontal reference line connects both acetabular teardrops. A second line follows the slope of the acetabular sourcil (weight-bearing zone). The angle between them is the Tönnis angle.',
+    points: [
+      '>10°: lateral inclination of the sourcil → instability, dysplasia',
+      '<0°: horizontal or negatively sloped roof → overcoverage, pincer FAI',
+      'Complements CE angle in assessing acetabular morphology',
+      'Important in PAO planning and hip arthroscopy workup',
+    ],
+    source: 'Tönnis D. Congenital Dysplasia and Dislocation of the Hip. 1987',
+    url: 'https://www.springer.com/book/9783642709647',
+  },
+  sharp: {
+    title: "Sharp's Acetabular Angle",
+    normal: '33 – 38°',
+    how: 'On AP pelvis. A horizontal line connects the inferior tips of both pelvic teardrops. A second line connects the inferior teardrop to the superolateral rim of the acetabular roof. The angle at the teardrop is the Sharp angle.',
+    points: [
+      '>42°: acetabular dysplasia',
+      '<30°: overcoverage',
+      'Useful when CE angle cannot be accurately calculated (e.g. subluxed femoral head)',
+      'Complements CE angle and Tönnis angle in dysplasia assessment',
+    ],
+    source: 'Sharp IK. J Bone Joint Surg Br. 1961;43-B(2):268–272. DOI: 10.1302/0301-620X.43B2.268',
+    url: 'https://boneandjoint.org.uk/Article/10.1302/0301-620X.43B2.268',
+  },
+  acetab: {
+    title: 'Acetabular Index',
+    normal: '<10° in adults; 20–30° in children <2 yrs',
+    how: 'On AP pelvis X-ray. A horizontal line (Hilgenreiner line) connects both triradiate cartilages. The acetabular index is the angle between this horizontal line and a line connecting the lateral acetabular edge to the triradiate cartilage. Primarily used in paediatric DDH.',
+    points: [
+      'Higher angles indicate acetabular dysplasia in children',
+      'Normally decreases with age as acetabulum develops',
+      'Used to monitor response to Pavlik harness or spica cast treatment in DDH',
+      'Tönnis angle is the adult equivalent',
+    ],
+    source: 'Pemberton PA. J Bone Joint Surg Am. 1965;47:65–86',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/14245153/',
+  },
+  wiberg: {
+    title: 'Wiberg / VCA Angle',
+    normal: '25 – 40°',
+    how: 'Vertical Centre Anterior (VCA) angle measured on false-profile X-ray (Lequesne view). Assesses anterior femoral head coverage. Line drawn vertically through femoral head centre; second line to anterior acetabular edge.',
+    points: [
+      '<25°: anterior undercoverage → anterior instability and OA risk',
+      'Often abnormal in dysplasia when lateral CE angle is borderline',
+      'Essential for 3D assessment of acetabular coverage before PAO',
+    ],
+    source: 'Wiberg G. Acta Chir Scand. 1939; Lequesne M, Rev Rhum. 1961',
+    url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4765297/',
+  },
+  hka: {
+    title: 'HKA Angle (Hip-Knee-Ankle)',
+    normal: '±3° of neutral (180° = perfectly neutral)',
+    how: 'On full-length standing AP lower limb radiograph. The mechanical axis runs from the centre of the femoral head to the centre of the ankle. The HKA angle is the deviation of this line from the centre of the knee. Varus = line passes medial to knee; valgus = lateral.',
+    points: [
+      'Varus deformity (HKA >3° lateral): medial compartment overload → medial OA',
+      'Valgus deformity (HKA >3° medial): lateral compartment overload → lateral OA',
+      'Target for HTO (high tibial osteotomy): correct to 2–5° valgus for medial OA',
+      'Essential for TKA planning and alignment strategy (kinematic vs mechanical)',
+    ],
+    source: 'Paley D. Principles of Deformity Correction. Springer. 2002',
+    url: 'https://link.springer.com/book/10.1007/978-3-642-59373-4',
+  },
+  ldfa: {
+    title: 'mLDFA (Mechanical Lateral Distal Femoral Angle)',
+    normal: '85 – 90° (mean 88°)',
+    how: 'On AP long-leg X-ray. A joint orientation line follows the distal femoral articular surface. The mechanical axis of the femur runs from the centre of the femoral head to the centre of the knee. mLDFA is measured on the lateral side between these two lines.',
+    points: [
+      '>90°: varus deformity at the distal femur',
+      '<85°: valgus deformity at the distal femur',
+      'Used to isolate whether coronal deformity is in the femur vs tibia',
+      'Normal mLDFA with abnormal HKA → deformity is tibial (check MPTA)',
+      'Used in CORA analysis for corrective osteotomy planning',
+    ],
+    source: 'Paley D. Principles of Deformity Correction. Springer. 2002; Paley D, Orthopade. 2000;29(1):18–38. PMID: 10663243',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/10663243/',
+  },
+  mpta: {
+    title: 'MPTA (Medial Proximal Tibial Angle)',
+    normal: '85 – 90° (mean 87°)',
+    how: 'On AP long-leg X-ray. A joint orientation line follows the proximal tibial articular surface. The mechanical axis of the tibia runs from the centre of the knee to the centre of the ankle. MPTA is measured on the medial side between these two lines.',
+    points: [
+      '<85°: varus at the tibia — most common cause of varus malalignment in medial OA',
+      '>90°: valgus at the tibia',
+      'Most common indication for HTO in medial knee OA',
+      'Target post-HTO: correct MPTA to 90–93° (slight over-correction)',
+      'Abnormal MPTA with normal mLDFA confirms tibial origin of deformity',
+    ],
+    source: 'Paley D. Principles of Deformity Correction. Springer. 2002; Paley D, Orthopade. 2000;29(1):18–38. PMID: 10663243',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/10663243/',
+  },
+  tfa: {
+    title: 'Tibiofemoral Angle (Anatomic)',
+    normal: '5 – 7° valgus (physiological)',
+    how: 'On standing AP knee X-ray. The anatomic axis of the femur and the anatomic axis of the tibia are drawn as middiaphyseal lines. The angle formed at their intersection (measured on the lateral side) is the tibiofemoral angle.',
+    points: [
+      'Physiological valgus is normal in adults (5–7°)',
+      'Varus (<5° valgus): medial compartment loading',
+      'Valgus (>10°): lateral compartment loading, ligamentous laxity',
+      'Note: this is the anatomic (not mechanical) axis — differs from HKA by ~5–6°',
+    ],
+    source: 'Paley D. Principles of Deformity Correction. Springer. 2002',
+    url: 'https://link.springer.com/book/10.1007/978-3-642-59373-4',
+  },
+  tibslope: {
+    title: 'Posterior Tibial Slope',
+    normal: '5 – 11°',
+    how: 'On lateral knee X-ray. A line is drawn along the posterior cortex of the tibial shaft. A perpendicular to this line establishes the tibial mechanical axis. A second line follows the slope of the tibial plateau. The posterior tibial slope is the angle between these two lines.',
+    points: [
+      'Increased slope (>11°): higher anterior tibial translation → increased ACL strain',
+      'Relevant in ACL reconstruction planning — slope-reducing osteotomy considered for recurrent laxity',
+      'Decreased slope (<5°): PCL-deficient knees, or post-osteotomy',
+      'Important variable in TKA and UKA implant positioning',
+    ],
+    source: 'Dejour H, Bonnin M. J Bone Joint Surg Br. 1994;76(1):45–55. PMID: 8300684',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/8300684/',
+  },
+  insall: {
+    title: 'Insall-Salvati Ratio (Patella Height)',
+    normal: 'Ratio 0.8 – 1.2',
+    how: 'On lateral knee X-ray with knee at 20–70° flexion. Measure: (1) patellar tendon length — from inferior pole of patella to tibial tubercle insertion, and (2) patellar length — from superior to inferior pole. Divide tendon length by patellar length.',
+    points: [
+      '>1.2: patella alta — high-riding patella, associated with instability, anterior knee pain, chondromalacia',
+      '<0.8: patella baja — low-riding patella, associated with stiffness, post-surgical scarring',
+      'Use the Distance tool twice, then divide values manually or use the calibrated measurement',
+      'Modified Insall-Salvati (Grelsamer) uses the articular surface of patella — preferred in alta',
+    ],
+    source: 'Insall J, Salvati E. Radiology. 1971;101(1):101–104. DOI: 10.1148/101.1.101. PMID: 5111961',
+    url: 'https://pubs.rsna.org/doi/abs/10.1148/101.1.101',
+  },
+  cobbs: {
+    title: 'Cobb Angle (Scoliosis)',
+    normal: '<10° (scoliosis defined at ≥10°)',
+    how: 'On standing AP full-spine X-ray. Identify the most tilted vertebra at the top (upper end vertebra) and bottom (lower end vertebra) of the curve. Draw lines along their respective end plates. Erect perpendiculars to each line. The angle at their intersection is the Cobb angle.',
+    points: [
+      '<10°: not scoliosis',
+      '10–25°: observe with serial X-rays (every 6–12 months in growing children)',
+      '25–40°: bracing indicated in skeletally immature patients',
+      '>45–50°: surgical consideration (posterior spinal fusion)',
+      '>70–80°: associated with cardiorespiratory compromise',
+    ],
+    source: 'Cobb JR. AAOS Instructional Course Lectures. 1948;5:261–275',
+    url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC2852087/',
+  },
+  lordosis: {
+    title: 'Lumbar Lordosis',
+    normal: '40 – 60° (L1–S1)',
+    how: 'On standing lateral lumbar spine X-ray. Draw a line along the superior endplate of L1 and a line along the superior endplate of S1. Erect perpendiculars. The angle at their intersection is lumbar lordosis (Cobb method L1–S1).',
+    points: [
+      'Hypolordosis / flat back: sagittal imbalance, back pain, poor surgical outcomes in fusion',
+      'Hyperlordosis (>70°): associated with spondylolisthesis, facet joint overload',
+      'Pelvic incidence (PI) determines required lordosis: lordosis should ≈ PI ± 10°',
+      'Critical in pre-operative planning for spinal fusion and alignment correction',
+    ],
+    source: 'Bernhardt M, Bridwell KH. Spine. 1989;14(7):717–721. PMID: 2772721',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/2772721/',
+  },
+  cervical: {
+    title: 'Cervical Lordosis',
+    normal: '0 – 40° (C2–C7, Cobb method)',
+    how: 'On standing lateral cervical spine X-ray in neutral position. Draw lines along the inferior endplates of C2 and C7. Erect perpendiculars. The angle at their intersection is the cervical Cobb angle. Lordosis is a positive value; kyphosis is negative.',
+    points: [
+      'Loss of lordosis (military neck / straight spine): disc disease, muscle spasm, early degeneration',
+      'Kyphosis: myelopathy risk, post-laminectomy deformity',
+      'K-line (neutral tilt): used in planning laminoplasty vs fusion',
+      'Cervical sagittal alignment increasingly recognised in surgical planning',
+    ],
+    source: 'Gore DR et al. Spine. 1986;11(6):521–524. PMID: 3787320',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/3787320/',
+  },
+};
+
+let _piPresetKey = null; // which preset is being shown
+
+function showPresetInfo(key) {
+  const info = PRESET_INFO[key];
+  if (!info) { mobUsePreset(key); return; }
+  _piPresetKey = key;
+
+  document.getElementById('pi-title').textContent = info.title;
+  document.getElementById('pi-normal-val').textContent = info.normal;
+  document.getElementById('pi-how').textContent = info.how;
+
+  // Build bullet points
+  document.getElementById('pi-points').innerHTML = info.points
+    .map(p => `<div style="display:flex;gap:8px;margin-bottom:8px">
+      <span style="color:var(--red);flex-shrink:0;margin-top:2px">•</span>
+      <span>${p}</span>
+    </div>`).join('');
+
+  // Source with link
+  document.getElementById('pi-source').innerHTML =
+    `<a href="${info.url}" target="_blank" rel="noopener" style="
+      color:#3b82f6;font-size:12px;line-height:1.6;
+      text-decoration:none;border-bottom:1px solid rgba(59,130,246,.3);
+    ">${info.source} ↗</a>`;
+
+  document.getElementById('preset-info-modal').style.display = 'block';
+  document.getElementById('preset-info-modal').scrollTop = 0;
+}
+
+function closePresetInfo() {
+  document.getElementById('preset-info-modal').style.display = 'none';
+  _piPresetKey = null;
+}
+
+function confirmPresetInfo() {
+  const key = _piPresetKey;
+  closePresetInfo();
+  mobClose();
+  if (key) mobUsePreset(key);
 }
 
 function mobZoomIn()  { mobZoomBy(1.35); }
