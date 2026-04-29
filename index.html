@@ -295,6 +295,11 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .impl-name { font-size:10px;font-weight:600;color:var(--text);flex:1; }
 .impl-del { background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px; }
 .impl-del:hover { color:var(--red); }
+.pt-style-opt { background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 4px;cursor:pointer;text-align:center;transition:all .15s;font-size:9px;font-weight:700;color:var(--muted); }
+.pt-style-opt:hover { border-color:var(--red);color:var(--text); }
+.pt-style-opt.active { border-color:var(--red);background:rgba(192,57,43,.12);color:#e88a84; }
+.pt-style-opt canvas { display:block;margin:0 auto 3px; }
+.btn.locked { background:linear-gradient(160deg,#7c3a14 0%,#141719 100%);color:#f97316;border-color:#7c3a14; }
 /* ── AO Wizard ── */
 .ao-q { font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.5; }
 .ao-bone-grid { display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px; }
@@ -577,6 +582,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="btn" onclick="undoLast()">↩ Undo</button>
       <button class="btn danger-outline" onclick="clearAll()">🗑 Clear All</button>
       <button class="btn danger-outline" id="del-img-btn" onclick="deleteImage()" style="display:none">✕ Delete Image</button>
+      <button class="btn" id="lock-btn" onclick="toggleImageLock()" title="Lock/unlock image position" style="display:none">🔓 Unlocked</button>
+      <button class="btn" onclick="openPtEditor()" title="Customise measurement points">● Points</button>
     </div>
   </div>
 
@@ -776,6 +783,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <div class="mob-topbar">
     <div class="mob-logo">Ortho<span>Measure</span></div>
     <button id="mob-del-btn" class="mob-topbtn" onclick="mobDeleteImage()" style="display:none">✕ Delete</button>
+    <button id="mob-lock-btn" class="mob-topbtn" onclick="toggleImageLock();updateMobLockBtn()" style="display:none">🔓</button>
+    <button class="mob-topbtn" onclick="openPtEditor()" style="padding:5px 7px">●</button>
     <button class="mob-topbtn" onclick="undoLast()">↩</button>
     <button class="mob-topbtn save" onclick="saveSnapshot()">💾</button>
   </div>
@@ -1049,6 +1058,51 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   </div>
 </div>
 
+<!-- Pointer editor modal -->
+<div class="overlay" id="pt-modal">
+  <div class="modal" style="max-width:300px">
+    <h3>● Customise Points</h3>
+
+    <div class="lrow" style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);width:64px;flex-shrink:0">Size</label>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--muted)">Small</span>
+          <span id="pt-size-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">5px</span>
+          <span style="font-size:10px;color:var(--muted)">Large</span>
+        </div>
+        <input type="range" id="pt-size-slider" min="2" max="14" value="5" style="width:100%;accent-color:var(--red)" oninput="ptSizePreview(this.value)">
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Style</div>
+    <div id="pt-style-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+      <div class="pt-style-opt active" id="pts-filled"  onclick="selectPtStyle('filled')"  title="Filled circle">
+        <canvas width="40" height="40" id="ptc-filled"></canvas><div>Filled</div>
+      </div>
+      <div class="pt-style-opt" id="pts-ring"   onclick="selectPtStyle('ring')"    title="Ring">
+        <canvas width="40" height="40" id="ptc-ring"></canvas><div>Ring</div>
+      </div>
+      <div class="pt-style-opt" id="pts-cross"  onclick="selectPtStyle('cross')"   title="Crosshair">
+        <canvas width="40" height="40" id="ptc-cross"></canvas><div>Cross</div>
+      </div>
+      <div class="pt-style-opt" id="pts-diamond" onclick="selectPtStyle('diamond')" title="Diamond">
+        <canvas width="40" height="40" id="ptc-diamond"></canvas><div>Diamond</div>
+      </div>
+    </div>
+
+    <!-- Live preview -->
+    <div style="text-align:center;margin-bottom:16px">
+      <canvas id="pt-preview" width="120" height="60" style="background:var(--bg);border-radius:8px;border:1px solid var(--border)"></canvas>
+    </div>
+
+    <div class="mbtns">
+      <button class="btn-cx" onclick="closePtEditor()">Cancel</button>
+      <button class="btn-ok" onclick="applyPtEditor()">Apply</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════════════
      SCRIPTS (components in order)
 ════════════════════════════════════════════ -->
@@ -1077,6 +1131,15 @@ let dragLbl   = null;   // { obj } — label drag
 let dragLblStart = null;
 let showLens  = false;
 let mpos      = { x: 0, y: 0 };
+
+let zl = 1, panX = 0, panY = 0;
+
+// Image lock — when true, dragging canvas pans nothing
+let imageLocked = false;
+
+// Pointer appearance
+let ptRadius = 5;   // inner dot radius (2–10)
+let ptStyle  = 'filled'; // 'filled' | 'ring' | 'cross' | 'diamond'
 
 // ── View state ───────────────────────────────────────────────
 let zl = 1, panX = 0, panY = 0;
@@ -1359,10 +1422,35 @@ function drawSeg(a, b, color, lw) {
 }
 
 function drawDot(x, y, color) {
-  ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill();
-  ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
-  ctx.fillStyle = color; ctx.fill();
+  const r = ptRadius;
+  ctx.save();
+  if (ptStyle === 'filled') {
+    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+  } else if (ptStyle === 'ring') {
+    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+  } else if (ptStyle === 'cross') {
+    const s = r + 3;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x, y+s); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x, y+s); ctx.stroke();
+  } else if (ptStyle === 'diamond') {
+    const s = r + 3;
+    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x+s, y); ctx.lineTo(x, y+s); ctx.lineTo(x-s, y); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
+    const si = r;
+    ctx.beginPath(); ctx.moveTo(x, y-si); ctx.lineTo(x+si, y); ctx.lineTo(x, y+si); ctx.lineTo(x-si, y); ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawExtLine(a, b, color) {
@@ -1801,8 +1889,8 @@ function initDesktopEvents() {
     // 3. Object
     const hit = findObj(x, y);
     if (hit) { saveHistory(); dragging=true; dobj=hit; dstart={x,y}; selObj=hit; return; }
-    // 4. Pan
-    panning=true; panStart={x,y}; cvs.style.cursor=grabbingCursor;
+    // 4. Pan (only when image is unlocked)
+    if (!imageLocked) { panning=true; panStart={x,y}; cvs.style.cursor=grabbingCursor; }
   });
 
   cvs.addEventListener('mouseup', () => {
@@ -1946,6 +2034,100 @@ function deleteImage() {
 function updateDelImgBtn() {
   const btn = document.getElementById('del-img-btn');
   if (btn) btn.style.display = bgImage ? 'inline-flex' : 'none';
+  const lbtn = document.getElementById('lock-btn');
+  if (lbtn) lbtn.style.display = bgImage ? 'inline-flex' : 'none';
+}
+
+function toggleImageLock() {
+  imageLocked = !imageLocked;
+  const btn = document.getElementById('lock-btn');
+  if (btn) {
+    btn.textContent = imageLocked ? '🔒 Locked' : '🔓 Unlocked';
+    btn.classList.toggle('locked', imageLocked);
+  }
+}
+
+// ── Pointer editor ────────────────────────────────────────────
+let _pendingPtRadius = ptRadius;
+let _pendingPtStyle  = ptStyle;
+
+function openPtEditor() {
+  _pendingPtRadius = ptRadius;
+  _pendingPtStyle  = ptStyle;
+  document.getElementById('pt-size-slider').value = ptRadius;
+  document.getElementById('pt-size-val').textContent = ptRadius + 'px';
+  document.querySelectorAll('.pt-style-opt').forEach(el => el.classList.remove('active'));
+  document.getElementById('pts-' + ptStyle)?.classList.add('active');
+  drawPtStyleThumbs();
+  drawPtPreview();
+  document.getElementById('pt-modal').classList.add('on');
+}
+
+function closePtEditor() { document.getElementById('pt-modal').classList.remove('on'); }
+
+function applyPtEditor() {
+  ptRadius = _pendingPtRadius;
+  ptStyle  = _pendingPtStyle;
+  closePtEditor();
+  redraw(); if (typeof mobRedraw === 'function') mobRedraw();
+}
+
+function ptSizePreview(val) {
+  _pendingPtRadius = parseInt(val);
+  document.getElementById('pt-size-val').textContent = val + 'px';
+  drawPtPreview();
+}
+
+function selectPtStyle(style) {
+  _pendingPtStyle = style;
+  document.querySelectorAll('.pt-style-opt').forEach(el => el.classList.remove('active'));
+  document.getElementById('pts-' + style)?.classList.add('active');
+  drawPtPreview();
+}
+
+function drawPtStyleThumbs() {
+  ['filled','ring','cross','diamond'].forEach(style => {
+    const canvas = document.getElementById('ptc-' + style);
+    if (!canvas) return;
+    const c = canvas.getContext('2d'); c.clearRect(0,0,40,40);
+    drawPtOnCtx(c, 20, 20, 6, style, '#3b82f6');
+  });
+}
+
+function drawPtPreview() {
+  const canvas = document.getElementById('pt-preview'); if (!canvas) return;
+  const c = canvas.getContext('2d'); c.clearRect(0,0,120,60);
+  c.fillStyle = '#050608'; c.fillRect(0,0,120,60);
+  // Draw three dots in different colours
+  [['#3b82f6',25],['#ef4444',60],['#22c55e',95]].forEach(([col,x]) => {
+    drawPtOnCtx(c, x, 30, _pendingPtRadius, _pendingPtStyle, col);
+  });
+}
+
+function drawPtOnCtx(c, x, y, r, style, col) {
+  c.save();
+  if (style === 'filled') {
+    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.fillStyle='rgba(255,255,255,.8)'; c.fill();
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=col; c.fill();
+  } else if (style === 'ring') {
+    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.strokeStyle='rgba(255,255,255,.8)'; c.lineWidth=2.5; c.stroke();
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.strokeStyle=col; c.lineWidth=2; c.stroke();
+  } else if (style === 'cross') {
+    const s=r+3; c.lineCap='round';
+    c.strokeStyle='rgba(255,255,255,.8)'; c.lineWidth=3;
+    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
+    c.strokeStyle=col; c.lineWidth=1.8;
+    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
+  } else if (style === 'diamond') {
+    const s=r+3;
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x+s,y); c.lineTo(x,y+s); c.lineTo(x-s,y); c.closePath();
+    c.fillStyle='rgba(255,255,255,.8)'; c.fill();
+    c.beginPath(); c.moveTo(x,y-r); c.lineTo(x+r,y); c.lineTo(x,y+r); c.lineTo(x-r,y); c.closePath();
+    c.fillStyle=col; c.fill();
+  }
+  c.restore();
 }
 
 // ── Templates ────────────────────────────────────────────────
@@ -1969,6 +2151,9 @@ function loadTemplate(name, el) {
     bgImage = image;
     fitBg(); updateDelImgBtn(); updateList(); redraw();
     mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+    imageLocked = true;
+    const lb = document.getElementById('lock-btn'); if(lb){lb.textContent='🔒 Locked';lb.classList.add('locked');}
+    updateMobLockBtn();
   };
   image.src = src;
   updateList(); redraw();
@@ -1986,6 +2171,10 @@ function loadFile(e) {
       fitBg(); updateDelImgBtn(); updateList(); redraw();
       // Mobile
       mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+      // Auto-lock after load so measurements don't shift the image
+      imageLocked = true;
+      const lb = document.getElementById('lock-btn'); if(lb){lb.textContent='🔒 Locked';lb.classList.add('locked');}
+      updateMobLockBtn();
       // Close any open sheet
       mobClose();
       document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
@@ -2160,6 +2349,15 @@ function mobFitBg() {
 function updateMobDelBtn() {
   const btn = document.getElementById('mob-del-btn');
   if (btn) btn.style.display = bgImage ? 'inline-block' : 'none';
+  updateMobLockBtn();
+}
+
+function updateMobLockBtn() {
+  const btn = document.getElementById('mob-lock-btn');
+  if (!btn) return;
+  btn.style.display = bgImage ? 'inline-block' : 'none';
+  btn.textContent = imageLocked ? '🔒' : '🔓';
+  btn.style.color = imageLocked ? '#f97316' : '';
 }
 
 // ── Drawing ───────────────────────────────────────────────────
@@ -2225,7 +2423,32 @@ function mobDrawObj(o) {
 }
 
 function mobSeg(a,b,c) { mobCtx.beginPath(); mobCtx.moveTo(a.x,a.y); mobCtx.lineTo(b.x,b.y); mobCtx.strokeStyle=c; mobCtx.lineWidth=2.5; mobCtx.stroke(); }
-function mobDot(x,y,c) { mobCtx.beginPath(); mobCtx.arc(x,y,7,0,Math.PI*2); mobCtx.fillStyle='rgba(255,255,255,.9)'; mobCtx.fill(); mobCtx.beginPath(); mobCtx.arc(x,y,5,0,Math.PI*2); mobCtx.fillStyle=c; mobCtx.fill(); }
+function mobDot(x, y, c) {
+  const r = ptRadius;
+  mobCtx.save();
+  if (ptStyle === 'filled') {
+    mobCtx.beginPath(); mobCtx.arc(x,y,r+3,0,Math.PI*2); mobCtx.fillStyle='rgba(255,255,255,.9)'; mobCtx.fill();
+    mobCtx.beginPath(); mobCtx.arc(x,y,r,0,Math.PI*2); mobCtx.fillStyle=c; mobCtx.fill();
+  } else if (ptStyle === 'ring') {
+    mobCtx.beginPath(); mobCtx.arc(x,y,r+3,0,Math.PI*2); mobCtx.strokeStyle='rgba(255,255,255,.9)'; mobCtx.lineWidth=2.5; mobCtx.stroke();
+    mobCtx.beginPath(); mobCtx.arc(x,y,r,0,Math.PI*2); mobCtx.strokeStyle=c; mobCtx.lineWidth=2; mobCtx.stroke();
+  } else if (ptStyle === 'cross') {
+    const s=r+3; mobCtx.lineCap='round';
+    mobCtx.strokeStyle='rgba(255,255,255,.9)'; mobCtx.lineWidth=3;
+    mobCtx.beginPath(); mobCtx.moveTo(x-s,y); mobCtx.lineTo(x+s,y); mobCtx.stroke();
+    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x,y+s); mobCtx.stroke();
+    mobCtx.strokeStyle=c; mobCtx.lineWidth=1.8;
+    mobCtx.beginPath(); mobCtx.moveTo(x-s,y); mobCtx.lineTo(x+s,y); mobCtx.stroke();
+    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x,y+s); mobCtx.stroke();
+  } else if (ptStyle === 'diamond') {
+    const s=r+3;
+    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x+s,y); mobCtx.lineTo(x,y+s); mobCtx.lineTo(x-s,y); mobCtx.closePath();
+    mobCtx.fillStyle='rgba(255,255,255,.9)'; mobCtx.fill();
+    mobCtx.beginPath(); mobCtx.moveTo(x,y-r); mobCtx.lineTo(x+r,y); mobCtx.lineTo(x,y+r); mobCtx.lineTo(x-r,y); mobCtx.closePath();
+    mobCtx.fillStyle=c; mobCtx.fill();
+  }
+  mobCtx.restore();
+}
 function mobExtLine(a,b,c) {
   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy); if(!len)return;
   const ux=dx/len,uy=dy/len,ext=60;
@@ -2318,9 +2541,9 @@ function initMobileEvents() {
           showPtPicker(nearby, e.touches[0].clientX, e.touches[0].clientY); return;
         }
 
-        // 3. Pan
+        // 3. Pan (only when image is unlocked)
         dismissPtPicker();
-        mobPanning = true; mobPanStart = t;
+        if (!imageLocked) { mobPanning = true; mobPanStart = t; }
       }
     }
     if (e.touches.length === 2) {
