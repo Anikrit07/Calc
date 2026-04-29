@@ -1811,21 +1811,25 @@ function doZoom(f) {
   panX = cx - (cx - panX) * f;
   panY = cy - (cy - panY) * f;
   zl *= f;
+  // Points move with the image - scale them relative to canvas center
   objs.forEach(o => { o.points = o.points.map(p => ({ x: cx + (p.x - cx) * f, y: cy + (p.y - cy) * f })); });
   updateZlbl(); updateDpad(); redraw();
 }
-function resetZoom() { if (bgImage) { fitBg(); updateDpad(); redraw(); } }
 
-// Pan the image by dx,dy pixels (used by D-pad)
+// Pan the viewport — moves image AND points together (they stay on the image)
 function panBy(dx, dy) {
   panX += dx; panY += dy;
+  objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
   redraw();
 }
 
 function mobPanBy(dx, dy) {
   mobOx += dx; mobOy += dy;
+  objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
   mobRedraw();
 }
+
+function resetZoom() { if (bgImage) { fitBg(); updateDpad(); redraw(); } }
 
 // Show/hide D-pads based on zoom level
 function updateDpad() {
@@ -1886,7 +1890,9 @@ function initDesktopEvents() {
     if (implantDragging) { handleImplantMouseMove(x, y); return; }
 
     if (panning && panStart) {
-      panX += x - panStart.x; panY += y - panStart.y; panStart = { x, y };
+      const dx = x - panStart.x, dy = y - panStart.y;
+      panX += dx; panY += dy; panStart = { x, y };
+      objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
       redraw(); return;
     }
     if (dragLbl && dragLblStart) {
@@ -2213,8 +2219,8 @@ function loadTemplate(name, el) {
   const image = new Image();
   image.onload = () => {
     bgImage = image;
-    fitBg(); updateDelImgBtn(); updateList(); redraw();
-    mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+    fitBg(); updateDelImgBtn(); updateList(); redraw(); updateDpad();
+    mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn(); updateMobDpad();
     imageLocked = true;
     const lb = document.getElementById('lock-btn'); if(lb){lb.textContent='🔒 Locked';lb.classList.add('locked');}
     updateMobLockBtn();
@@ -2646,7 +2652,9 @@ function initMobileEvents() {
 
       // Pan
       if (mobPanning && mobPanStart) {
-        mobOx += t.x - mobPanStart.x; mobOy += t.y - mobPanStart.y; mobPanStart = t;
+        const dx = t.x - mobPanStart.x, dy = t.y - mobPanStart.y;
+        mobOx += dx; mobOy += dy; mobPanStart = t;
+        objs.forEach(o => { o.points = o.points.map(p => ({ x: p.x + dx, y: p.y + dy })); });
         mobRedraw(); return;
       }
 
@@ -2666,8 +2674,7 @@ function initMobileEvents() {
         mobOy = cy - (cy - mobOy) * f;
         mobZl *= f;
         objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
-        updateMobDpad(); mobRedraw();
-      }
+        updateMobDpad(); mobRedraw();      }
       mobTouchDist = nd;
     }
   }, { passive: false });
