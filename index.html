@@ -1509,14 +1509,44 @@ function distToSegment(px, py, a, b) {
 function recalcObj(o) {
   const p = o.points;
   if (o.type === 'angle3' && p.length === 3) {
-    o.angle = ang3(p[0], p[1], p[2]); o.value = o.angle.toFixed(1) + '°';
+    o.angle = ang3(p[0],p[1],p[2]); o.value = o.angle.toFixed(1)+'°';
+    if (o.showSupp) o.value = (180-o.angle).toFixed(1)+'°';
   } else if (o.type === 'angle4' && p.length === 4) {
-    o.angle = ang4(p[0], p[1], p[2], p[3]); o.value = o.angle.toFixed(1) + '°';
+    o.angle = ang4(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°';
+    if (o.showSupp) o.value = (180-o.angle).toFixed(1)+'°';
   } else if (o.type === 'cobb' && p.length === 4) {
-    o.angle = cobbA(p[0], p[1], p[2], p[3]); o.value = o.angle.toFixed(1) + '°';
+    o.angle = cobbA(p[0],p[1],p[2],p[3]); o.value = o.angle.toFixed(1)+'°';
+    if (o.showSupp) o.value = (180-o.angle).toFixed(1)+'°';
   } else if (o.type === 'line' && p.length === 2) {
-    const dx = p[1].x - p[0].x, dy = p[1].y - p[0].y;
-    o.dist = Math.sqrt(dx * dx + dy * dy); o.value = o.dist.toFixed(1) + ' px';
+    const dx = p[1].x-p[0].x, dy = p[1].y-p[0].y;
+    o.dist = Math.sqrt(dx*dx+dy*dy);
+    if (o === calib.lineObj) {
+      // Calibration reference moved — recalculate pxPerMm and all distances
+      calib.refPx = o.dist;
+      calib.pxPerMm = o.dist / calib.refMm;
+      // Recalc all distances inline without triggering DOM updates (smooth drag)
+      objs.forEach(d => {
+        if (d.type === 'line' && d !== calib.lineObj) {
+          const p2 = d.points;
+          const px2 = Math.hypot(p2[1].x-p2[0].x, p2[1].y-p2[0].y);
+          d.dist = px2;
+          const mm2 = px2 / calib.pxPerMm;
+          d.value = mm2 >= 10 ? mm2.toFixed(1)+' mm' : mm2.toFixed(2)+' mm';
+          d._calibrated = true;
+        }
+      });
+      o.value = calib.refMm + ' mm';
+      // Defer panel UI updates to avoid layout thrash during drag
+      clearTimeout(recalcObj._uiTimer);
+      recalcObj._uiTimer = setTimeout(() => { updateCalibUI(); updateMobCalib(); updateList(); mobUpdateResults(); }, 150);
+    } else if (calib.pxPerMm) {
+      // Any line when calibrated — always show mm
+      const mm = o.dist / calib.pxPerMm;
+      o.value = mm >= 10 ? mm.toFixed(1)+' mm' : mm.toFixed(2)+' mm';
+      o._calibrated = true;
+    } else {
+      o.value = o.dist.toFixed(1)+' px';
+    }
   }
 }
 
@@ -2319,11 +2349,13 @@ function recalcAllDistances() {
     if (o.type === 'line' && o !== calib.lineObj) {
       const p = o.points;
       const px = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
+      o.dist = px;
       const mm = px / calib.pxPerMm;
-      o.value = mm >= 10 ? mm.toFixed(1) + ' mm' : mm.toFixed(2) + ' mm';
+      o.value = mm >= 10 ? mm.toFixed(1)+' mm' : mm.toFixed(2)+' mm';
       o._calibrated = true;
     }
   });
+  updateList(); mobUpdateResults();
 }
 
 function clearCalibration() {
@@ -2756,13 +2788,14 @@ function closeLblModal() { document.getElementById('lbl-modal').classList.remove
 function confirmLbl() {
   if (!lblEditObj) { closeLblModal(); return; }
   saveHistory();
-  lblEditObj.label    = document.getElementById('lbl-text').value.trim()  || lblEditObj.label;
+  lblEditObj.label    = document.getElementById('lbl-text').value.trim() || lblEditObj.label;
   lblEditObj.fontSize = parseInt(document.getElementById('lbl-size').value) || 13;
   lblEditObj.bold     = document.getElementById('lbl-bold').classList.contains('on');
   lblEditObj.italic   = document.getElementById('lbl-italic').classList.contains('on');
   lblEditObj.showBg   = document.getElementById('lbl-bg').classList.contains('on');
   lblEditObj.lblColor = lblPickedColor;
-  // Apply supplementary angle if it changed
+
+  // Handle supplementary angle toggle
   const suppBtn = document.getElementById('lbl-supp');
   if (suppBtn && lblEditObj.angle != null) {
     const newSupp = suppBtn.classList.contains('on');
@@ -2771,15 +2804,26 @@ function confirmLbl() {
       lblEditObj.value = newSupp
         ? (180 - lblEditObj.angle).toFixed(1) + '°'
         : lblEditObj.angle.toFixed(1) + '°';
+    }
+    // Don't touch value otherwise — angle recalcs on point move
+  } else if (lblEditObj.type === 'line') {
+    // For distance lines: only update value if user manually changed it
+    // AND it's different from what we'd compute (don't overwrite calibrated mm with stale px)
+    const manualVal = document.getElementById('lbl-value').value.trim();
+    const currentVal = lblEditObj.value || '';
+    if (manualVal && manualVal !== currentVal) {
+      // User intentionally changed the value text — respect it
+      lblEditObj.value = manualVal;
     } else {
-      // Also allow manual value override if supp wasn't toggled
-      const manualVal = document.getElementById('lbl-value').value.trim();
-      if (manualVal) lblEditObj.value = manualVal;
+      // Re-derive value from current geometry to ensure it stays correct
+      recalcObj(lblEditObj);
     }
   } else {
+    // Annotations / other types — allow free text
     const manualVal = document.getElementById('lbl-value').value.trim();
     if (manualVal) lblEditObj.value = manualVal;
   }
+
   closeLblModal(); updateList(); mobUpdateResults(); redraw(); mobRedraw();
 }
 function selectChip(el, color) {
