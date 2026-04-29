@@ -208,6 +208,18 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   height: 32px; display: flex; align-items: center; min-width: 48px; justify-content: center;
 }
 
+/* D-pad navigation */
+.dpad-btn {
+  width: 32px; height: 32px;
+  background: rgba(8,10,12,.88); border: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; backdrop-filter: blur(8px);
+  user-select: none; -webkit-user-select: none;
+}
+.dpad-btn:hover { color: #fff; background: rgba(192,57,43,.25); border-color: var(--red); }
+.dpad-btn:active { transform: scale(.88); background: rgba(192,57,43,.4); }
+
 /* 6. RIGHT SIDEBAR */
 .sidebar-r {
   background: var(--surface); border-left: 1px solid var(--border);
@@ -663,7 +675,20 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button onclick="doZoom(1.2)">+</button>
       <div class="zlbl" id="zlbl">100%</div>
       <button onclick="doZoom(0.8)">−</button>
-      <button onclick="resetZoom()">⊡</button>
+      <button onclick="resetZoom()" title="Fit to screen">⊡</button>
+    </div>
+
+    <!-- D-pad navigation — visible when zoomed in -->
+    <div id="dpad" style="position:absolute;bottom:12px;right:12px;z-index:5;display:none;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(3,32px);gap:2px;">
+      <div></div>
+      <button class="dpad-btn" onclick="panBy(0,80)"  title="Up">▲</button>
+      <div></div>
+      <button class="dpad-btn" onclick="panBy(80,0)"  title="Left">◀</button>
+      <button class="dpad-btn" onclick="resetZoom()"  title="Fit" style="font-size:10px">⊡</button>
+      <button class="dpad-btn" onclick="panBy(-80,0)" title="Right">▶</button>
+      <div></div>
+      <button class="dpad-btn" onclick="panBy(0,-80)" title="Down">▼</button>
+      <div></div>
     </div>
   </div>
 
@@ -797,6 +822,21 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="mob-zbtn" onclick="mobZoomIn()">+</button>
       <button class="mob-zbtn" onclick="mobZoomOut()">−</button>
       <button class="mob-zbtn" style="font-size:12px" onclick="mobZoomReset()">⊡</button>
+    </div>
+    <!-- Mobile D-pad -->
+    <div id="mob-dpad" style="
+      display:none;position:fixed;bottom:106px;left:10px;z-index:111;
+      display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px;
+    ">
+      <div></div>
+      <button class="dpad-btn" style="width:40px;height:40px;font-size:16px" onclick="mobPanBy(0,100)"  >▲</button>
+      <div></div>
+      <button class="dpad-btn" style="width:40px;height:40px;font-size:16px" onclick="mobPanBy(100,0)" >◀</button>
+      <button class="dpad-btn" style="width:40px;height:40px;font-size:10px" onclick="mobZoomReset()"  >⊡</button>
+      <button class="dpad-btn" style="width:40px;height:40px;font-size:16px" onclick="mobPanBy(-100,0)">▶</button>
+      <div></div>
+      <button class="dpad-btn" style="width:40px;height:40px;font-size:16px" onclick="mobPanBy(0,-100)">▼</button>
+      <div></div>
     </div>
   </div>
 
@@ -1770,10 +1810,33 @@ function doZoom(f) {
   panY = cy - (cy - panY) * f;
   zl *= f;
   objs.forEach(o => { o.points = o.points.map(p => ({ x: cx + (p.x - cx) * f, y: cy + (p.y - cy) * f })); });
-  updateZlbl(); redraw();
+  updateZlbl(); updateDpad(); redraw();
 }
-function resetZoom() { if (bgImage) { fitBg(); redraw(); } }
+function resetZoom() { if (bgImage) { fitBg(); updateDpad(); redraw(); } }
 
+// Pan the image by dx,dy pixels (used by D-pad)
+function panBy(dx, dy) {
+  panX += dx; panY += dy;
+  redraw();
+}
+
+function mobPanBy(dx, dy) {
+  mobOx += dx; mobOy += dy;
+  mobRedraw();
+}
+
+// Show/hide D-pads based on zoom level
+function updateDpad() {
+  const zoomed = zl > 1.08;
+  const dp = document.getElementById('dpad');
+  if (dp) dp.style.display = zoomed ? 'grid' : 'none';
+}
+
+function updateMobDpad() {
+  const zoomed = mobZl > 1.08;
+  const dp = document.getElementById('mob-dpad');
+  if (dp) dp.style.display = zoomed ? 'grid' : 'none';
+}
 function gp(e) {
   const r = cvs.getBoundingClientRect();
   return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
@@ -2159,6 +2222,8 @@ function loadTemplate(name, el) {
 
 function loadFile(e) {
   const file = e.target.files[0]; if (!file) return;
+  // Reset input so same file can be selected again after delete
+  e.target.value = '';
   const reader = new FileReader();
   reader.onload = ev => {
     const image = new Image();
@@ -2166,9 +2231,9 @@ function loadFile(e) {
       bgImage = image;
       objs=[]; wip=[]; selObj=null; zl=1; panX=0; panY=0; history=[];
       // Desktop
-      fitBg(); updateDelImgBtn(); updateList(); redraw();
+      fitBg(); updateDelImgBtn(); updateList(); redraw(); updateDpad();
       // Mobile
-      mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn();
+      mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn(); updateMobDpad();
       // Auto-lock after load so measurements don't shift the image
       imageLocked = true;
       const lb = document.getElementById('lock-btn'); if(lb){lb.textContent='🔒 Locked';lb.classList.add('locked');}
@@ -2596,7 +2661,7 @@ function initMobileEvents() {
         mobOy = cy - (cy - mobOy) * f;
         mobZl *= f;
         objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
-        mobRedraw();
+        updateMobDpad(); mobRedraw();
       }
       mobTouchDist = nd;
     }
@@ -2779,9 +2844,9 @@ function mobZoomBy(f) {
   const cx = mobW/2, cy = mobH/2;
   mobOx = cx-(cx-mobOx)*f; mobOy = cy-(cy-mobOy)*f; mobZl *= f;
   objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
-  mobRedraw();
+  updateMobDpad(); mobRedraw();
 }
-function mobZoomReset() { mobFitBg(); mobRedraw(); }
+function mobZoomReset() { mobFitBg(); mobZl = Math.min(mobW/bgImage?.width||1, mobH/bgImage?.height||1)*0.94||1; updateMobDpad(); mobRedraw(); }
 
 // ── Mobile implant controls ───────────────────────────────────
 function mobInitPlateGrid() {
