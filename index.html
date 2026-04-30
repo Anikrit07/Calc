@@ -619,10 +619,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="mob-zbtn" style="font-size:12px" onclick="mobZoomReset()">⊡</button>
     </div>
     <!-- Mobile D-pad -->
-    <div id="mob-dpad" style="
-      display:none;position:fixed;bottom:106px;left:10px;z-index:111;
-      display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px;
-    ">
+    <div id="mob-dpad" style="position:fixed;bottom:106px;left:10px;z-index:111;display:none;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px;">
       <div></div>
       <button class="dpad-btn" style="width:40px;height:40px;font-size:16px" onclick="mobPanBy(0,100)"  >▲</button>
       <div></div>
@@ -709,6 +706,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         <span style="font-size:22px">📂</span>
         <div><div style="font-size:13px;font-weight:600;color:var(--text)">Upload Your X-Ray</div><div style="font-size:11px;color:var(--muted);margin-top:2px">JPG or PNG</div></div>
       </label>
+      <input type="file" id="file-inp" accept="image/*" onchange="loadFile(event)" style="display:none">
     </div>
   </div>
 </div>
@@ -1946,10 +1944,35 @@ function drawPtOnCtx(c, x, y, r, style, col) {
 
 // ── Templates ────────────────────────────────────────────────
 function initTemplateSrcs() {
+  // Try to find hidden template img elements
   ['hip','knee'].forEach(name => {
-    const img = document.querySelector(`#tpl-${name} img.tpl-thumb`);
-    if (img) TEMPLATE_SRCS[name] = img.src;
+    let img = document.querySelector(`#tpl-${name} img.tpl-thumb`);
+    if (!img) img = document.getElementById(`tpl-src-${name}`);
+    if (img && img.src && !img.src.endsWith('/') && !img.src.endsWith('#')) {
+      TEMPLATE_SRCS[name] = img.src;
+    }
   });
+  // Fallback: load from public sample X-ray images
+  if (!TEMPLATE_SRCS.hip) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      TEMPLATE_SRCS.hip = img.src;
+      const t = document.getElementById('mbt-hip');
+      if (t) t.src = img.src;
+    };
+    img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/X-ray_of_a_healthy_hip.jpg/400px-X-ray_of_a_healthy_hip.jpg';
+  }
+  if (!TEMPLATE_SRCS.knee) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      TEMPLATE_SRCS.knee = img.src;
+      const t = document.getElementById('mbt-knee');
+      if (t) t.src = img.src;
+    };
+    img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Knee_X-ray_lateral_view.jpg/300px-Knee_X-ray_lateral_view.jpg';
+  }
 }
 
 function loadTemplate(name, el) {
