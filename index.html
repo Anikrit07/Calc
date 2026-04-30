@@ -2152,25 +2152,6 @@ function redraw() {
   // Lens overlay (screen space)
   if (dragPt && showLens) drawLens(mpos.x, mpos.y);
 
-  // Fracture WIP polyline
-  if (tool === 'fracture' || fractraceLines.length) {
-    ctx.save(); ctx.translate(panX, panY); ctx.scale(zl, zl);
-    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5/zl; ctx.setLineDash([7/zl,3/zl]);
-    // Completed lines
-    fractraceLines.forEach(fl => {
-      ctx.beginPath(); fl.points.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
-      fl.points.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,5/zl,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); });
-    });
-    // In-progress line
-    if (fracWip.length > 0) {
-      ctx.beginPath(); fracWip.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-      if (mpos.x) ctx.lineTo(mpos.x, mpos.y);
-      ctx.stroke();
-      fracWip.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,5/zl,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); });
-    }
-    ctx.setLineDash([]); ctx.restore();
-  }
-
   if (typeof drawImplants === 'function') drawImplants();
 }
 
@@ -2351,7 +2332,6 @@ function initDesktopEvents() {
     if (tool === 'select')   { doSelect(x, y); return; }
     if (tool === 'erase')    { doErase(x, y);  return; }
     if (tool === 'annotate') { annPt = { x, y }; openAnnModal(); return; }
-    if (tool === 'fracture') { fracWip.push({ x, y }); redraw(); return; }
     wip.push({ x, y });
     if (wip.length === REQ[tool]) finalise();
     else { showStepHint(); redraw(); }
@@ -2470,15 +2450,7 @@ function initDesktopEvents() {
 
   // Double-click: finish fracture line OR edit label
   cvs.addEventListener('dblclick', e => {
-    if (tool === 'fracture') {
-      if (fracWip.length > 1) fracWip.pop(); // remove duplicate from click
-      if (fracWip.length >= 2) {
-        fractraceLines.push({ points: [...fracWip] }); fracWip = [];
-        const st = document.getElementById('fm-trace-status');
-        if (st) st.textContent = `🔴 Line ${fractraceLines.length} done — continue or tap "Done Tracing"`;
-      }
-      redraw(); return;
-    }
+
     if (tool !== 'select') return;
     const { x: sx, y: sy } = gpScreen(e);
     for (const o of objs) {
@@ -5310,22 +5282,6 @@ function fmRenderMobFragList() {
         <button class="fm-frag-btn" onclick="event.stopPropagation();fm.fragments[${i}].angle+=0.087;if(mobFmCvs)fmDrawSchema(mobFmCvs,mobFmCtx)">↻</button>
       </div>
     </div>`).join('');
-}
-
-function fmShowMobSchema() {
-  const s = document.getElementById('mob-fm-schema'); if (!s) return;
-  s.style.display = 'block';
-  mobFmCvs = document.getElementById('mob-fm-cvs');
-  if (!mobFmCvs) return;
-  mobFmCtx = mobFmCvs.getContext('2d');
-  mobFmCvs.width = window.innerWidth;
-  mobFmCvs.height = window.innerHeight - 52;
-  fmBoneScale=1; fmBoneOffX=0; fmBoneOffY=0; // reset so fmResizeCvs recalcs
-  fmDrawSchema(mobFmCvs, mobFmCtx);
-  // Touch events for drawing/dragging on mobile schematic
-  mobFmCvs.ontouchstart = e => { e.preventDefault(); fmBoneScale=fmBoneScale||1; const pos = fmTouchToXY(e, mobFmCvs); fmPointerDown(pos); fmDrawSchema(mobFmCvs, mobFmCtx); };
-  mobFmCvs.ontouchmove  = e => { e.preventDefault(); fmPointerMove(fmTouchToXY(e, mobFmCvs)); fmDrawSchema(mobFmCvs, mobFmCtx); };
-  mobFmCvs.ontouchend   = e => { e.preventDefault(); fmPointerUp(); fmDrawSchema(mobFmCvs, mobFmCtx); fmSyncMobUI(); };
 }
 
 function fmMobToggle(view) {
