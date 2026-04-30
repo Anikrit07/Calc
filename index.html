@@ -1959,18 +1959,19 @@ function loadTemplate(name, el) {
   if (el) el.classList.add('active');
   document.querySelectorAll('.pitem').forEach(i => i.classList.remove('active'));
 
-  const src = TEMPLATE_SRCS[name]; if (!src) { bgImage=null; updateList(); redraw(); mobRedraw(); return; }
+  const src = TEMPLATE_SRCS[name]; if (!src) { bgImage=null; updateList(); mobRedraw(); return; }
   const image = new Image();
   image.onload = () => {
     bgImage = image;
-    fitBg(); updateDelImgBtn(); updateList(); redraw(); updateDpad();
-    mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn(); updateMobDpad();
+    mobResize(); mobFitBg(); mobRedraw();
+    updateDelImgBtn(); updateMobDelBtn(); updateList(); mobUpdateResults();
+    updateMobDpad();
     imageLocked = true;
-    
-    updateMobLockBtn();
+    const lb = document.getElementById('mob-lock-btn');
+    if (lb) { lb.textContent = '🔒'; lb.style.color = '#f97316'; lb.style.display = 'inline-block'; }
   };
   image.src = src;
-  updateList(); redraw();
+  updateList();
 }
 
 function loadFile(e) {
@@ -1995,13 +1996,24 @@ function loadFile(e) {
     const image = new Image();
     image.onload = () => {
       bgImage = image;
-      objs=[]; wip=[]; selObj=null; zl=1; panX=0; panY=0; history=[];
-      fitBg(); updateDelImgBtn(); updateList(); redraw(); updateDpad();
-      mobResize(); mobFitBg(); mobRedraw(); updateMobDelBtn(); updateMobDpad();
+      objs=[]; wip=[]; selObj=null;
+      zl=1; panX=0; panY=0; history=[];
+      calib = { pxPerMm:null, refName:'', refMm:null, refPx:null, lineObj:null };
+      calibMode = false;
+      // Always resize canvas first to ensure dimensions are set
+      mobResize();
+      mobFitBg();
+      mobRedraw();
+      updateDelImgBtn(); updateMobDelBtn(); updateList(); mobUpdateResults();
+      updateMobDpad();
+      // Auto-lock
       imageLocked = true;
-      updateMobLockBtn();
+      const lb = document.getElementById('mob-lock-btn');
+      if (lb) { lb.textContent = '🔒'; lb.style.color = '#f97316'; lb.style.display = 'inline-block'; }
       mobClose();
       document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+      // Second render after a tick in case canvas size settled
+      setTimeout(() => { mobResize(); mobFitBg(); mobRedraw(); }, 80);
     };
     image.onerror = () => {
       showUploadError(`Could not load this image.\n\nThe file may be:\n• Corrupted or incomplete\n• A DICOM file (.dcm) — not supported by browsers\n• An unsupported RAW format\n\nPlease try exporting as JPG or PNG from your imaging software.`);
