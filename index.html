@@ -848,54 +848,54 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <div class="tab-pane" id="tab-fracmap">
       <div style="padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
         <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Fracture Mapper</div>
-        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">Select a bone, trace fracture lines on the X-ray, then generate a schematic diagram.</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px">Select a bone to open the schematic. Draw fracture lines directly on it, then generate fragments.</div>
 
-        <!-- Bone selector -->
-        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Select Bone</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">
           <button class="btn fm-bone-btn" id="fmb-proxfemur" onclick="fmSelectBone('proxfemur',this)">Proximal Femur</button>
-          <button class="btn fm-bone-btn" id="fmb-radioulna" onclick="fmSelectBone('radioulna',this)">Radius / Ulna</button>
+          <button class="btn fm-bone-btn" id="fmb-radioulna"  onclick="fmSelectBone('radioulna',this)">Radius / Ulna</button>
         </div>
 
-        <!-- Side selector -->
-        <div id="fm-side-row" style="display:none;margin-bottom:10px">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Side</div>
-          <div style="display:flex;gap:6px">
-            <button class="btn fm-side-btn active" id="fms-right" onclick="fmSelectSide('right',this)">Right</button>
-            <button class="btn fm-side-btn" id="fms-left" onclick="fmSelectSide('left',this)">Left</button>
+        <div id="fm-side-row" style="display:none;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Side</div>
+          <div style="display:flex;gap:5px">
+            <button class="btn fm-side-btn active" id="fms-right" onclick="fmSelectSide('right',this)" style="flex:1;justify-content:center">Right</button>
+            <button class="btn fm-side-btn"        id="fms-left"  onclick="fmSelectSide('left',this)"  style="flex:1;justify-content:center">Left</button>
           </div>
         </div>
+      </div>
 
-        <!-- Trace button -->
-        <div id="fm-trace-row" style="display:none">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Step 1 — Trace Fractures</div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:7px">Use the line tool to draw fracture lines directly on the X-ray. Each line segment = one fracture plane.</div>
-          <button class="btn" style="width:100%;justify-content:center;margin-bottom:6px" onclick="fmStartTrace()">✏ Start Tracing Fractures</button>
-          <div id="fm-trace-status" style="font-size:10px;color:var(--muted);text-align:center"></div>
+      <div id="fm-controls" style="display:none;padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Draw Fracture Lines</div>
+        <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Click and drag across the bone to draw each fracture line. Draw all fractures, then generate.</div>
+        <div id="fm-trace-status" style="font-size:10px;color:var(--muted);margin-bottom:8px">No lines drawn yet</div>
+        <div style="display:flex;gap:5px">
+          <button class="btn" style="flex:1;justify-content:center;font-size:10px" onclick="fmUndoLine()">↩ Undo</button>
+          <button class="btn" style="flex:1;justify-content:center;font-size:10px" onclick="fm.fracLines=[];fm.currentLine=[];fmDrawSchema(fmCvs,fmCtx)">✕ Clear</button>
         </div>
+      </div>
 
-        <!-- Generate button -->
-        <div id="fm-generate-row" style="display:none;margin-top:8px">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Step 2 — Generate Schematic</div>
-          <button class="btn primary" style="width:100%;justify-content:center" onclick="fmGenerate()">🔀 Generate Fracture Diagram</button>
+      <div id="fm-generate-row" style="display:none;padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div id="fm-draw-mode-row">
+          <button class="btn primary" style="width:100%;justify-content:center" onclick="fmGenerate()">🔀 Split into Fragments</button>
         </div>
       </div>
 
       <!-- View toggle -->
       <div id="fm-view-toggle" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:5px">
           <button class="btn" id="fmv-xray"   onclick="fmToggleView('xray')"   style="flex:1;justify-content:center;font-size:10px">🩻 X-Ray</button>
           <button class="btn active" id="fmv-schema" onclick="fmToggleView('schema')" style="flex:1;justify-content:center;font-size:10px">🔀 Schematic</button>
         </div>
       </div>
 
       <!-- Fragment list -->
-      <div id="fm-fragment-list" style="padding:8px 10px;flex-shrink:0;display:none">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Fragments</div>
+      <div id="fm-fragment-list" style="display:none;padding:8px 10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Fragments — drag to reduce</div>
         <div id="fm-frag-items"></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5">Drag fragments to reduce. Use rotation handle to correct angulation.</div>
-        <button class="btn" style="width:100%;justify-content:center;margin-top:8px;font-size:10px" onclick="fmReset()">↩ Reset Positions</button>
-        <button class="btn danger-outline" style="width:100%;justify-content:center;margin-top:5px;font-size:10px" onclick="fmClear()">✕ Clear Map</button>
+        <div style="display:flex;gap:5px;margin-top:8px">
+          <button class="btn" style="flex:1;font-size:10px;justify-content:center" onclick="fmReset()">↩ Reset</button>
+          <button class="btn danger-outline" style="flex:1;font-size:10px;justify-content:center" onclick="fmClear()">✕ Clear All</button>
+        </div>
       </div>
     </div>
 
@@ -968,8 +968,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="mob-bar-btn" id="mbb-implants" onclick="mobOpen('implants')"><span class="mi">🔩</span>Implants</button>
       <button class="mob-bar-btn" id="mbb-ao"       onclick="mobOpen('ao')">      <span class="mi">🦴</span>AO Class.</button>
       <button class="mob-bar-btn" id="mbb-calib"    onclick="mobOpen('calib')">   <span class="mi">📏</span>Calibrate</button>
+      <button class="mob-bar-btn" id="mbb-fracmap"  onclick="mobOpen('fracmap')"> <span class="mi">🔀</span>Fracture</button>
       <button class="mob-bar-btn"                   onclick="clearAll()">         <span class="mi">🗑</span>Clear</button>
-      <button class="mob-bar-btn"                   onclick="saveSnapshot()">     <span class="mi">💾</span>Save</button>
     </div>
   </div>
 
@@ -1257,6 +1257,74 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         <button onclick="mobResetAO()" style="flex:1;padding:10px;background:var(--panel);border:1px solid var(--border);color:var(--subtle);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">↩ Restart</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Fracture Mapper sheet -->
+<div class="mob-sheet" id="msheet-fracmap" style="max-height:92vh">
+  <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
+  <div class="mob-sheet-title">🔀 Fracture Mapper</div>
+  <div class="mob-sheet-inner">
+    <div style="padding:12px 14px">
+
+      <!-- Step 1: bone select -->
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Select Bone</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button class="btn fm-bone-btn" id="mob-fmb-proxfemur" onclick="fmSelectBone('proxfemur',this);fmSyncMobUI()">Proximal Femur</button>
+        <button class="btn fm-bone-btn" id="mob-fmb-radioulna" onclick="fmSelectBone('radioulna',this);fmSyncMobUI()">Radius / Ulna</button>
+      </div>
+
+      <!-- Side -->
+      <div id="mob-fm-side-row" style="display:none;margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Side</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn fm-side-btn active" id="mob-fms-right" onclick="fmSelectSide('right',this)" style="flex:1;justify-content:center">Right</button>
+          <button class="btn fm-side-btn"        id="mob-fms-left"  onclick="fmSelectSide('left',this)"  style="flex:1;justify-content:center">Left</button>
+        </div>
+      </div>
+
+      <!-- Trace -->
+      <div id="mob-fm-trace-row" style="display:none;margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Draw Fracture Lines</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">Tap "View Schematic" to see the bone. Draw fracture lines by dragging across it. Return here to generate.</div>
+        <div id="mob-fm-trace-status" style="font-size:11px;color:var(--muted);margin-bottom:8px">No lines drawn yet</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="btn" style="flex:1;justify-content:center;padding:8px" onclick="fmUndoLine();fmSyncMobUI()">↩ Undo</button>
+          <button class="btn" style="flex:1;justify-content:center;padding:8px" onclick="fm.fracLines=[];fm.currentLine=[];fmDrawSchema(mobFmCvs,mobFmCtx);fmSyncMobUI()">✕ Clear</button>
+        </div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:10px" onclick="fmMobShowSchema();mobClose()">👁 View Schematic & Draw</button>
+      </div>
+
+      <!-- Generate -->
+      <div id="mob-fm-generate-row" style="display:none;margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Split into Fragments</div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:12px" onclick="fmGenerate();fmMobShowSchema();mobClose()">🔀 Generate Fracture Diagram</button>
+      </div>
+
+      <!-- Fragment controls (after generation) -->
+      <div id="mob-fm-frags" style="display:none">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Fragments — Drag to Reduce</div>
+        <div id="mob-fm-frag-items"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" style="flex:1;justify-content:center;font-size:11px" onclick="fmReset();fmDrawMob()">↩ Reset</button>
+          <button class="btn danger-outline" style="flex:1;justify-content:center;font-size:11px" onclick="fmClear();fmSyncMobUI()">✕ Clear</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Fracture schematic full-screen overlay (mobile) -->
+<div id="mob-fm-schema" style="
+  display:none;position:fixed;inset:0;z-index:400;background:#0a0c10;
+">
+  <canvas id="mob-fm-cvs" style="display:block;width:100%;height:100%"></canvas>
+  <!-- Top bar -->
+  <div style="position:absolute;top:0;left:0;right:0;height:52px;background:rgba(10,12,18,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;z-index:2">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--text);flex:1">FRACTURE SCHEMATIC</div>
+    <button onclick="fmMobToggle('xray')" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">🩻 X-Ray</button>
+    <button onclick="mobOpen('fracmap')" style="background:rgba(192,57,43,.15);border:1px solid var(--red);color:#e88a84;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">⚙ Edit</button>
   </div>
 </div>
 
@@ -2081,6 +2149,26 @@ function redraw() {
 
   // Lens overlay (screen space)
   if (dragPt && showLens) drawLens(mpos.x, mpos.y);
+
+  // Fracture WIP polyline
+  if (tool === 'fracture' || fractraceLines.length) {
+    ctx.save(); ctx.translate(panX, panY); ctx.scale(zl, zl);
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5/zl; ctx.setLineDash([7/zl,3/zl]);
+    // Completed lines
+    fractraceLines.forEach(fl => {
+      ctx.beginPath(); fl.points.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+      fl.points.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,5/zl,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); });
+    });
+    // In-progress line
+    if (fracWip.length > 0) {
+      ctx.beginPath(); fracWip.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      if (mpos.x) ctx.lineTo(mpos.x, mpos.y);
+      ctx.stroke();
+      fracWip.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,5/zl,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); });
+    }
+    ctx.setLineDash([]); ctx.restore();
+  }
+
   if (typeof drawImplants === 'function') drawImplants();
 }
 
@@ -2261,6 +2349,7 @@ function initDesktopEvents() {
     if (tool === 'select')   { doSelect(x, y); return; }
     if (tool === 'erase')    { doErase(x, y);  return; }
     if (tool === 'annotate') { annPt = { x, y }; openAnnModal(); return; }
+    if (tool === 'fracture') { fracWip.push({ x, y }); redraw(); return; }
     wip.push({ x, y });
     if (wip.length === REQ[tool]) finalise();
     else { showStepHint(); redraw(); }
@@ -2377,8 +2466,17 @@ function initDesktopEvents() {
 
   cvs.addEventListener('wheel', e => { e.preventDefault(); doZoom(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
 
-  // Double-click on label → edit
+  // Double-click: finish fracture line OR edit label
   cvs.addEventListener('dblclick', e => {
+    if (tool === 'fracture') {
+      if (fracWip.length > 1) fracWip.pop(); // remove duplicate from click
+      if (fracWip.length >= 2) {
+        fractraceLines.push({ points: [...fracWip] }); fracWip = [];
+        const st = document.getElementById('fm-trace-status');
+        if (st) st.textContent = `🔴 Line ${fractraceLines.length} done — continue or tap "Done Tracing"`;
+      }
+      redraw(); return;
+    }
     if (tool !== 'select') return;
     const { x: sx, y: sy } = gpScreen(e);
     for (const o of objs) {
@@ -4062,6 +4160,7 @@ function mobOpen(name) {
   if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); }
   if (name === 'ao')       mobInitAO();
   if (name === 'calib')    updateMobCalib();
+  if (name === 'fracmap')  fmSyncMobUI();
   if (name === 'xray') {
     ['hip','knee'].forEach(t => {
       const src=TEMPLATE_SRCS[t], img=document.getElementById('mbt-'+t);
@@ -4675,449 +4774,497 @@ function drawAOTag() {
 }
 
 // ============================================================
-// FRACTURE MAPPER
+// FRACTURE MAPPER — draw fracture lines on bone schematic
 // ============================================================
 
-// ── Bone SVG path data (AP view, right side, 400×600 viewbox) ──
+// ── Bone SVG data (AP view, normalized 400×600) ──────────────
 const FM_BONES = {
   proxfemur: {
     name: 'Proximal Femur',
-    vw: 320, vh: 500,
-    // Bone outline as a single closed path (right side AP view)
-    outline: `M 155,30
-      C 155,30 185,25 205,40 C 228,57 232,82 228,102
-      C 224,122 215,135 210,142
-      C 230,148 255,158 268,175
-      C 285,196 288,220 280,240
-      C 272,258 255,268 238,272
-      C 260,278 275,290 278,310
-      C 280,328 270,345 255,352
-      C 245,356 232,358 220,358
-      L 215,500 L 160,500 L 155,358
-      C 140,358 125,355 115,348
-      C 100,338 92,320 95,302
-      C 98,284 112,272 132,268
-      C 115,262 100,250 92,232
-      C 82,210 86,185 102,168
-      C 118,150 142,145 160,143
-      C 154,135 145,120 142,102
-      C 138,80 142,55 155,38 Z`,
-    // Zone labels for fracture zone reference lines
+    vw: 300, vh: 480,
+    // Closed outline path — right AP view
+    outline: 'M 148,28 C 148,28 178,20 202,36 C 226,52 234,82 228,108 C 222,128 210,142 205,150 C 228,156 256,170 268,192 C 282,218 278,248 260,264 C 248,274 232,278 218,280 L 218,470 L 158,470 L 158,280 C 142,278 124,272 112,260 C 96,244 92,214 108,190 C 120,170 148,156 168,150 C 162,140 150,126 146,106 C 140,80 142,52 148,28 Z',
+    // Femoral head as separate circle
+    head: { cx: 188, cy: 72, r: 48 },
     zones: [
-      { name: 'Subcapital', y: 105, color: '#ef4444' },
-      { name: 'Transcervical', y: 145, color: '#f97316' },
-      { name: 'Intertrochanteric', y: 185, color: '#eab308' },
-      { name: 'Subtrochanteric', y: 285, color: '#22c55e' },
+      { name:'Subcapital',       y: 118 },
+      { name:'Transcervical',    y: 155 },
+      { name:'Intertrochanteric',y: 196 },
+      { name:'Subtrochanteric',  y: 280 },
     ],
-    // Key landmarks
     landmarks: [
-      { name: 'Femoral Head', cx: 185, cy: 65, r: 42 },
-      { name: 'Greater Trochanter', cx: 268, cy: 195 },
-      { name: 'Lesser Trochanter', cx: 120, cy: 270 },
+      { name:'Greater Trochanter', x: 264, y: 210 },
+      { name:'Lesser Trochanter',  x: 105, y: 270 },
     ],
-    // Fragment colors
     fragColors: ['#3b82f6','#ef4444','#22c55e','#f97316','#a855f7','#ec4899'],
   },
   radioulna: {
     name: 'Radius & Ulna',
-    vw: 320, vh: 560,
-    outline: `
-      M 95,30 C 90,30 82,35 80,45 C 78,58 83,72 88,85
-      C 92,95 98,105 100,120 L 100,380
-      C 98,395 92,408 88,418 C 82,432 78,445 82,458
-      C 85,468 93,475 103,476 C 113,477 122,472 127,463
-      C 132,454 133,442 130,430 C 127,418 120,408 118,395
-      L 118,120 C 120,105 126,95 130,85
-      C 135,72 140,58 138,45 C 136,35 128,30 123,30 Z
-      M 185,30 C 178,30 168,38 166,50 C 164,64 170,80 175,95
-      C 180,108 185,122 185,138 L 185,360
-      C 183,378 178,392 172,408 C 165,425 160,442 162,458
-      C 164,470 172,480 182,482 C 192,484 202,479 207,470
-      C 215,458 215,440 210,422 C 206,408 200,393 198,378
-      L 198,138 C 198,122 203,108 208,95
-      C 213,80 219,64 217,50 C 215,38 205,30 198,30 Z`,
+    vw: 300, vh: 520,
+    // Two bones side by side
+    outline: 'M 78,24 C 70,24 62,32 60,44 C 58,58 64,76 70,92 C 74,104 80,116 82,132 L 82,372 C 80,388 74,402 68,416 C 62,432 56,448 60,462 C 64,474 74,482 86,482 C 98,482 108,474 112,462 C 116,450 114,434 110,418 C 106,404 100,390 98,374 L 98,132 C 100,116 106,104 110,92 C 116,76 122,58 120,44 C 118,32 110,24 102,24 Z M 180,28 C 172,28 162,38 160,52 C 158,68 164,86 170,102 C 176,116 182,130 182,146 L 182,356 C 180,374 174,390 168,406 C 162,424 156,442 160,458 C 164,472 174,482 186,484 C 198,486 210,476 214,464 C 220,448 218,428 214,412 C 210,396 202,380 200,362 L 200,146 C 200,130 206,116 212,102 C 218,86 224,68 222,52 C 220,38 210,28 202,28 Z',
     zones: [
-      { name: 'Proximal', y: 95, color: '#ef4444' },
-      { name: 'Mid-shaft', y: 240, color: '#f97316' },
-      { name: 'Distal', y: 385, color: '#eab308' },
+      { name:'Proximal', y: 100 },
+      { name:'Mid-shaft', y: 252 },
+      { name:'Distal',   y: 368 },
     ],
     landmarks: [
-      { name: 'Radial Head', cx: 109, cy: 58 },
-      { name: 'Olecranon', cx: 192, cy: 55 },
-      { name: 'Distal Radius', cx: 109, cy: 435 },
-      { name: 'Ulnar Styloid', cx: 192, cy: 456 },
+      { name:'Radial Head', x: 90, y: 58 },
+      { name:'Olecranon',   x: 190, y: 52 },
+      { name:'Distal Radius', x: 90, y: 440 },
+      { name:'Ulnar Styloid', x: 192, y: 458 },
     ],
     fragColors: ['#3b82f6','#ef4444','#22c55e','#f97316','#a855f7','#ec4899'],
   },
 };
 
-// ── Fracture mapper state ─────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────
 let fm = {
-  bone: null,        // 'proxfemur' | 'radioulna'
-  side: 'right',     // 'right' | 'left'
-  tracing: false,    // currently tracing fracture lines
-  fracLines: [],     // [{points:[{x,y},{x,y}], ...}] — fracture line objs from main canvas
-  fragments: [],     // [{id, color, name, path, ox, oy, angle, origOx, origOy}]
-  view: 'xray',      // 'xray' | 'schema'
+  bone: null,
+  side: 'right',
+  view: 'schema',       // 'schema' | 'xray'
+  drawMode: 'fracture', // 'fracture' | 'select'
+  fracLines: [],        // [{points:[{x,y},...]}] drawn on schematic
+  currentLine: [],      // line being drawn
+  fragments: [],        // computed fragments after split
   generated: false,
-  selFrag: null,     // selected fragment index
-  dragFrag: null,    // {idx, startX, startY, origOx, origOy}
-  rotFrag: null,     // rotating fragment
+  selFrag: null,
+  dragFrag: null,       // {idx, startX, startY, origOx, origOy}
 };
 
-let fmCvs, fmCtx;
+// Schema canvas elements
+let fmCvs = null, fmCtx = null;
+let mobFmCvs = null, mobFmCtx = null;
 
+// Scale/offset for bone in schema canvas
+let fmScale = 1, fmOffX = 0, fmOffY = 0;
+
+// ── Init ──────────────────────────────────────────────────────
 function fmInit() {
   fmCvs = document.getElementById('fm-cvs');
-  if (!fmCvs) return;
-  fmCtx = fmCvs.getContext('2d');
-  fmCvs.addEventListener('mousedown', fmMouseDown);
-  fmCvs.addEventListener('mousemove', fmMouseMove);
-  fmCvs.addEventListener('mouseup',   fmMouseUp);
-  fmCvs.addEventListener('touchstart', e => { e.preventDefault(); fmMouseDown(fmTouchToMouse(e)); }, { passive: false });
-  fmCvs.addEventListener('touchmove',  e => { e.preventDefault(); fmMouseMove(fmTouchToMouse(e)); }, { passive: false });
-  fmCvs.addEventListener('touchend',   e => { e.preventDefault(); fmMouseUp(fmTouchToMouse(e)); },   { passive: false });
+  if (fmCvs) {
+    fmCtx = fmCvs.getContext('2d');
+    fmCvs.addEventListener('mousedown', e => fmPointerDown(e, fmCvs, fmCtx));
+    fmCvs.addEventListener('mousemove', e => fmPointerMove(e, fmCvs, fmCtx));
+    fmCvs.addEventListener('mouseup',   () => fmPointerUp(fmCtx));
+    fmCvs.addEventListener('mouseleave',() => fmPointerUp(fmCtx));
+  }
+  mobFmCvs = document.getElementById('mob-fm-cvs');
+  if (mobFmCvs) {
+    mobFmCtx = mobFmCvs.getContext('2d');
+    mobFmCvs.addEventListener('touchstart', e => { e.preventDefault(); fmPointerDown(fmTe(e), mobFmCvs, mobFmCtx); }, { passive:false });
+    mobFmCvs.addEventListener('touchmove',  e => { e.preventDefault(); fmPointerMove(fmTe(e), mobFmCvs, mobFmCtx); }, { passive:false });
+    mobFmCvs.addEventListener('touchend',   e => { e.preventDefault(); fmPointerUp(mobFmCtx); }, { passive:false });
+  }
 }
 
-function fmTouchToMouse(e) {
-  const t = e.touches[0] || e.changedTouches[0];
-  return { clientX: t.clientX, clientY: t.clientY, preventDefault: ()=>{} };
+function fmTe(e) { const t = e.touches[0]||e.changedTouches[0]; return { clientX:t.clientX, clientY:t.clientY }; }
+
+function fmGetPos(e, canvas) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (canvas.width  / r.width),
+    y: (e.clientY - r.top)  * (canvas.height / r.height),
+  };
 }
 
+// Convert canvas pixel → bone space
+function fmCanvasToBone(cx, cy) {
+  return { x: (cx - fmOffX) / fmScale, y: (cy - fmOffY) / fmScale };
+}
+
+// ── Bone selector ─────────────────────────────────────────────
 function fmSelectBone(key, el) {
   fm.bone = key;
+  fm.fracLines = []; fm.currentLine = []; fm.fragments = []; fm.generated = false; fm.selFrag = null;
   document.querySelectorAll('.fm-bone-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   document.getElementById('fm-side-row').style.display = 'block';
-  document.getElementById('fm-trace-row').style.display = 'block';
-  fm.generated = false;
-  document.getElementById('fm-generate-row').style.display = 'none';
+  document.getElementById('fm-controls').style.display = 'block';
+  document.getElementById('fm-generate-row').style.display = 'block';
   document.getElementById('fm-fragment-list').style.display = 'none';
-  document.getElementById('fm-view-toggle').style.display = 'none';
+  document.getElementById('fm-view-toggle').style.display = 'block';
+  // Show schematic immediately
+  fmShowSchema(true);
+  fmSyncMobUI();
 }
 
 function fmSelectSide(side, el) {
   fm.side = side;
   document.querySelectorAll('.fm-side-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
+  fmDrawSchema(fmCvs, fmCtx);
 }
 
-function fmStartTrace() {
-  if (!fm.bone) return;
-  fm.tracing = true;
-  fm.fracLines = [];
-  // Mark existing line objects count so we know which new ones are fracture lines
-  fm._lineCountBefore = objs.filter(o => o.type === 'line').length;
-  // Switch tool to line, use red colour
-  col = '#ef4444';
-  setTool('line');
-  document.querySelectorAll('.sw').forEach(s => s.classList.remove('sel'));
-  // Update status
-  const st = document.getElementById('fm-trace-status');
-  if (st) { st.textContent = '🔴 Draw fracture lines on the X-ray. Click "Done" when finished.'; st.style.color = '#ef4444'; }
-  // Change button to Done
-  const btn = document.querySelector('#fm-trace-row .btn');
-  if (btn) { btn.textContent = '✓ Done — Generate Schematic'; btn.onclick = fmDoneTrace; btn.style.borderColor = '#22c55e'; btn.style.color = '#22c55e'; }
-}
-
-function fmDoneTrace() {
-  fm.tracing = false;
-  // Collect new line objects drawn since trace started
-  fm.fracLines = objs.filter(o => o.type === 'line' && o._isFracLine);
-  // If none tagged, collect all new lines drawn after trace started
-  const allLines = objs.filter(o => o.type === 'line');
-  if (!fm.fracLines.length) {
-    fm.fracLines = allLines.slice(fm._lineCountBefore || 0);
-  }
-  const st = document.getElementById('fm-trace-status');
-  if (st) { st.textContent = `✅ ${fm.fracLines.length} fracture line(s) traced.`; st.style.color = 'var(--green)'; }
-  // Show generate button
-  document.getElementById('fm-generate-row').style.display = 'block';
-  // Reset trace button
-  const btn = document.querySelector('#fm-trace-row .btn');
-  if (btn) { btn.textContent = '✏ Re-trace Fractures'; btn.onclick = fmStartTrace; btn.style.borderColor = ''; btn.style.color = ''; }
-  setTool('select'); col = '#3b82f6';
-}
-
-function fmGenerate() {
-  if (!fm.bone) return;
-  const bone = FM_BONES[fm.bone];
-  fm.fragments = fmComputeFragments(bone);
-  fm.generated = true;
-  fm.view = 'schema';
-  // Show schematic panel
+function fmShowSchema(show) {
   const panel = document.getElementById('fm-schema-panel');
-  if (panel) panel.style.display = 'block';
-  // Resize fm canvas
-  fmResizeCvs();
-  fmDraw();
-  // Show controls
-  document.getElementById('fm-view-toggle').style.display = 'block';
-  document.getElementById('fm-fragment-list').style.display = 'block';
-  fmRenderFragList();
-  // Toggle buttons
-  document.getElementById('fmv-xray').classList.remove('active');
-  document.getElementById('fmv-schema').classList.add('active');
+  if (panel) panel.style.display = show ? 'block' : 'none';
+  if (show) { setTimeout(() => { fmResizeCvs(fmCvs); fmDrawSchema(fmCvs, fmCtx); }, 30); }
 }
 
-function fmComputeFragments(bone) {
-  // Build fragments by splitting the bone outline using the traced fracture lines
-  // For each traced fracture line, we create a cut at the corresponding Y position on the bone
-  const frags = [];
-  const colors = bone.fragColors;
-  const W = bone.vw, H = bone.vh;
+// ── Resize & transform setup ──────────────────────────────────
+function fmResizeCvs(canvas) {
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap ? wrap.clientWidth  : 600;
+  canvas.height = wrap ? wrap.clientHeight : 500;
+}
 
-  // Collect fracture Y positions (normalized 0–1 relative to canvas)
-  let cutYs = fm.fracLines.map(line => {
-    // Get midpoint of line in screen coords, then normalize to bone SVG space
-    const p = line.points;
-    const midY = (p[0].y + p[1].y) / 2;
-    const midX = (p[0].x + p[1].x) / 2;
-    // Normalize relative to canvas size
+function fmSetTransform(canvas) {
+  if (!fm.bone || !canvas) return;
+  const bone  = FM_BONES[fm.bone];
+  const pad   = 48;
+  const scaleX = (canvas.width  - pad*2) / bone.vw;
+  const scaleY = (canvas.height - pad*2) / bone.vh;
+  fmScale = Math.min(scaleX, scaleY);
+  fmOffX  = (canvas.width  - bone.vw * fmScale) / 2;
+  fmOffY  = pad / 2;
+}
+
+// ── Draw bone schematic ───────────────────────────────────────
+function fmDrawSchema(canvas, ctx) {
+  if (!canvas || !ctx || !fm.bone) return;
+  const bone = FM_BONES[fm.bone];
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#080a0e'; ctx.fillRect(0,0,W,H);
+
+  fmSetTransform(canvas);
+  ctx.save();
+  ctx.translate(fmOffX, fmOffY);
+  ctx.scale(fmScale, fmScale);
+  if (fm.side === 'left') { ctx.translate(bone.vw, 0); ctx.scale(-1,1); }
+
+  // ── Draw fragments if generated ──
+  if (fm.generated && fm.fragments.length) {
+    fm.fragments.forEach((frag, fi) => {
+      ctx.save();
+      // Apply fragment displacement/rotation around its centroid
+      const cx = frag.centX, cy = frag.centY;
+      ctx.translate(cx + frag.ox, cy + frag.oy);
+      ctx.rotate(frag.angle);
+      ctx.translate(-cx, -cy);
+      // Clip and fill fragment region
+      ctx.save();
+      ctx.beginPath();
+      frag.clipPath.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+      ctx.closePath();
+      ctx.clip();
+      // Fill bone shape clipped to fragment region
+      const bPath = new Path2D(bone.outline);
+      if (bone.head) {
+        ctx.beginPath(); ctx.arc(bone.head.cx, bone.head.cy, bone.head.r, 0, Math.PI*2);
+        ctx.fillStyle = fi === fm.selFrag ? frag.color+'cc' : frag.color+'44';
+        ctx.fill();
+        ctx.strokeStyle = frag.color; ctx.lineWidth = 2; ctx.stroke();
+      }
+      ctx.fillStyle = fi === fm.selFrag ? frag.color+'cc' : frag.color+'44';
+      ctx.fill(bPath);
+      ctx.strokeStyle = frag.color; ctx.lineWidth = 2;
+      ctx.stroke(bPath);
+      ctx.restore(); // end clip
+
+      // Fragment label at centroid
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(9, 13/fmScale)}px IBM Plex Sans,sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(frag.name, cx + frag.ox, cy + frag.oy + 4);
+      ctx.textAlign = 'left';
+
+      // Selection/rotation handle
+      if (fi === fm.selFrag) {
+        ctx.beginPath(); ctx.arc(cx+frag.ox+40, frag.clipPath[0].y+frag.oy, 8, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = frag.color; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = frag.color; ctx.font = `bold ${11/fmScale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('↻', cx+frag.ox+40, frag.clipPath[0].y+frag.oy+4);
+        ctx.textAlign = 'left';
+      }
+      ctx.restore();
+    });
+
+    // Draw fracture lines between fragments
+    ctx.save();
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.setLineDash([6,3]);
+    fm.fracLines.forEach(fl => {
+      ctx.beginPath(); fl.points.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+    });
+    ctx.setLineDash([]); ctx.restore();
+
+  } else {
+    // ── Draw bone outline (no fragments yet) ──
+    ctx.save();
+    // Bone fill
+    const bPath = new Path2D(bone.outline);
+    ctx.fillStyle = 'rgba(180,200,230,0.08)';
+    ctx.fill(bPath);
+    ctx.strokeStyle = 'rgba(180,200,230,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke(bPath);
+
+    // Femoral head circle if present
+    if (bone.head) {
+      ctx.beginPath(); ctx.arc(bone.head.cx, bone.head.cy, bone.head.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(180,200,230,0.08)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(180,200,230,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // Zone guide lines (faint)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(239,68,68,0.18)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    bone.zones.forEach(z => {
+      ctx.beginPath(); ctx.moveTo(0, z.y); ctx.lineTo(bone.vw, z.y); ctx.stroke();
+    });
+    ctx.setLineDash([]); ctx.restore();
+
+    // Landmark labels
+    bone.landmarks.forEach(lm => {
+      ctx.fillStyle = 'rgba(138,154,184,0.5)'; ctx.font = `${9/fmScale}px IBM Plex Sans,sans-serif`;
+      ctx.fillText(lm.name, lm.x, lm.y);
+    });
+    ctx.restore();
+
+    // ── Draw fracture lines already drawn ──
+    ctx.save();
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    fm.fracLines.forEach(fl => {
+      if (fl.points.length < 2) return;
+      ctx.beginPath(); fl.points.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+      // Dots at endpoints
+      [fl.points[0], fl.points[fl.points.length-1]].forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill();
+      });
+    });
+
+    // Current line being drawn
+    if (fm.currentLine.length >= 1) {
+      ctx.setLineDash([5,3]);
+      ctx.beginPath(); fm.currentLine.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+      ctx.setLineDash([]);
+      fm.currentLine.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); });
+    }
+    ctx.restore();
+  }
+
+  ctx.restore(); // end bone transform
+
+  // Instruction overlay if no lines drawn
+  if (!fm.generated && fm.fracLines.length === 0 && fm.currentLine.length === 0) {
+    ctx.fillStyle = 'rgba(138,154,184,0.4)';
+    ctx.font = '13px IBM Plex Sans,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Click / tap to trace fracture lines across the bone', W/2, H - 28);
+    ctx.font = '11px IBM Plex Sans,sans-serif';
+    ctx.fillText('Each click adds a point — double-click to finish a line', W/2, H - 12);
+    ctx.textAlign = 'left';
+  }
+
+  // Legend if generated
+  if (fm.generated) {
+    ctx.save();
+    fm.fragments.forEach((frag, i) => {
+      ctx.fillStyle = frag.color; ctx.fillRect(10, H - 18 - i*20, 12, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '11px IBM Plex Sans,sans-serif';
+      ctx.fillText(frag.name, 26, H - 8 - i*20);
+    });
+    ctx.restore();
+  }
+}
+
+// ── Pointer interaction (draw fracture lines) ─────────────────
+let fmDrawing = false;
+
+function fmPointerDown(e, canvas, ctx) {
+  if (fm.drawMode !== 'fracture' || fm.generated) {
+    // In generated mode — select/drag fragment
+    fmStartDrag(e, canvas); return;
+  }
+  const pos = fmGetPos(e, canvas);
+  fmSetTransform(canvas);
+  const bp = fmCanvasToBone(pos.x, pos.y);
+  fmDrawing = true;
+  fm.currentLine = [bp];
+  fmDrawSchema(canvas, ctx);
+}
+
+function fmPointerMove(e, canvas, ctx) {
+  if (!fmDrawing) {
+    if (fm.dragFrag) { fmDoDrag(e, canvas, ctx); }
+    return;
+  }
+  const pos = fmGetPos(e, canvas);
+  const bp = fmCanvasToBone(pos.x, pos.y);
+  fm.currentLine.push(bp);
+  fmDrawSchema(canvas, ctx);
+}
+
+function fmPointerUp(ctx) {
+  if (fm.dragFrag) { fm.dragFrag = null; return; }
+  if (!fmDrawing) return;
+  fmDrawing = false;
+  if (fm.currentLine.length >= 2) {
+    fm.fracLines.push({ points: [...fm.currentLine] });
+    // Update status
+    const st = document.getElementById('fm-trace-status');
+    if (st) { st.textContent = `✅ ${fm.fracLines.length} fracture line(s) drawn`; st.style.color = 'var(--green)'; }
+    const mst = document.getElementById('mob-fm-trace-status');
+    if (mst) { mst.textContent = `✅ ${fm.fracLines.length} fracture line(s) drawn`; mst.style.color = 'var(--green)'; }
+  }
+  fm.currentLine = [];
+  fmDrawSchema(fmCvs, fmCtx);
+  fmDrawSchema(mobFmCvs, mobFmCtx);
+}
+
+// ── Drag fragment ─────────────────────────────────────────────
+function fmStartDrag(e, canvas) {
+  const pos = fmGetPos(e, canvas);
+  fmSetTransform(canvas);
+  const bp = fmCanvasToBone(pos.x, pos.y);
+  const hit = fm.fragments.findIndex(f => {
+    const inBand = bp.y >= f.yFrom - 10 && bp.y <= f.yTo + 10;
+    return inBand;
+  });
+  if (hit >= 0) {
+    fm.selFrag = hit;
+    fm.dragFrag = { idx:hit, startX:pos.x, startY:pos.y, origOx:fm.fragments[hit].ox, origOy:fm.fragments[hit].oy };
+    fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
+    fmRenderFragList(); fmRenderMobFragList();
+  }
+}
+
+function fmDoDrag(e, canvas, ctx) {
+  const pos = fmGetPos(e, canvas);
+  const { idx, startX, startY, origOx, origOy } = fm.dragFrag;
+  fm.fragments[idx].ox = origOx + (pos.x - startX) / fmScale;
+  fm.fragments[idx].oy = origOy + (pos.y - startY) / fmScale;
+  fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
+}
+
+// ── Generate fragments from drawn lines ───────────────────────
+function fmGenerate() {
+  if (!fm.bone || fm.fracLines.length === 0) {
+    alert('Draw at least one fracture line on the bone first.'); return;
+  }
+  const bone = FM_BONES[fm.bone];
+
+  // Collect all Y-crossing points of fracture lines
+  let cutYs = [];
+  fm.fracLines.forEach(fl => {
+    fl.points.forEach(p => cutYs.push(p.y));
+    // Use the midpoint Y of each line segment
+    if (fl.points.length >= 2) {
+      const ys = fl.points.map(p => p.y);
+      cutYs.push((Math.min(...ys) + Math.max(...ys)) / 2);
+    }
+  });
+
+  // Deduplicate and sort cuts
+  cutYs = [...new Set(cutYs.map(y => Math.round(y)))].sort((a,b) => a-b);
+
+  // Filter to cuts within the bone bounding box (10px margin)
+  cutYs = cutYs.filter(y => y > 10 && y < bone.vh - 10);
+
+  // Merge cuts that are too close together (within 20px bone-space)
+  const merged = [];
+  cutYs.forEach(y => {
+    if (!merged.length || y - merged[merged.length-1] > 20) merged.push(y);
+    else merged[merged.length-1] = Math.round((merged[merged.length-1] + y) / 2);
+  });
+
+  if (!merged.length) {
+    alert('Fracture lines must cross the bone. Try drawing across the bone outline.'); return;
+  }
+
+  const bands = [0, ...merged, bone.vh];
+  const colors = bone.fragColors;
+
+  fm.fragments = bands.slice(0,-1).map((yFrom, i) => {
+    const yTo = bands[i+1];
+    const centX = bone.vw / 2;
+    const centY = (yFrom + yTo) / 2;
     return {
-      yNorm: midY / H,
-      xNorm: midX / W,
-      angle: Math.atan2(p[1].y - p[0].y, p[1].x - p[0].x),
+      id: i,
+      color: colors[i % colors.length],
+      name: fmFragName(fm.bone, i, bands.length-1),
+      yFrom, yTo,
+      centX, centY,
+      ox: 0, oy: 0,
+      angle: 0,
+      // Simple rectangular clip path for each band
+      clipPath: [
+        { x: -50,       y: yFrom - 1 },
+        { x: bone.vw+50, y: yFrom - 1 },
+        { x: bone.vw+50, y: yTo + 1   },
+        { x: -50,       y: yTo + 1   },
+      ],
     };
   });
 
-  // Sort cuts by Y position
-  cutYs.sort((a,b) => a.yNorm - b.yNorm);
-
-  // If no cuts, just show whole bone as Fragment 1
-  if (!cutYs.length) {
-    return [{ id:0, color:colors[0], name:'Fragment 1', yFrom:0, yTo:1, ox:0, oy:0, angle:0, origOx:0, origOy:0 }];
-  }
-
-  // Create one fragment per region between cuts
-  const cutNorms = [0, ...cutYs.map(c => c.yNorm), 1];
-  for (let i = 0; i < cutNorms.length - 1; i++) {
-    frags.push({
-      id: i,
-      color: colors[i % colors.length],
-      name: fmFragmentName(fm.bone, i, cutNorms.length - 1),
-      yFrom: cutNorms[i],
-      yTo: cutNorms[i+1],
-      ox: 0, oy: 0,   // translation offset
-      angle: 0,        // rotation in radians
-      origOx: 0, origOy: 0,
-    });
-  }
-  return frags;
+  fm.generated = true;
+  fm.drawMode  = 'select'; // switch to drag mode
+  fm.view      = 'schema';
+  document.getElementById('fm-fragment-list').style.display = 'block';
+  document.getElementById('fm-view-toggle').style.display   = 'block';
+  document.getElementById('fm-draw-mode-row').style.display = 'none';
+  fmRenderFragList(); fmRenderMobFragList();
+  fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
+  fmSyncMobUI();
 }
 
-function fmFragmentName(boneKey, idx, total) {
-  if (boneKey === 'proxfemur') {
-    const names = ['Head & Neck', 'Trochanteric', 'Subtrochanteric', 'Shaft'];
-    return names[idx] || `Fragment ${idx+1}`;
+function fmFragName(bone, idx, total) {
+  if (bone === 'proxfemur') {
+    const n = ['Head & Neck','Trochanteric','Subtrochanteric','Shaft'];
+    return n[idx] || `Fragment ${idx+1}`;
   }
-  if (boneKey === 'radioulna') {
-    const names = ['Proximal', 'Mid', 'Distal'];
-    return names[idx] || `Fragment ${idx+1}`;
+  if (bone === 'radioulna') {
+    const n = ['Proximal','Mid-shaft','Distal'];
+    return n[idx] || `Fragment ${idx+1}`;
   }
   return `Fragment ${idx+1}`;
 }
 
-function fmResizeCvs() {
-  if (!fmCvs) return;
-  const panel = document.getElementById('fm-schema-panel');
-  if (!panel) return;
-  fmCvs.width  = panel.clientWidth  || 600;
-  fmCvs.height = panel.clientHeight || 500;
-}
-
-function fmDraw() {
-  if (!fmCtx || !fm.bone) return;
-  const W = fmCvs.width, H = fmCvs.height;
-  const bone = FM_BONES[fm.bone];
-  fmCtx.clearRect(0,0,W,H);
-  fmCtx.fillStyle = '#0a0c10'; fmCtx.fillRect(0,0,W,H);
-
-  // Scale bone to fit canvas with padding
-  const pad = 40;
-  const scaleX = (W - pad*2) / bone.vw;
-  const scaleY = (H - pad*2) / bone.vh;
-  const scale = Math.min(scaleX, scaleY);
-  const offX = (W - bone.vw * scale) / 2;
-  const offY = pad;
-
-  fmCtx.save();
-  fmCtx.translate(offX, offY);
-  fmCtx.scale(scale, scale);
-
-  // Draw each fragment (flipped if left side)
-  if (fm.side === 'left') {
-    fmCtx.translate(bone.vw, 0);
-    fmCtx.scale(-1, 1);
-  }
-
-  fm.fragments.forEach((frag, fi) => {
-    fmCtx.save();
-    // Apply fragment offset and rotation
-    const cx = bone.vw / 2;
-    const cy = (frag.yFrom + frag.yTo) / 2 * bone.vh;
-    fmCtx.translate(cx + frag.ox, cy + frag.oy);
-    fmCtx.rotate(frag.angle);
-    fmCtx.translate(-cx, -cy);
-
-    // Clip to fragment's Y band
-    fmCtx.save();
-    fmCtx.beginPath();
-    fmCtx.rect(-bone.vw, frag.yFrom * bone.vh - 1, bone.vw*3, (frag.yTo - frag.yFrom) * bone.vh + 2);
-    fmCtx.clip();
-
-    // Draw bone fill
-    const path = new Path2D(bone.outline);
-    fmCtx.fillStyle = frag === fm.fragments[fm.selFrag]
-      ? frag.color + 'cc'
-      : frag.color + '55';
-    fmCtx.fill(path);
-
-    // Bone stroke
-    fmCtx.strokeStyle = frag.color;
-    fmCtx.lineWidth = 2;
-    fmCtx.stroke(path);
-
-    fmCtx.restore(); // end clip
-
-    // Fragment label
-    fmCtx.fillStyle = '#fff';
-    fmCtx.font = `bold ${12}px IBM Plex Sans, sans-serif`;
-    fmCtx.textAlign = 'center';
-    fmCtx.fillText(frag.name, cx, cy + 4);
-    fmCtx.textAlign = 'left';
-
-    // Rotation handle if selected
-    if (fi === fm.selFrag) {
-      const hx = cx + frag.ox + 50;
-      const hy = frag.yFrom * bone.vh + frag.oy + 20;
-      fmCtx.beginPath(); fmCtx.arc(hx, hy, 8, 0, Math.PI*2);
-      fmCtx.fillStyle = '#fff'; fmCtx.fill();
-      fmCtx.strokeStyle = frag.color; fmCtx.lineWidth = 2; fmCtx.stroke();
-      // Draw "↻" 
-      fmCtx.fillStyle = frag.color; fmCtx.font = 'bold 10px sans-serif';
-      fmCtx.textAlign = 'center'; fmCtx.fillText('↻', hx, hy+4); fmCtx.textAlign = 'left';
-    }
-
-    fmCtx.restore();
-  });
-
-  // Draw fracture cut lines (dashed red)
-  fm.fragments.forEach((frag, fi) => {
-    if (fi === 0) return; // no cut above first fragment
-    const cutY = frag.yFrom * bone.vh;
-    fmCtx.save();
-    fmCtx.strokeStyle = '#ef444499';
-    fmCtx.lineWidth = 2;
-    fmCtx.setLineDash([6, 4]);
-    fmCtx.beginPath();
-    fmCtx.moveTo(0, cutY); fmCtx.lineTo(bone.vw, cutY);
-    fmCtx.stroke();
-    fmCtx.setLineDash([]);
-    // Fracture zone label
-    fmCtx.fillStyle = '#ef444488';
-    fmCtx.font = '9px IBM Plex Mono, monospace';
-    fmCtx.fillText('── fracture ──', 10, cutY - 3);
-    fmCtx.restore();
-  });
-
-  // Draw landmark labels
-  bone.landmarks.forEach(lm => {
-    fmCtx.save();
-    fmCtx.fillStyle = 'rgba(138,154,184,.6)';
-    fmCtx.font = '9px IBM Plex Sans, sans-serif';
-    fmCtx.fillText(lm.name, (lm.cx || bone.vw/2) + 5, (lm.cy || 0) + 3);
-    if (lm.r) {
-      // circle landmark (e.g. femoral head)
-      fmCtx.beginPath(); fmCtx.arc(lm.cx, lm.cy, lm.r, 0, Math.PI*2);
-      fmCtx.strokeStyle = 'rgba(138,154,184,.25)'; fmCtx.lineWidth = 1;
-      fmCtx.setLineDash([3,3]); fmCtx.stroke(); fmCtx.setLineDash([]);
-    }
-    fmCtx.restore();
-  });
-
-  fmCtx.restore(); // end bone transform
-
-  // Legend bottom-left
-  fmCtx.save();
-  fm.fragments.forEach((frag, i) => {
-    const lx = 12, ly = H - 16 - i * 20;
-    fmCtx.fillStyle = frag.color; fmCtx.fillRect(lx, ly-10, 12, 12);
-    fmCtx.fillStyle = 'rgba(255,255,255,.7)'; fmCtx.font = '10px IBM Plex Sans,sans-serif';
-    fmCtx.fillText(frag.name, lx+16, ly);
-  });
-  fmCtx.restore();
-}
-
+// ── Fragment list rendering ───────────────────────────────────
 function fmRenderFragList() {
   const el = document.getElementById('fm-frag-items'); if (!el) return;
-  el.innerHTML = fm.fragments.map((frag, i) => `
-    <div class="fm-frag-item${i === fm.selFrag ? '" style="border-color:'+frag.color : ''}" onclick="fmSelectFrag(${i})">
+  if (!fm.fragments.length) { el.innerHTML=''; return; }
+  el.innerHTML = fm.fragments.map((frag,i) => `
+    <div class="fm-frag-item" style="${i===fm.selFrag?'border-color:'+frag.color:''}" onclick="fm.selFrag=${i};fmDrawSchema(fmCvs,fmCtx);fmRenderFragList()">
       <div class="fm-frag-dot" style="background:${frag.color}"></div>
       <div class="fm-frag-name">${frag.name}</div>
       <div class="fm-frag-btns">
-        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},-5)" title="Rotate CCW">↺</button>
-        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},5)"  title="Rotate CW">↻</button>
+        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},-5)">↺</button>
+        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},5)">↻</button>
       </div>
     </div>`).join('');
 }
 
-function fmSelectFrag(i) {
-  fm.selFrag = fm.selFrag === i ? null : i;
-  fmRenderFragList(); fmDraw();
+function fmRenderMobFragList() {
+  const el = document.getElementById('mob-fm-frag-items'); if (!el) return;
+  if (!fm.fragments.length) { el.innerHTML=''; return; }
+  el.innerHTML = fm.fragments.map((frag,i) => `
+    <div class="fm-frag-item" style="${i===fm.selFrag?'border-color:'+frag.color:''}" onclick="fm.selFrag=${i};fmDrawSchema(fmCvs,fmCtx);fmDrawSchema(mobFmCvs,mobFmCtx);fmRenderMobFragList()">
+      <div class="fm-frag-dot" style="background:${frag.color}"></div>
+      <div class="fm-frag-name">${frag.name}</div>
+      <div class="fm-frag-btns">
+        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},-5)">↺</button>
+        <button class="fm-frag-btn" onclick="event.stopPropagation();fmRotFrag(${i},5)">↻</button>
+      </div>
+    </div>`).join('');
 }
 
 function fmRotFrag(i, deg) {
+  if (!fm.fragments[i]) return;
   fm.fragments[i].angle += deg * Math.PI / 180;
-  fmDraw();
+  fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
 }
 
-// Mouse / touch interaction on schematic canvas
-function fmMouseDown(e) {
-  const r = fmCvs.getBoundingClientRect();
-  const sx = (e.clientX - r.left) * (fmCvs.width  / r.width);
-  const sy = (e.clientY - r.top)  * (fmCvs.height / r.height);
-  const bone = FM_BONES[fm.bone]; if (!bone) return;
-  const pad = 40;
-  const scale = Math.min((fmCvs.width - pad*2) / bone.vw, (fmCvs.height - pad*2) / bone.vh);
-  const offX = (fmCvs.width - bone.vw * scale) / 2;
-  const offY = pad;
-  // Convert to bone space
-  const bx = (sx - offX) / scale;
-  const by = (sy - offY) / scale;
-  // Find which fragment was clicked
-  const hit = fm.fragments.findIndex(frag => {
-    const cy = (frag.yFrom + frag.yTo) / 2 * bone.vh;
-    return by >= frag.yFrom * bone.vh - 10 && by <= frag.yTo * bone.vh + 10;
-  });
-  if (hit >= 0) {
-    fm.selFrag = hit;
-    fm.dragFrag = { idx: hit, startX: sx, startY: sy, origOx: fm.fragments[hit].ox, origOy: fm.fragments[hit].oy };
-    fmRenderFragList(); fmDraw();
-  }
-}
-
-function fmMouseMove(e) {
-  if (!fm.dragFrag) return;
-  const r = fmCvs.getBoundingClientRect();
-  const sx = (e.clientX - r.left) * (fmCvs.width / r.width);
-  const sy = (e.clientY - r.top)  * (fmCvs.height / r.height);
-  const bone = FM_BONES[fm.bone]; if (!bone) return;
-  const scale = Math.min((fmCvs.width - 80) / bone.vw, (fmCvs.height - 80) / bone.vh);
-  const { idx, startX, startY, origOx, origOy } = fm.dragFrag;
-  fm.fragments[idx].ox = origOx + (sx - startX) / scale;
-  fm.fragments[idx].oy = origOy + (sy - startY) / scale;
-  fmDraw();
-}
-
-function fmMouseUp() { fm.dragFrag = null; }
-
+// ── Toggle view ───────────────────────────────────────────────
 function fmToggleView(view) {
   fm.view = view;
   const panel = document.getElementById('fm-schema-panel');
   if (view === 'schema') {
     if (panel) panel.style.display = 'block';
-    fmResizeCvs(); fmDraw();
+    setTimeout(() => { fmResizeCvs(fmCvs); fmDrawSchema(fmCvs, fmCtx); }, 30);
     document.getElementById('fmv-schema').classList.add('active');
     document.getElementById('fmv-xray').classList.remove('active');
   } else {
@@ -5127,25 +5274,65 @@ function fmToggleView(view) {
   }
 }
 
+// ── Undo last line ────────────────────────────────────────────
+function fmUndoLine() {
+  fm.fracLines.pop(); fm.currentLine = [];
+  fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
+  const st = document.getElementById('fm-trace-status');
+  if (st) st.textContent = fm.fracLines.length ? `${fm.fracLines.length} line(s) drawn` : 'Draw fracture lines on the bone';
+}
+
+// ── Reset / Clear ─────────────────────────────────────────────
 function fmReset() {
   fm.fragments.forEach(f => { f.ox=0; f.oy=0; f.angle=0; });
-  fmDraw();
+  fmDrawSchema(fmCvs, fmCtx); fmDrawSchema(mobFmCvs, mobFmCtx);
 }
 
 function fmClear() {
-  fm = { bone:null, side:'right', tracing:false, fracLines:[], fragments:[], view:'xray', generated:false, selFrag:null, dragFrag:null };
-  document.getElementById('fm-schema-panel').style.display = 'none';
-  document.getElementById('fm-view-toggle').style.display = 'none';
-  document.getElementById('fm-fragment-list').style.display = 'none';
-  document.getElementById('fm-generate-row').style.display = 'none';
-  document.getElementById('fm-side-row').style.display = 'none';
-  document.getElementById('fm-trace-row').style.display = 'none';
+  fm = { bone:null, side:'right', view:'schema', drawMode:'fracture', fracLines:[], currentLine:[], fragments:[], generated:false, selFrag:null, dragFrag:null };
+  fmDrawing = false;
+  document.getElementById('fm-schema-panel').style.display   = 'none';
+  document.getElementById('fm-view-toggle').style.display    = 'none';
+  document.getElementById('fm-fragment-list').style.display  = 'none';
+  document.getElementById('fm-controls').style.display       = 'none';
+  document.getElementById('fm-side-row').style.display       = 'none';
+  document.getElementById('fm-generate-row').style.display   = 'none';
   document.querySelectorAll('.fm-bone-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('fmv-xray').classList.add('active');
-  document.getElementById('fmv-schema').classList.remove('active');
+  fmSyncMobUI();
 }
 
-window.addEventListener('resize', () => { if (fm.generated && fm.view==='schema') { fmResizeCvs(); fmDraw(); } });
+// ── Mobile helpers ────────────────────────────────────────────
+function fmSyncMobUI() {
+  document.querySelectorAll('.fm-bone-btn[id^="mob-fmb-"]').forEach(b => b.classList.remove('active'));
+  if (fm.bone) document.getElementById('mob-fmb-'+fm.bone)?.classList.add('active');
+  ['right','left'].forEach(s => document.getElementById('mob-fms-'+s)?.classList.remove('active'));
+  document.getElementById('mob-fms-'+fm.side)?.classList.add('active');
+  const hasBone = !!fm.bone;
+  document.getElementById('mob-fm-side-row').style.display      = hasBone ? 'block' : 'none';
+  document.getElementById('mob-fm-trace-row').style.display     = hasBone ? 'block' : 'none';
+  document.getElementById('mob-fm-generate-row').style.display  = (hasBone && fm.fracLines.length > 0) ? 'block' : 'none';
+  document.getElementById('mob-fm-frags').style.display         = fm.generated ? 'block' : 'none';
+  if (fm.generated) fmRenderMobFragList();
+}
+
+function fmMobShowSchema() {
+  const s = document.getElementById('mob-fm-schema'); if (!s) return;
+  s.style.display = 'block';
+  setTimeout(() => {
+    if (!mobFmCvs) return;
+    mobFmCvs.width  = window.innerWidth;
+    mobFmCvs.height = window.innerHeight - 52;
+    fmDrawSchema(mobFmCvs, mobFmCtx);
+  }, 30);
+}
+
+function fmMobToggle(view) {
+  if (view === 'xray') document.getElementById('mob-fm-schema').style.display = 'none';
+}
+
+window.addEventListener('resize', () => {
+  if (fm.bone) { fmResizeCvs(fmCvs); fmDrawSchema(fmCvs, fmCtx); }
+});
 
 // ── INIT ────────────────────────────────────────────────────
 // Desktop
