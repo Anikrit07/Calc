@@ -759,44 +759,11 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
     <!-- IMPLANTS TAB -->
     <div class="tab-pane" id="tab-implants">
-      <div style="padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Plate Library</div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Click a plate to place it on the X-ray. Drag to move.</div>
-        <div id="plate-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
-      </div>
-      <div id="implant-controls-desktop" style="padding:10px;border-bottom:1px solid var(--border);display:none;flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Selected Plate</div>
-        <!-- Rotation -->
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <label style="font-size:10px;color:var(--muted)">Rotation</label>
-            <span id="desk-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">0°</span>
-          </div>
-          <input type="range" id="desk-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="deskImplantRotate(this.value)">
-        </div>
-        <!-- Size -->
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <label style="font-size:10px;color:var(--muted)">Size</label>
-            <span id="desk-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">1.0×</span>
-          </div>
-          <input type="range" id="desk-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="deskImplantScale(this.value)">
-        </div>
-        <!-- Holes -->
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <label style="font-size:10px;color:var(--muted)">Holes</label>
-            <span id="desk-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">6</span>
-          </div>
-          <input type="range" id="desk-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="deskImplantHoles(this.value)">
-        </div>
-      </div>
-      <div style="padding:10px;flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Active Implants</div>
-        <div id="implant-list"><div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">No implants placed yet.</div></div>
-      </div>
-      <div style="padding:8px 10px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:6px">
-        <button class="btn" style="flex:1;font-size:10px;padding:5px" onclick="clearImplants()">✕ Clear All</button>
+      <div style="padding:16px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">🔩</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Implants moved</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px">Implants are now placed directly on the Fracture Diagram. Open the Fracture tab to access them.</div>
+        <button class="btn primary" style="width:100%;justify-content:center" onclick="switchTab('fracmap',document.querySelector('[onclick*=fracmap]'))">🔀 Go to Fracture Tab</button>
       </div>
     </div>
 
@@ -868,13 +835,52 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         </div>
       </div>
 
-      <div id="fm-fragment-list" style="display:none;padding:8px 10px">
+      <div id="fm-fragment-list" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border)">
         <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Fragments — click to select, drag to move</div>
         <div id="fm-frag-items"></div>
         <div style="display:flex;gap:5px;margin-top:8px">
           <button class="btn" style="flex:1;font-size:10px;justify-content:center" onclick="fmReset()">↩ Reset</button>
           <button class="btn danger-outline" style="flex:1;font-size:10px;justify-content:center" onclick="fmClear()">✕ Clear All</button>
         </div>
+      </div>
+
+      <!-- Implant panel inside fracture tab -->
+      <div style="padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">🔩 Implants</div>
+          <!-- Canvas toggle -->
+          <div style="display:flex;gap:4px">
+            <button id="impl-cvs-xray" class="btn active" style="font-size:9px;padding:3px 8px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
+            <button id="impl-cvs-diag" class="btn"        style="font-size:9px;padding:3px 8px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
+          </div>
+        </div>
+        <div id="plate-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px"></div>
+        <div id="implant-controls-desktop" style="display:none">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Selected: <span id="impl-sel-name">—</span></div>
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+              <label style="font-size:10px;color:var(--muted)">Rotation</label>
+              <span id="desk-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">0°</span>
+            </div>
+            <input type="range" id="desk-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="deskImplantRotate(this.value)">
+          </div>
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+              <label style="font-size:10px;color:var(--muted)">Scale</label>
+              <span id="desk-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">1.0×</span>
+            </div>
+            <input type="range" id="desk-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="deskImplantScale(this.value)">
+          </div>
+          <div style="margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+              <label style="font-size:10px;color:var(--muted)">Holes</label>
+              <span id="desk-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red)">6 holes · <span id="desk-plate-len">—</span></span>
+            </div>
+            <input type="range" id="desk-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="deskImplantHoles(this.value)">
+          </div>
+        </div>
+        <div id="implant-list" style="margin-top:4px"><div style="font-size:10px;color:var(--muted);text-align:center;padding:6px">No implants placed</div></div>
+        <button class="btn danger-outline" style="width:100%;justify-content:center;font-size:10px;margin-top:6px;display:none" id="impl-clear-btn" onclick="clearImplants()">✕ Clear Implants</button>
       </div>
     </div>
 
@@ -1619,20 +1625,29 @@ const PRESETS = {
 const TYPE_LABEL = { angle3:'3-Point Angle', angle4:'4-Point Angle', cobb:'Cobb Angle', line:'Distance', annotate:'Annotation' };
 
 // ── Implant data (needed by both desktop and mobile) ─────────
+// ── Plate specs — real dimensions (Synthes/DePuy AO standard) ──
+// holeSpacing: centre-to-centre distance in mm (drawn as px at 1px=1mm)
+// plateW: function(holes) → total plate length in px/mm
+// plateH: plate width in mm
 const PLATES = [
-  { id:'broad-dcp',   name:'Broad DCP',    sub:'Dynamic Compression', holes:8, w:220, h:18, color:'#b0bec5' },
-  { id:'narrow-dcp',  name:'Narrow DCP',   sub:'Dynamic Compression', holes:6, w:180, h:14, color:'#b0bec5' },
-  { id:'lc-dcp',      name:'LC-DCP',       sub:'Limited Contact',     holes:8, w:220, h:16, color:'#90a4ae' },
-  { id:'lcp',         name:'LCP',          sub:'Locking Compression', holes:8, w:220, h:18, color:'#78909c' },
-  { id:'recon',       name:'Recon Plate',  sub:'Reconstruction',      holes:8, w:200, h:14, color:'#9e9e9e' },
-  { id:'t-plate',     name:'T-Plate',      sub:'Proximal / Distal',   holes:6, w:130, h:60, color:'#b0bec5', shape:'T' },
-  { id:'l-plate',     name:'L-Plate',      sub:'Angled / Blade',      holes:6, w:120, h:60, color:'#b0bec5', shape:'L' },
-  { id:'blade-plate', name:'Blade Plate',  sub:'95° / 130° Angled',   holes:6, w:180, h:14, color:'#9e9e9e', shape:'blade' },
+  { id:'dcp-35',   name:'DCP 3.5mm',   sub:'Small Fragment',      holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:4, maxHoles:14, defHoles:8  },
+  { id:'dcp-45',   name:'DCP 4.5mm',   sub:'Large Fragment',      holeSpacing:16, plateH:16, color:'#90a4ae', minHoles:4, maxHoles:16, defHoles:8  },
+  { id:'lc-dcp',   name:'LC-DCP',      sub:'Limited Contact',     holeSpacing:13, plateH:11, color:'#78909c', minHoles:4, maxHoles:14, defHoles:8  },
+  { id:'lcp-35',   name:'LCP 3.5mm',   sub:'Locking Combi Small', holeSpacing:13, plateH:11, color:'#607d8b', minHoles:4, maxHoles:14, defHoles:8  },
+  { id:'lcp-45',   name:'LCP 4.5mm',   sub:'Locking Combi Large', holeSpacing:16, plateH:16, color:'#455a64', minHoles:4, maxHoles:16, defHoles:8  },
+  { id:'recon',    name:'Recon Plate',  sub:'Reconstruction',      holeSpacing:13, plateH:11, color:'#9e9e9e', minHoles:4, maxHoles:14, defHoles:8, shape:'recon' },
+  { id:'dhs',      name:'DHS Plate',    sub:'Dynamic Hip Screw',   holeSpacing:16, plateH:19, color:'#b0bec5', minHoles:2, maxHoles:16, defHoles:4, shape:'dhs'   },
+  { id:'t-plate',  name:'T-Plate',      sub:'Proximal / Distal',   holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:3, maxHoles:8,  defHoles:4, shape:'T'     },
+  { id:'l-plate',  name:'L-Plate',      sub:'Angled',              holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:3, maxHoles:8,  defHoles:4, shape:'L'     },
 ];
+
+// Compute plate total length from holes: end-caps 8mm each side
+function plateLength(p) { return p.holeSpacing * ((p._holes||p.defHoles) - 1) + 20; }
 let implants = [];
 let selImplant = null;
 let implantDragging = false, implantDragStart = null;
 let implantIdCounter = 0;
+let implantCanvas = 'xray'; // 'xray' | 'diagram' — which canvas shows implants
 
 // ── AO data (needed by both desktop and mobile) ──────────────
 const AO_BONES = [
@@ -4241,12 +4256,25 @@ function mobDeleteImage() {
 // ── Component: Implants + AO Classifier ─────────────────────
 // (PLATES, AO_BONES, implant state defined in State block)
 
+function setImplantCanvas(mode) {
+  implantCanvas = mode;
+  document.getElementById('impl-cvs-xray')?.classList.toggle('active', mode==='xray');
+  document.getElementById('impl-cvs-diag')?.classList.toggle('active', mode==='diagram');
+  redraw(); // redraw X-ray (removes or adds implant)
+  if (fm.generated && fmCvs && fmCtx) fmRedrawFull(); // redraw diagram
+}
+
+function fmRedrawFull() {
+  fmDrawFragments(fmCvs, fmCtx);
+  if (mobFmCvs && mobFmCtx) fmDrawFragments(mobFmCvs, mobFmCtx);
+}
+
 function initImplants() {
   const grid = document.getElementById('plate-grid');
   if (!grid) return;
   grid.innerHTML = PLATES.map(p => `
     <div class="plate-card" id="pc-${p.id}" onclick="placeImplant('${p.id}')">
-      <div style="height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:3px">
+      <div style="height:24px;display:flex;align-items:center;justify-content:center;margin-bottom:2px">
         ${plateSVGThumb(p)}
       </div>
       <div class="plate-name">${p.name}</div>
@@ -4255,74 +4283,92 @@ function initImplants() {
 }
 
 function plateSVGThumb(p) {
-  if (p.shape === 'T') return `<svg width="32" height="22" viewBox="0 0 32 22"><rect x="0" y="0" width="32" height="6" rx="1.5" fill="#78909c"/><rect x="12" y="6" width="8" height="16" rx="1.5" fill="#78909c"/></svg>`;
-  if (p.shape === 'L') return `<svg width="28" height="22" viewBox="0 0 28 22"><rect x="0" y="0" width="12" height="22" rx="1.5" fill="#78909c"/><rect x="12" y="14" width="16" height="8" rx="1.5" fill="#78909c"/></svg>`;
-  if (p.shape === 'blade') return `<svg width="36" height="12" viewBox="0 0 36 12"><rect x="0" y="3" width="28" height="6" rx="1.5" fill="#78909c"/><polygon points="28,0 36,6 28,12" fill="#78909c"/></svg>`;
-  return `<svg width="36" height="10" viewBox="0 0 36 10"><rect x="0" y="2" width="36" height="6" rx="1.5" fill="#78909c"/>${Array.from({length:4},(_,i)=>`<circle cx="${5+i*9}" cy="5" r="2" fill="#1e2226"/>`).join('')}</svg>`;
+  const w=40, h=10, rx=h/2;
+  if (p.shape === 'T') return `<svg width="30" height="22" viewBox="0 0 30 22"><rect x="0" y="0" width="30" height="6" rx="1.5" fill="#78909c"/><rect x="11" y="6" width="8" height="16" rx="1.5" fill="#78909c"/></svg>`;
+  if (p.shape === 'L') return `<svg width="28" height="22" viewBox="0 0 28 22"><rect x="0" y="0" width="8" height="22" rx="1.5" fill="#78909c"/><rect x="8" y="14" width="20" height="8" rx="1.5" fill="#78909c"/></svg>`;
+  if (p.shape === 'dhs') return `<svg width="40" height="16" viewBox="0 0 40 16"><rect x="0" y="4" width="28" height="8" rx="2" fill="#78909c"/><line x1="24" y1="8" x2="40" y2="2" stroke="#78909c" stroke-width="5" stroke-linecap="round"/></svg>`;
+  const n=4; const sp=(w-8)/(n-1);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="#78909c"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${4+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#1e2226"/>`).join('')}</svg>`;
 }
 
 function placeImplant(plateId) {
   const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
+  // Clone plate and set default holes
+  const p = { ...plate, _holes: plate.defHoles };
   const impl = {
-    uid: ++implantIdCounter,
-    plateId,
-    x: W/2, y: H/2,
-    angle: 0, scale: 1,
-    plate,
+    uid: ++implantIdCounter, plateId,
+    x: 200, y: 200,  // image-space centre; will be set to canvas centre on first draw
+    angle: 0, scale: 1, plate: p,
   };
+  // Centre on current view
+  if (bgImage) { impl.x = bgImage.width/2; impl.y = bgImage.height/2; }
   implants.push(impl);
   selImplant = impl;
-  renderImplantList(); redraw();
+  renderImplantList(); redrawAll();
   document.querySelectorAll('.plate-card').forEach(c=>c.classList.remove('active'));
   document.getElementById('pc-'+plateId)?.classList.add('active');
-  document.getElementById('implant-rotate-btn')?.removeAttribute('disabled');
+}
+
+function redrawAll() {
+  redraw();
+  if (fm.generated) fmRedrawFull();
 }
 
 function clearImplants() {
   implants=[]; selImplant=null;
-  renderImplantList(); redraw();
+  renderImplantList(); redrawAll();
   document.querySelectorAll('.plate-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('impl-clear-btn').style.display='none';
 }
 
 function rotateSelectedImplant(deg) {
   if (!selImplant) return;
   selImplant.angle = (selImplant.angle + deg) % 360;
-  renderImplantList(); redraw();
+  renderImplantList(); redrawAll();
 }
 
 function deskImplantRotate(val) {
   if (!selImplant) return;
   selImplant.angle = parseFloat(val);
   document.getElementById('desk-rot-val').textContent = Math.round(val) + '°';
-  redraw();
+  redrawAll();
 }
 
 function deskImplantScale(val) {
   if (!selImplant) return;
   selImplant.scale = val / 100;
   document.getElementById('desk-scale-val').textContent = selImplant.scale.toFixed(1) + '×';
-  redraw();
+  redrawAll();
 }
 
 function deskImplantHoles(val) {
   if (!selImplant) return;
-  selImplant.plate = { ...selImplant.plate, holes: parseInt(val) };
-  document.getElementById('desk-holes-val').textContent = val;
-  redraw();
+  const n = Math.max(selImplant.plate.minHoles, Math.min(selImplant.plate.maxHoles, parseInt(val)));
+  selImplant.plate._holes = n;
+  const len = plateLength(selImplant.plate);
+  document.getElementById('desk-holes-val').innerHTML = `${n} holes · <span id="desk-plate-len">${len}mm</span>`;
+  document.getElementById('desk-holes-slider').max = selImplant.plate.maxHoles;
+  document.getElementById('desk-holes-slider').min = selImplant.plate.minHoles;
+  redrawAll();
 }
 
 function deleteImplant(uid) {
   implants = implants.filter(i => i.uid !== uid);
   if (selImplant?.uid === uid) selImplant = null;
-  renderImplantList(); redraw();
+  renderImplantList(); redrawAll();
 }
 
 function renderImplantList() {
   const el = document.getElementById('implant-list'); if(!el) return;
-  if(!implants.length) { el.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">No implants placed yet.</div>'; return; }
+  if(!implants.length) {
+    el.innerHTML='<div style="font-size:10px;color:var(--muted);text-align:center;padding:6px">No implants placed</div>';
+    document.getElementById('impl-clear-btn').style.display='none';
+    return;
+  }
+  document.getElementById('impl-clear-btn').style.display='block';
   el.innerHTML = implants.map(i=>`
     <div class="impl-item${selImplant?.uid===i.uid?' selected':''}" onclick="selectImplant(${i.uid})">
-      <div class="impl-name">${i.plate.name}</div>
+      <div class="impl-name">${i.plate.name} (${i.plate._holes||i.plate.defHoles}h · ${plateLength(i.plate)}mm)</div>
       <button class="impl-del" onclick="event.stopPropagation();deleteImplant(${i.uid})">✕</button>
     </div>`).join('');
   // Update desktop controls
@@ -4330,86 +4376,153 @@ function renderImplantList() {
   if (ctrl) {
     if (selImplant) {
       ctrl.style.display = 'block';
-      document.getElementById('desk-rot-slider').value = selImplant.angle || 0;
+      document.getElementById('impl-sel-name').textContent = selImplant.plate.name;
+      document.getElementById('desk-rot-slider').value   = selImplant.angle || 0;
       document.getElementById('desk-rot-val').textContent = Math.round(selImplant.angle||0) + '°';
-      document.getElementById('desk-scale-slider').value = Math.round((selImplant.scale||1)*100);
+      document.getElementById('desk-scale-slider').value  = Math.round((selImplant.scale||1)*100);
       document.getElementById('desk-scale-val').textContent = (selImplant.scale||1).toFixed(1) + '×';
-      document.getElementById('desk-holes-slider').value = selImplant.plate.holes || 6;
-      document.getElementById('desk-holes-val').textContent = selImplant.plate.holes || 6;
+      const nh = selImplant.plate._holes || selImplant.plate.defHoles;
+      document.getElementById('desk-holes-slider').value = nh;
+      document.getElementById('desk-holes-slider').min   = selImplant.plate.minHoles;
+      document.getElementById('desk-holes-slider').max   = selImplant.plate.maxHoles;
+      document.getElementById('desk-holes-val').innerHTML = `${nh} holes · <span id="desk-plate-len">${plateLength(selImplant.plate)}mm</span>`;
     } else { ctrl.style.display = 'none'; }
   }
 }
 
 function selectImplant(uid) {
   selImplant = implants.find(i=>i.uid===uid)||null;
-  renderImplantList(); redraw();
+  renderImplantList(); redrawAll();
 }
 
 // Draw all implants on canvas
-function drawImplants() {
+function drawImplantsOnCtx(c, scale, ox, oy) {
+  // Draw all implants on any canvas context
+  // scale / ox / oy = zoom and pan of that canvas (image-space coords)
   implants.forEach(impl => {
     const p = impl.plate;
-    ctx.save();
-    ctx.translate(impl.x, impl.y);
-    ctx.rotate(impl.angle * Math.PI/180);
-    ctx.scale(impl.scale, impl.scale);
+    const w = plateLength(p);
+    const ph = p.plateH;
+    c.save();
+    c.translate(impl.x * scale + ox, impl.y * scale + oy);
+    c.rotate(impl.angle * Math.PI/180);
+    c.scale(impl.scale * scale, impl.scale * scale);
     const isSel = impl === selImplant;
-    ctx.globalAlpha = isSel ? 0.85 : 0.65;
+    c.globalAlpha = isSel ? 0.92 : 0.72;
 
-    if (p.shape === 'T') {
-      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
-      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, 16, 3); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.roundRect(-12, -p.h/2+16, 24, p.h-16, 3); ctx.fill(); ctx.stroke();
-      drawPlateHoles(ctx, p, 'T');
-    } else if (p.shape === 'L') {
-      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
-      ctx.beginPath(); ctx.roundRect(-12, -p.h/2, 24, p.h, 3); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.roundRect(-12, p.h/2-16, p.w, 16, 3); ctx.fill(); ctx.stroke();
-      drawPlateHoles(ctx, p, 'L');
-    } else if (p.shape === 'blade') {
-      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
-      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, 2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(p.w/2-4, -p.h); ctx.lineTo(p.w/2+20, 0); ctx.lineTo(p.w/2-4, p.h); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      drawPlateHoles(ctx, p, 'straight');
-    } else {
-      // Straight plate
-      ctx.fillStyle = p.color; ctx.strokeStyle = isSel?'#fff':'#546e7a'; ctx.lineWidth = isSel?2:1;
-      ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, p.h/2); ctx.fill(); ctx.stroke();
-      drawPlateHoles(ctx, p, 'straight');
-    }
+    drawImplantBody(c, p, w, ph, isSel);
+    drawImplantHoles(c, p, w, ph);
 
-    // Selection handles
     if (isSel) {
-      ctx.globalAlpha = 1;
-      const hw = p.shape==='T'||p.shape==='L' ? p.w/2 : p.w/2;
-      const hh = p.h/2;
-      [-hw, hw].forEach(hx => [-hh, hh].forEach(hy => {
-        ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI*2);
-        ctx.fillStyle='#fff'; ctx.fill();
-        ctx.strokeStyle=p.color; ctx.lineWidth=2; ctx.stroke();
-      }));
+      c.globalAlpha = 1;
+      c.strokeStyle='#fff'; c.lineWidth=1/impl.scale;
+      [[-w/2,-ph/2],[w/2,-ph/2],[w/2,ph/2],[-w/2,ph/2]].forEach(([hx,hy])=>{
+        c.beginPath(); c.arc(hx, hy, 4/impl.scale, 0, Math.PI*2);
+        c.fillStyle='#fff'; c.fill(); c.stroke();
+      });
     }
-
-    ctx.restore();
+    c.restore();
   });
 }
 
-function drawPlateHoles(c, p, shape) {
-  c.fillStyle = '#1e2226';
-  const n = p.holes || 6;
-  if (shape === 'straight' || shape === 'blade') {
-    const spacing = (p.w - 20) / (n-1);
-    for (let i=0; i<n; i++) {
-      c.beginPath(); c.ellipse(-p.w/2+10+i*spacing, 0, 3.5, 4.5, 0, 0, Math.PI*2); c.fill();
+function drawImplants() {
+  // Called inside the main canvas transform (translate+scale already applied)
+  // Only draw on X-ray canvas when in xray mode
+  if (implantCanvas !== 'xray') return;
+  // Since we're already inside ctx.translate(panX,panY) / ctx.scale(zl,zl),
+  // pass scale=1, offset=0 so implant coords are treated as image-space
+  drawImplantsOnCtx(ctx, 1, 0, 0);
+}
+
+function drawImplantBody(c, p, w, ph, isSel) {
+  c.fillStyle = p.color;
+  c.strokeStyle = isSel ? '#ffffff' : '#37474f';
+  c.lineWidth = isSel ? 2 : 1;
+
+  if (p.shape === 'T') {
+    // Stem down, cross bar at top
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
+    c.beginPath(); c.roundRect(-10, ph/2, 20, w*0.55, 2); c.fill(); c.stroke();
+  } else if (p.shape === 'L') {
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
+    c.beginPath(); c.roundRect(w/2-20, ph/2, 20, w*0.45, 2); c.fill(); c.stroke();
+  } else if (p.shape === 'dhs') {
+    // Side plate with barrel
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
+    // Barrel (cylinder protruding at one end at 135°)
+    c.save();
+    c.translate(w/2, 0);
+    c.rotate(-45 * Math.PI/180);
+    c.beginPath(); c.roundRect(0, -6, 55, 12, 5); c.fill(); c.stroke();
+    // Lag screw shaft
+    c.beginPath(); c.moveTo(12, 0); c.lineTo(90, 0);
+    c.strokeStyle = isSel ? '#fff' : '#37474f'; c.lineWidth = 8; c.lineCap='round'; c.stroke();
+    c.strokeStyle = '#1e2226'; c.lineWidth = 3; c.stroke();
+    // Thread tip
+    c.beginPath(); c.arc(90, 0, 7, 0, Math.PI*2);
+    c.fillStyle='#9e9e9e'; c.fill();
+    c.restore();
+  } else if (p.shape === 'recon') {
+    // Reconstruction plate — notched between holes
+    const n = p._holes || p.defHoles;
+    const sp = p.holeSpacing;
+    const cap = 10;
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
+    // Add notches between holes
+    c.fillStyle = '#1e2226';
+    for (let i=0; i<n-1; i++) {
+      const nx = -w/2 + cap + sp*i + sp/2;
+      c.beginPath(); c.roundRect(nx-3, -ph/2+1, 6, ph-2, 1); c.fill();
     }
-  } else if (shape === 'T') {
-    const spacing = (p.w-20)/(n-1);
-    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-p.w/2+10+i*spacing, -p.h/2+8, 3,4, 0,0,Math.PI*2);c.fill();}
-    for(let i=0;i<3;i++){c.beginPath();c.ellipse(0, -p.h/2+24+i*14, 3.5,3.5, 0,0,Math.PI*2);c.fill();}
-  } else if (shape === 'L') {
-    for(let i=0;i<4;i++){c.beginPath();c.ellipse(0, -p.h/2+8+i*14, 3.5,3.5, 0,0,Math.PI*2);c.fill();}
-    for(let i=0;i<3;i++){c.beginPath();c.ellipse(-12+16+i*16, p.h/2-8, 3,4, 0,0,Math.PI*2);c.fill();}
+  } else {
+    // Straight plate (DCP, LCP etc)
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, ph/2); c.fill(); c.stroke();
+  }
+}
+
+function drawImplantHoles(c, p, w, ph) {
+  const n = p._holes || p.defHoles;
+  const sp = p.holeSpacing;
+  const cap = 10; // end cap mm
+  c.fillStyle = '#1a1f26';
+
+  if (p.shape === 'T') {
+    // Cross bar holes
+    for (let i=0; i<n; i++) {
+      c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill();
+      if (p.id === 'lcp-35'||p.id==='lcp-45') { // locking ring on LCP
+        c.strokeStyle='#607d8b'; c.lineWidth=1;
+        c.beginPath(); c.arc(-w/2+cap+i*sp, 0, 4.5, 0, Math.PI*2); c.stroke();
+      }
+    }
+    // Stem holes (3)
+    for (let i=0; i<3; i++) { c.beginPath(); c.arc(0, ph/2+8+i*sp, 3.5, 0, Math.PI*2); c.fill(); }
+  } else if (p.shape === 'L') {
+    // Shaft holes
+    for (let i=0; i<4; i++) { c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill(); }
+    // Flange holes
+    for (let i=0; i<3; i++) { c.beginPath(); c.arc(w/2-10-i*sp, ph/2+8+i*10, 3.5, 0, Math.PI*2); c.fill(); }
+  } else if (p.shape === 'dhs') {
+    // Cortical screw holes in the side plate
+    for (let i=0; i<n; i++) {
+      c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3.5, 5, 0, 0, Math.PI*2); c.fill();
+    }
+  } else {
+    // Straight plates — combi holes (oval with locking ring for LCP)
+    const isLCP = p.id==='lcp-35'||p.id==='lcp-45';
+    for (let i=0; i<n; i++) {
+      const hx = -w/2 + cap + i*sp;
+      if (isLCP) {
+        // Left half oval (DCU), right half circle (locking)
+        c.beginPath(); c.ellipse(hx-1.5, 0, 2.5, 4.5, 0, 0, Math.PI*2); c.fill();
+        c.beginPath(); c.arc(hx+2.5, 0, 3, 0, Math.PI*2); c.fill();
+        c.strokeStyle='#607d8b'; c.lineWidth=0.8;
+        c.beginPath(); c.arc(hx+2.5, 0, 4.5, 0, Math.PI*2); c.stroke();
+      } else {
+        // DCP oval hole
+        c.beginPath(); c.ellipse(hx, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill();
+      }
+    }
   }
 }
 
@@ -5163,8 +5276,15 @@ function fmDrawFragments(canvas, ctx2) {
   ctx2.textAlign='center';
   ctx2.fillText(fm.selFrag!==null ? 'Drag to move · ↻ handle to rotate' : 'Click a line to select fragment', W/2, H-8);
   ctx2.textAlign='left';
-}
 
+  // Draw implants on diagram canvas if in diagram mode
+  if (implantCanvas === 'diagram' && implants.length) {
+    const scale = fm._drawScale || 1;
+    const offX  = fm._drawOffX  || 0;
+    const offY  = fm._drawOffY  || 0;
+    drawImplantsOnCtx(ctx2, scale, offX, offY);
+  }
+}
 
 function fmComputeFragments() {
   const COLORS = ['#3b82f6','#ef4444','#22c55e','#f97316','#a855f7','#ec4899','#06b6d4','#84cc16'];
