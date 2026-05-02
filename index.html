@@ -5518,7 +5518,12 @@ function drawImplantsOnDiagram(canvas, ctx2) {
   // fm._drawScale = image_px → canvas_px conversion
   // fm.pxPerMm   = image_px per mm
   // so: 1mm → fm._drawScale / fm.pxPerMm canvas px
-  const mmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale / fm.pxPerMm : 1;
+  // mm → canvas px: image_px_per_mm × diagram_scale (image_px → canvas_px)
+  // Clamped so even a 300mm plate fits within canvas width
+  const rawMmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale * fm.pxPerMm : 1;
+  const maxPlateLen = Math.max(...implants.map(i => plateLength(i.plate)), 1);
+  const canvasW = canvas ? canvas.width : 400;
+  const mmToCanvas = Math.min(rawMmToCanvas, (canvasW * 0.8) / maxPlateLen);
 
   implants.forEach(impl => {
     const p  = impl.plate;
@@ -5575,7 +5580,10 @@ function drawImplantsOnDiagram(canvas, ctx2) {
 
 // ── Hit test for implant handles (canvas px coords) ──────────
 function implHitTest(pos) {
-  const mmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale / fm.pxPerMm : 1;
+  const rawMmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale * fm.pxPerMm : 1;
+  const maxPlateLen = Math.max(...implants.map(i => plateLength(i.plate)), 1);
+  const canvasW = (mobFmCvs ? mobFmCvs.width : 0) || (fmCvs ? fmCvs.width : 400);
+  const mmToCanvas = Math.min(rawMmToCanvas, (canvasW * 0.8) / maxPlateLen);
   for (let i = implants.length-1; i >= 0; i--) {
     const impl = implants[i];
     const p = impl.plate;
