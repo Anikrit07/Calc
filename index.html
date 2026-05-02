@@ -1781,15 +1781,12 @@ const TYPE_LABEL = { angle3:'3-Point Angle', angle4:'4-Point Angle', cobb:'Cobb 
 // plateW: function(holes) → total plate length in px/mm
 // plateH: plate width in mm
 const PLATES = [
-  { id:'dcp-35',   name:'DCP 3.5mm',   sub:'Small Fragment',      holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:4, maxHoles:14, defHoles:8  },
-  { id:'dcp-45',   name:'DCP 4.5mm',   sub:'Large Fragment',      holeSpacing:16, plateH:16, color:'#90a4ae', minHoles:4, maxHoles:16, defHoles:8  },
-  { id:'lc-dcp',   name:'LC-DCP',      sub:'Limited Contact',     holeSpacing:13, plateH:11, color:'#78909c', minHoles:4, maxHoles:14, defHoles:8  },
-  { id:'lcp-35',   name:'LCP 3.5mm',   sub:'Locking Combi Small', holeSpacing:13, plateH:11, color:'#607d8b', minHoles:4, maxHoles:14, defHoles:8  },
-  { id:'lcp-45',   name:'LCP 4.5mm',   sub:'Locking Combi Large', holeSpacing:16, plateH:16, color:'#455a64', minHoles:4, maxHoles:16, defHoles:8  },
-  { id:'recon',    name:'Recon Plate',  sub:'Reconstruction',      holeSpacing:13, plateH:11, color:'#9e9e9e', minHoles:4, maxHoles:14, defHoles:8, shape:'recon' },
-  { id:'dhs',      name:'DHS Plate',    sub:'Dynamic Hip Screw',   holeSpacing:16, plateH:19, color:'#b0bec5', minHoles:2, maxHoles:16, defHoles:4, shape:'dhs'   },
-  { id:'t-plate',  name:'T-Plate',      sub:'Proximal / Distal',   holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:3, maxHoles:8,  defHoles:4, shape:'T'     },
-  { id:'l-plate',  name:'L-Plate',      sub:'Angled',              holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:3, maxHoles:8,  defHoles:4, shape:'L'     },
+  { id:'dcp-35',  name:'DCP 3.5mm',  sub:'Small Fragment',      holeSpacing:13, plateH:11, color:'#b0bec5', minHoles:4, maxHoles:14, defHoles:8 },
+  { id:'dcp-45',  name:'DCP 4.5mm',  sub:'Large Fragment',      holeSpacing:16, plateH:16, color:'#90a4ae', minHoles:4, maxHoles:16, defHoles:8 },
+  { id:'lc-dcp',  name:'LC-DCP',     sub:'Limited Contact',     holeSpacing:13, plateH:11, color:'#78909c', minHoles:4, maxHoles:14, defHoles:8, shape:'lcdcp' },
+  { id:'lcp-35',  name:'LCP 3.5mm',  sub:'Locking Compression', holeSpacing:13, plateH:11, color:'#607d8b', minHoles:4, maxHoles:14, defHoles:8, shape:'lcp'   },
+  { id:'lcp-45',  name:'LCP 4.5mm',  sub:'Locking Compression', holeSpacing:16, plateH:16, color:'#455a64', minHoles:4, maxHoles:16, defHoles:8, shape:'lcp'   },
+  { id:'recon',   name:'Recon Plate', sub:'Reconstruction',      holeSpacing:13, plateH:11, color:'#9e9e9e', minHoles:4, maxHoles:14, defHoles:8, shape:'recon' },
 ];
 
 // Compute plate total length from holes: end-caps 8mm each side
@@ -4532,32 +4529,6 @@ function initImplants() {
     </div>`).join('');
 }
 
-function plateSVGThumb(p) {
-  const col = p.color;
-  const n = 4; // always show 4 holes in thumb
-  const sp = 8, cap = 5, w = 44, h = 10;
-
-  if (p.shape === 'T') return `<svg width="32" height="28" viewBox="0 0 32 28"><rect x="0" y="0" width="32" height="8" rx="2" fill="${col}"/><rect x="12" y="8" width="8" height="20" rx="2" fill="${col}"/>${[0,1,2,3].map(i=>`<ellipse cx="${4+i*7}" cy="4" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
-
-  if (p.shape === 'L') return `<svg width="36" height="28" viewBox="0 0 36 28"><rect x="0" y="0" width="36" height="8" rx="2" fill="${col}"/><rect x="24" y="8" width="8" height="20" rx="2" fill="${col}"/>${[0,1,2].map(i=>`<ellipse cx="${5+i*9}" cy="4" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
-
-  if (p.shape === 'dhs') return `<svg width="52" height="16" viewBox="0 0 52 16"><rect x="0" y="4" width="28" height="8" rx="2" fill="${col}"/>${[0,1,2].map(i=>`<ellipse cx="${4+i*8}" cy="8" rx="2" ry="3" fill="#111"/>`).join('')}<g transform="translate(28,8) rotate(-45)"><rect x="0" y="-5" width="18" height="10" rx="3" fill="${col}"/><rect x="18" y="-3" width="14" height="6" rx="2" fill="#78909c"/></g></svg>`;
-
-  if (p.shape === 'recon') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/><rect x="${cap+i*sp+2}" y="3" width="2" height="${h-6}" rx="1" fill="${col}" opacity="0.4"/>`).join('')}</svg>`;
-
-  // LCP — combi holes
-  if (p.id==='lcp-35'||p.id==='lcp-45') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp-1}" cy="${h/2}" rx="1.5" ry="2.5" fill="#111"/><circle cx="${cap+i*sp+2}" cy="${h/2}" r="2" fill="#111"/><circle cx="${cap+i*sp+2}" cy="${h/2}" r="3" fill="none" stroke="#546e7a" stroke-width="0.8"/>`).join('')}</svg>`;
-
-  // LC-DCP — raised between holes
-  if (p.id==='lc-dcp') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<rect x="${cap+i*sp+3}" y="3" width="3" height="${h-6}" rx="1" fill="${_svgLighten(col)}"/><ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
-
-  // Standard DCP oval holes
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
-}
-
-function _svgLighten(hex) {
-  try { const r=parseInt(hex.slice(1,3),16)+25,g=parseInt(hex.slice(3,5),16)+25,b=parseInt(hex.slice(5,7),16)+25; const cl=v=>Math.min(255,v); return `rgb(${cl(r)},${cl(g)},${cl(b)})`; } catch(e){ return hex; }
-}
 
 function placeImplant(plateId) {
   implantCanvas = 'diagram'; // always on diagram canvas
@@ -4687,7 +4658,6 @@ function drawImplantsOnCtx(c, scale, ox, oy) {
     c.globalAlpha = isSel ? 0.92 : 0.72;
 
     drawImplantBody(c, p, w, ph, isSel);
-    drawImplantHoles(c, p, w, ph);
 
     if (isSel) {
       c.globalAlpha = 1;
@@ -4711,267 +4681,296 @@ function drawImplants() {
 }
 
 // ── Accurate plate drawing ────────────────────────────────────
-// All dimensions in the same unit as w/ph (either raw mm or scaled canvas px)
-// s = uniform scale factor (1 for raw mm, mmToCanvas for diagram)
+// w   = total plate length in drawing units (mm or canvas px)
+// ph  = plate height/width in same units
+// s   = scale factor (1 for raw, mmToCanvas for diagram)
+// All hole positions computed from actual Synthes geometry
 
 function drawImplantBody(c, p, w, ph, isSel, s=1) {
-  const col  = p.color;
-  const str  = isSel ? '#e0e8f0' : '#546e7a';
-  const lw   = isSel ? 2 : 1.2;
-  c.lineWidth = lw;
+  const col = p.color;
+  const str = isSel ? '#eceff1' : '#455a64';
+  c.lineWidth = isSel ? 1.8 : 1.2;
 
-  if (p.shape === 'dhs') {
-    _drawDHS(c, p, w, ph, col, str, isSel, s);
-  } else if (p.shape === 'T') {
-    _drawTPlate(c, p, w, ph, col, str, s);
-  } else if (p.shape === 'L') {
-    _drawLPlate(c, p, w, ph, col, str, s);
-  } else if (p.shape === 'recon') {
-    _drawRecon(c, p, w, ph, col, str, s);
-  } else {
-    // DCP / LC-DCP / LCP — straight plate
-    _drawStraight(c, p, w, ph, col, str, s);
+  switch (p.shape) {
+    case 'lcdcp': _drawLCDCP(c, p, w, ph, col, str, s); break;
+    case 'lcp':   _drawLCP(c, p, w, ph, col, str, s);   break;
+    case 'recon': _drawRecon(c, p, w, ph, col, str, s); break;
+    default:      _drawDCP(c, p, w, ph, col, str, s);   break; // dcp-35, dcp-45
   }
 }
 
-function _drawStraight(c, p, w, ph, col, str, s) {
-  const r = Math.min(ph/2, 3*s);
-  const isLC = p.id === 'lc-dcp';
-
-  if (isLC) {
-    // LC-DCP: raised central ridge, flat contact areas between holes
-    // Main body
-    c.fillStyle = col; c.strokeStyle = str;
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
-    // Raised central ridge (plate is elevated — contact only at ends between holes)
-    const n = p._holes || p.defHoles;
-    const sp = p.holeSpacing * s;
-    const cap = 10*s;
-    c.fillStyle = _lighten(col, 25);
-    for (let i=0; i<n-1; i++) {
-      const nx = -w/2 + cap + sp*i + sp/2;
-      c.beginPath(); c.roundRect(nx - sp*0.18, -ph/2+2*s, sp*0.36, ph-4*s, 1*s);
-      c.fill();
-    }
-  } else {
-    // DCP / LCP — flat plate with rounded ends
-    c.fillStyle = col; c.strokeStyle = str;
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
-    // Subtle lengthwise groove on DCP
-    if (p.id==='dcp-35'||p.id==='dcp-45') {
-      c.strokeStyle = _darken(col, 15); c.lineWidth = 0.7*s;
-      c.beginPath(); c.moveTo(-w/2+8*s, 0); c.lineTo(w/2-8*s, 0); c.stroke();
-    }
-  }
-}
-
-function _drawRecon(c, p, w, ph, col, str, s) {
+// ── DCP ───────────────────────────────────────────────────────
+// Flat rectangular plate, rounded ends, raised oval hole bosses
+function _drawDCP(c, p, w, ph, col, str, s) {
+  const r = Math.min(ph * 0.48, 4*s); // end radius
+  // Main body
+  c.fillStyle = col; c.strokeStyle = str;
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
+  // Slight lengthwise centre groove
+  c.strokeStyle = _darken(col, 18); c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(-w/2 + 10*s, 0); c.lineTo(w/2 - 10*s, 0); c.stroke();
+  // Raised bosses around each hole
   const n  = p._holes || p.defHoles;
   const sp = p.holeSpacing * s;
-  const cap= 10*s;
+  const cap = 10*s;
+  c.fillStyle = _lighten(col, 12); c.strokeStyle = _darken(col, 10); c.lineWidth = 0.6;
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    const bossR = ph * 0.44;
+    c.beginPath(); c.ellipse(hx, 0, bossR, bossR, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  }
+  // Holes (oval slots — longer axis along plate)
+  const hSlotL = ph * 0.28, hSlotW = ph * 0.18;
+  c.fillStyle = '#0d1117';
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    c.beginPath(); c.ellipse(hx, 0, hSlotL, hSlotW, 0, 0, Math.PI*2); c.fill();
+  }
+}
+
+// ── LC-DCP ────────────────────────────────────────────────────
+// Limited contact — scalloped/waisted underside visible as
+// narrowed plate between holes when viewed from top
+function _drawLCDCP(c, p, w, ph, col, str, s) {
+  const n  = p._holes || p.defHoles;
+  const sp = p.holeSpacing * s;
+  const cap = 10*s;
+  const waistW = sp * 0.55; // width of narrow section between holes
+  const endCap = cap;
+
+  // Build scalloped outline path
   c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
-  // Draw as series of connected tabs (scalloped between holes)
   c.beginPath();
-  // Start left cap
-  c.moveTo(-w/2, 0);
-  c.arc(-w/2+cap/2, 0, ph/2, Math.PI, 0); // left end cap
-  for (let i=0; i<n-1; i++) {
-    const cx = -w/2 + cap + sp*i + sp/2;
-    // Narrow waist between holes
-    c.lineTo(cx - sp*0.15, -ph/2);
-    c.quadraticCurveTo(cx, -ph/2+ph*0.3, cx + sp*0.15, -ph/2);
+  // Top edge: straight
+  c.moveTo(-w/2, -ph/2);
+  c.lineTo(w/2, -ph/2);
+  // Right end arc
+  c.arc(w/2, 0, ph/2, -Math.PI/2, Math.PI/2);
+  // Bottom edge: scalloped (indented between holes)
+  for (let i = n-1; i >= 0; i--) {
+    const hx = -w/2 + cap + i*sp;
+    if (i < n-1) {
+      // Waist between holes — slight inward curve on bottom
+      const wx = hx + sp/2;
+      c.quadraticCurveTo(wx, ph/2 - ph*0.2, hx + sp*0.25, ph/2);
+    }
+    c.lineTo(hx - sp*0.25, ph/2);
   }
-  c.arc(w/2-cap/2, 0, ph/2, Math.PI, 0, true); // right end cap
-  for (let i=n-2; i>=0; i--) {
-    const cx = -w/2 + cap + sp*i + sp/2;
-    c.lineTo(cx + sp*0.15, ph/2);
-    c.quadraticCurveTo(cx, ph/2-ph*0.3, cx - sp*0.15, ph/2);
-  }
+  // Left end arc
+  c.arc(-w/2, 0, ph/2, Math.PI/2, -Math.PI/2);
   c.closePath(); c.fill(); c.stroke();
-}
 
-function _drawTPlate(c, p, w, ph, col, str, s) {
-  const stemH = Math.max(40*s, w*0.5);
-  const stemW = 14*s;
-  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
-  // Cross-bar
-  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
-  // Stem
-  c.beginPath(); c.roundRect(-stemW/2, ph/2, stemW, stemH, 2*s); c.fill(); c.stroke();
-}
-
-function _drawLPlate(c, p, w, ph, col, str, s) {
-  const stemH = Math.max(40*s, w*0.45);
-  const stemW = 14*s;
-  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
-  // Shaft
-  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
-  // Angled flange at right end
-  c.beginPath(); c.roundRect(w/2-stemW, ph/2, stemW, stemH, 2*s); c.fill(); c.stroke();
-}
-
-function _drawDHS(c, p, w, ph, col, str, isSel, s) {
-  // Side plate body
-  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
-  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
-
-  // Barrel assembly at right end, angled at 135° (45° from horizontal)
-  const barrelLen = 38*s, barrelW = 13*s, barrelR = 3*s;
-  c.save();
-  c.translate(w/2, 0);
-  c.rotate(-45 * Math.PI/180); // 135° barrel angle
-
-  // Barrel tube
-  c.fillStyle = _darken(col, 10); c.strokeStyle = str; c.lineWidth = 1.2;
-  c.beginPath(); c.roundRect(0, -barrelW/2, barrelLen, barrelW, barrelR);
-  c.fill(); c.stroke();
-
-  // Inner channel (barrel lumen)
-  c.fillStyle = '#1a1f26';
-  c.beginPath(); c.roundRect(4*s, -4*s, barrelLen-6*s, 8*s, 2*s); c.fill();
-
-  // Lag screw shaft extending from barrel
-  const screwLen = 80*s;
-  c.strokeStyle = isSel ? '#cfd8dc' : '#78909c';
-  c.lineWidth = 10*s; c.lineCap='round';
-  c.beginPath(); c.moveTo(barrelLen, 0); c.lineTo(barrelLen+screwLen, 0); c.stroke();
-  // Core
-  c.strokeStyle = '#1a1f26'; c.lineWidth = 5*s;
-  c.beginPath(); c.moveTo(barrelLen, 0); c.lineTo(barrelLen+screwLen, 0); c.stroke();
-  // Thread lines
-  c.strokeStyle = '#37474f'; c.lineWidth = 0.8*s;
-  for (let i=0; i<12; i++) {
-    const tx = barrelLen + 10*s + i*7*s;
-    c.beginPath(); c.moveTo(tx,-5*s); c.lineTo(tx,5*s); c.stroke();
+  // Raised bosses
+  c.fillStyle = _lighten(col, 10); c.strokeStyle = _darken(col, 10); c.lineWidth = 0.5;
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    c.beginPath(); c.ellipse(hx, 0, ph*0.42, ph*0.42, 0, 0, Math.PI*2); c.fill(); c.stroke();
   }
-  // Screw tip
-  c.fillStyle = '#90a4ae';
-  c.beginPath(); c.moveTo(barrelLen+screwLen, 0);
-  c.lineTo(barrelLen+screwLen-6*s, -4*s);
-  c.lineTo(barrelLen+screwLen-6*s,  4*s);
-  c.closePath(); c.fill();
-
-  c.restore();
+  // Undercut tick marks at each end of each hole slot
+  c.strokeStyle = _darken(col, 25); c.lineWidth = 0.7;
+  const hL = ph * 0.28, hW = ph * 0.17;
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    // Slot
+    c.fillStyle = '#0d1117';
+    c.beginPath(); c.ellipse(hx, 0, hL, hW, 0, 0, Math.PI*2); c.fill();
+    // Undercut marks
+    c.strokeStyle = _darken(col, 20); c.lineWidth = 0.7;
+    c.beginPath(); c.moveTo(hx - hL, -hW*0.5); c.lineTo(hx - hL - 2*s, -ph*0.42); c.stroke();
+    c.beginPath(); c.moveTo(hx - hL, hW*0.5);  c.lineTo(hx - hL - 2*s, ph*0.42);  c.stroke();
+    c.beginPath(); c.moveTo(hx + hL, -hW*0.5); c.lineTo(hx + hL + 2*s, -ph*0.42); c.stroke();
+    c.beginPath(); c.moveTo(hx + hL, hW*0.5);  c.lineTo(hx + hL + 2*s, ph*0.42);  c.stroke();
+  }
 }
 
-function _lighten(hex, amt) {
-  // Simple lightener for plate accent colour
-  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
-  const clamp = v => Math.min(255,Math.max(0,v));
-  return `rgb(${clamp(r+amt)},${clamp(g+amt)},${clamp(b+amt)})`;
-}
-function _darken(hex, amt) { return _lighten(hex, -amt); }
+// ── LCP ───────────────────────────────────────────────────────
+// Combi holes: locking circle toward fracture (centre), dynamic slot away
+// Left half of plate: lock on RIGHT side of each hole
+// Right half of plate: lock on LEFT side of each hole
+function _drawLCP(c, p, w, ph, col, str, s) {
+  const r = Math.min(ph * 0.48, 4*s);
+  // Body
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
 
-function drawImplantHoles(c, p, w, ph, s=1) {
-  _drawHoles(c, p, w, ph, s);
-}
-
-function drawImplantHolesScaled(c, p, w, ph, mmToCanvas) {
-  _drawHoles(c, p, w, ph, mmToCanvas);
-}
-
-function _drawHoles(c, p, w, ph, s) {
   const n   = p._holes || p.defHoles;
   const sp  = p.holeSpacing * s;
   const cap = 10*s;
-  const isLCP  = p.id==='lcp-35'||p.id==='lcp-45';
-  const isDCP  = p.id==='dcp-35'||p.id==='dcp-45';
-  const isLC   = p.id==='lc-dcp';
-  const isDHS  = p.shape==='dhs';
-  const isT    = p.shape==='T';
-  const isL    = p.shape==='L';
-  const isRecon= p.shape==='recon';
+  const mid = Math.floor(n/2); // centre of plate
 
-  // Oval radii
-  const hr = Math.max(1.5, 3*s), hry = Math.max(2, 4.5*s);
-
-  c.fillStyle = '#111518';
-
-  if (isDHS) {
-    // DHS: oval holes in side plate body only
-    for (let i=0; i<n; i++) {
-      const hx = -w/2 + cap + i*sp;
-      c.beginPath(); c.ellipse(hx, 0, hr, hry, 0, 0, Math.PI*2); c.fill();
-    }
-    return;
-  }
-
-  if (isT) {
-    // Cross-bar holes
-    for (let i=0; i<n; i++) {
-      _drawHole(c, -w/2+cap+i*sp, 0, hr, hry, isLCP, s);
-    }
-    // Stem holes (3)
-    const stemSp = 12*s;
-    for (let i=0; i<3; i++) {
-      c.beginPath(); c.arc(0, ph/2+stemSp/2+i*stemSp, hr, 0, Math.PI*2); c.fill();
-    }
-    return;
-  }
-
-  if (isL) {
-    // Shaft holes
-    for (let i=0; i<Math.min(n,4); i++) {
-      _drawHole(c, -w/2+cap+i*sp, 0, hr, hry, false, s);
-    }
-    // Flange holes
-    const stemSp = 12*s;
-    for (let i=0; i<3; i++) {
-      c.beginPath(); c.arc(w/2-12*s, ph/2+stemSp/2+i*stemSp, hr, 0, Math.PI*2); c.fill();
-    }
-    return;
-  }
-
-  if (isRecon) {
-    // Oval holes centred in each tab
-    for (let i=0; i<n; i++) {
-      const hx = -w/2 + cap + i*sp;
-      c.beginPath(); c.ellipse(hx, 0, hr, hry, 0, 0, Math.PI*2); c.fill();
-    }
-    return;
-  }
-
-  // Straight plates (DCP, LC-DCP, LCP)
-  for (let i=0; i<n; i++) {
+  // Raised boss for each hole
+  c.fillStyle = _lighten(col, 10); c.strokeStyle = _darken(col, 12); c.lineWidth = 0.5;
+  for (let i = 0; i < n; i++) {
     const hx = -w/2 + cap + i*sp;
-    _drawHole(c, hx, 0, hr, hry, isLCP, s);
-    // LC-DCP: undercut tick marks at each end of hole
-    if (isLC) {
-      c.strokeStyle = '#263238'; c.lineWidth = 0.8*s;
-      c.beginPath(); c.moveTo(hx-hr, -hry*0.6); c.lineTo(hx-hr, hry*0.6); c.stroke();
-      c.beginPath(); c.moveTo(hx+hr, -hry*0.6); c.lineTo(hx+hr, hry*0.6); c.stroke();
-    }
+    c.beginPath(); c.ellipse(hx, 0, ph*0.44, ph*0.44, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  }
+
+  // Draw combi holes
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    // Determine orientation: left half → lock on right; right half → lock on left
+    // (locking hole always faces toward plate centre = fracture site)
+    const lockOnRight = (i < mid);
+    _drawCombiHole(c, hx, 0, ph, s, lockOnRight);
   }
 }
 
-function _drawHole(c, hx, hy, hr, hry, isLCP, s) {
-  if (isLCP) {
-    // Combi hole: left=oval (dynamic slot), right=circle with threaded ring
-    const shift = 1.5*s;
-    // Dynamic slot half
-    c.fillStyle = '#111518';
-    c.beginPath(); c.ellipse(hx-shift, hy, hr*0.8, hry, 0, 0, Math.PI*2); c.fill();
-    // Locking hole half
-    const lr = hr * 0.95;
-    c.beginPath(); c.arc(hx+shift, hy, lr, 0, Math.PI*2); c.fill();
-    // Threaded locking ring
-    c.strokeStyle = '#546e7a'; c.lineWidth = 0.8*s;
-    c.beginPath(); c.arc(hx+shift, hy, lr+1.8*s, 0, Math.PI*2); c.stroke();
-    // 6-point thread marks on locking ring
-    for (let t=0; t<6; t++) {
-      const a = t*Math.PI/3;
-      const rx = hx+shift + Math.cos(a)*(lr+1.8*s);
-      const ry = hy + Math.sin(a)*(lr+1.8*s);
-      c.beginPath(); c.arc(rx, ry, 0.6*s, 0, Math.PI*2);
-      c.fillStyle='#546e7a'; c.fill(); c.fillStyle='#111518';
+function _drawCombiHole(c, hx, hy, ph, s, lockOnRight) {
+  const slotL  = ph * 0.26;  // half-length of dynamic slot
+  const slotW  = ph * 0.16;  // half-width of dynamic slot
+  const lockR  = ph * 0.175; // locking circle radius
+  const offset = ph * 0.16;  // shift of each half from centre
+
+  if (lockOnRight) {
+    // Dynamic slot: left side
+    c.fillStyle = '#0d1117';
+    c.beginPath(); c.ellipse(hx - offset, hy, slotL, slotW, 0, 0, Math.PI*2); c.fill();
+    // Locking circle: right side
+    c.beginPath(); c.arc(hx + offset, hy, lockR, 0, Math.PI*2); c.fill();
+    // Locking ring
+    c.strokeStyle = '#78909c'; c.lineWidth = 0.9;
+    c.beginPath(); c.arc(hx + offset, hy, lockR + 1.8*s, 0, Math.PI*2); c.stroke();
+    // 6 thread dots on ring
+    for (let t = 0; t < 6; t++) {
+      const a = t * Math.PI/3;
+      c.fillStyle = '#546e7a';
+      c.beginPath(); c.arc(hx + offset + Math.cos(a)*(lockR+1.8*s), hy + Math.sin(a)*(lockR+1.8*s), 0.7*s, 0, Math.PI*2); c.fill();
     }
+    // Divider line between halves
+    c.strokeStyle = '#263238'; c.lineWidth = 0.6;
+    c.beginPath(); c.moveTo(hx, hy - ph*0.3); c.lineTo(hx, hy + ph*0.3); c.stroke();
   } else {
-    // Standard oval (DCP slot)
-    c.fillStyle = '#111518';
-    c.beginPath(); c.ellipse(hx, hy, hr, hry, 0, 0, Math.PI*2); c.fill();
+    // Mirror: locking on left, dynamic on right
+    c.fillStyle = '#0d1117';
+    c.beginPath(); c.arc(hx - offset, hy, lockR, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#78909c'; c.lineWidth = 0.9;
+    c.beginPath(); c.arc(hx - offset, hy, lockR + 1.8*s, 0, Math.PI*2); c.stroke();
+    for (let t = 0; t < 6; t++) {
+      const a = t * Math.PI/3;
+      c.fillStyle = '#546e7a';
+      c.beginPath(); c.arc(hx - offset + Math.cos(a)*(lockR+1.8*s), hy + Math.sin(a)*(lockR+1.8*s), 0.7*s, 0, Math.PI*2); c.fill();
+    }
+    c.fillStyle = '#0d1117';
+    c.beginPath(); c.ellipse(hx + offset, hy, slotL, slotW, 0, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#263238'; c.lineWidth = 0.6;
+    c.beginPath(); c.moveTo(hx, hy - ph*0.3); c.lineTo(hx, hy + ph*0.3); c.stroke();
   }
 }
 
+// ── Reconstruction plate ──────────────────────────────────────
+// Deep scalloping between holes — plate can be bent in all planes
+function _drawRecon(c, p, w, ph, col, str, s) {
+  const n   = p._holes || p.defHoles;
+  const sp  = p.holeSpacing * s;
+  const cap = 10*s;
+  const notchDepth = ph * 0.38; // how deep the scallop cuts in
+
+  // Draw as series of oval bosses connected by narrow waists
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+
+  // Build outline: top flat + bottom scalloped
+  c.beginPath();
+  // Left end cap
+  c.arc(-w/2 + cap/2, 0, ph/2, Math.PI, -Math.PI/2);
+
+  // Top edge straight
+  c.lineTo(w/2 - cap/2, -ph/2);
+
+  // Right end cap
+  c.arc(w/2 - cap/2, 0, ph/2, -Math.PI/2, Math.PI/2);
+
+  // Bottom edge — scalloped
+  for (let i = n-1; i >= 0; i--) {
+    const hx = -w/2 + cap + i*sp;
+    const nextHx = hx - sp;
+    if (i < n-1) {
+      // Concave scallop between holes
+      const mx = hx - sp/2;
+      c.lineTo(hx - sp*0.3, ph/2);
+      c.quadraticCurveTo(mx, ph/2 - notchDepth, hx - sp*0.7, ph/2);
+    }
+  }
+  c.lineTo(-w/2 + cap/2, ph/2);
+  c.closePath(); c.fill(); c.stroke();
+
+  // Round hole in each boss
+  c.fillStyle = '#0d1117';
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    c.beginPath(); c.arc(hx, 0, ph * 0.2, 0, Math.PI*2); c.fill();
+  }
+}
+
+// ── Unified hole drawing (called from drawImplantHoles / drawImplantHolesScaled)
+function drawImplantHoles(c, p, w, ph, s=1) { /* holes drawn inside body funcs */ }
+function drawImplantHolesScaled(c, p, w, ph, mmToCanvas) { /* same */ }
+
+// ── Colour helpers ─────────────────────────────────────────────
+function _lighten(hex, amt) {
+  try { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16),cl=v=>Math.min(255,v+amt); return `rgb(${cl(r)},${cl(g)},${cl(b)})`; } catch(e){return hex;}
+}
+function _darken(hex, amt) { return _lighten(hex, -amt); }
+
+// ── Thumbnail SVGs ─────────────────────────────────────────────
+function plateSVGThumb(p) {
+  const col = p.color, n = 4, sp = 9, cap = 5, w = 48, h = 12;
+  const bossR = h*0.44, hL = h*0.28, hW = h*0.17;
+
+  if (p.shape === 'lcp') {
+    // LCP: left holes have lock on right, right holes have lock on left
+    const holes = Array.from({length:n},(_,i) => {
+      const hx = cap + i*sp, mid = Math.floor(n/2);
+      const lockR = i < mid;
+      const lkx = lockR ? hx+2 : hx-2, dyx = lockR ? hx-2 : hx+2;
+      return `<ellipse cx="${hx}" cy="${h/2}" rx="${bossR}" ry="${bossR}" fill="${_svgLighten(col)}"/>
+              <ellipse cx="${dyx}" cy="${h/2}" rx="1.5" ry="2.2" fill="#0d1117"/>
+              <circle cx="${lkx}" cy="${h/2}" r="1.6" fill="#0d1117"/>
+              <circle cx="${lkx}" cy="${h/2}" r="2.5" fill="none" stroke="#546e7a" stroke-width="0.7"/>`;
+    }).join('');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="1" width="${w}" height="${h-2}" rx="${(h-2)/2}" fill="${col}"/>${holes}</svg>`;
+  }
+
+  if (p.shape === 'lcdcp') {
+    const holes = Array.from({length:n},(_,i) => {
+      const hx = cap + i*sp;
+      return `<ellipse cx="${hx}" cy="${h/2}" rx="${bossR}" ry="${bossR}" fill="${_svgLighten(col)}"/>
+              <ellipse cx="${hx}" cy="${h/2}" rx="${hL}" ry="${hW}" fill="#0d1117"/>
+              <line x1="${hx-hL}" y1="${h*0.2}" x2="${hx-hL-1.5}" y2="${h*0.05}" stroke="#37474f" stroke-width="0.6"/>
+              <line x1="${hx-hL}" y1="${h*0.8}" x2="${hx-hL-1.5}" y2="${h*0.95}" stroke="#37474f" stroke-width="0.6"/>
+              <line x1="${hx+hL}" y1="${h*0.2}" x2="${hx+hL+1.5}" y2="${h*0.05}" stroke="#37474f" stroke-width="0.6"/>
+              <line x1="${hx+hL}" y1="${h*0.8}" x2="${hx+hL+1.5}" y2="${h*0.95}" stroke="#37474f" stroke-width="0.6"/>`;
+    }).join('');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="1" width="${w}" height="${h-2}" rx="${(h-2)/2}" fill="${col}"/>${holes}</svg>`;
+  }
+
+  if (p.shape === 'recon') {
+    // Scalloped profile
+    const pts = [];
+    pts.push(`M${cap/2},0`);
+    pts.push(`A${h/2},${h/2} 0 0 1 ${cap/2},${h}`);
+    for (let i=n-1;i>=0;i--) { const hx=cap+i*sp; pts.push(`Q${hx-sp/2},${h-h*0.35} ${hx-sp*0.3},${h}`); }
+    pts.push(`A${h/2},${h/2} 0 0 1 ${w-cap/2},0 Z`);
+    const holes = Array.from({length:n},(_,i)=>`<circle cx="${cap+i*sp}" cy="${h/2}" r="${h*0.2}" fill="#0d1117"/>`).join('');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${pts.join(' ')}" fill="${col}" stroke="#455a64" stroke-width="0.8"/>${holes}</svg>`;
+  }
+
+  // DCP default
+  const holes = Array.from({length:n},(_,i)=>{
+    const hx=cap+i*sp;
+    return `<ellipse cx="${hx}" cy="${h/2}" rx="${bossR}" ry="${bossR}" fill="${_svgLighten(col)}"/>
+            <ellipse cx="${hx}" cy="${h/2}" rx="${hL}" ry="${hW}" fill="#0d1117"/>`;
+  }).join('');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="1" width="${w}" height="${h-2}" rx="${(h-2)/2}" fill="${col}"/><line x1="3" y1="${h/2}" x2="${w-3}" y2="${h/2}" stroke="${_svgDarken(col)}" stroke-width="0.8"/>${holes}</svg>`;
+}
+
+function _svgLighten(hex) {
+  try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16),cl=v=>Math.min(255,v+20);return `rgb(${cl(r)},${cl(g)},${cl(b)})`;}catch(e){return hex;}
+}
+function _svgDarken(hex) {
+  try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16),cl=v=>Math.max(0,v-20);return `rgb(${cl(r)},${cl(g)},${cl(b)})`;}catch(e){return hex;}
+}
+
+// ── Implant mouse interaction
 // ── Implant mouse interaction
 // Implant mouse interaction
 function handleImplantMouseDown(x, y) {
@@ -5737,7 +5736,6 @@ function drawImplantsOnDiagram(canvas, ctx2) {
     ctx2.rotate(impl.angle);
     ctx2.globalAlpha = isSel ? 0.95 : 0.75;
     drawImplantBody(ctx2, p, w, ph, isSel, mmToCanvas);
-    drawImplantHoles(ctx2, p, w, ph, mmToCanvas);
     ctx2.globalAlpha = 1;
 
     if (isSel) {
