@@ -1280,6 +1280,45 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         </div>
       </div>
 
+      <!-- Implants -->
+      <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">🔩 Implants</div>
+          <div style="display:flex;gap:5px">
+            <button id="mob-impl-cvs-xray" class="btn active" style="font-size:9px;padding:4px 10px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
+            <button id="mob-impl-cvs-diag" class="btn"        style="font-size:9px;padding:4px 10px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
+          </div>
+        </div>
+        <div id="mob-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+        <!-- Controls for selected implant -->
+        <div id="mob-implant-controls" style="display:none">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Selected: <span id="mob-impl-sel-name">—</span></div>
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <label style="font-size:11px;color:var(--muted)">Rotation</label>
+              <span id="mob-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">0°</span>
+            </div>
+            <input type="range" id="mob-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="mobImplantRotate(this.value)">
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <label style="font-size:11px;color:var(--muted)">Scale</label>
+              <span id="mob-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">1.0×</span>
+            </div>
+            <input type="range" id="mob-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="mobImplantScale(this.value)">
+          </div>
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <label style="font-size:11px;color:var(--muted)">Holes</label>
+              <span id="mob-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">6 · —</span>
+            </div>
+            <input type="range" id="mob-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="mobImplantHoles(this.value)">
+          </div>
+        </div>
+        <div id="mob-implant-list" style="margin-top:4px"></div>
+        <button class="btn danger-outline" id="mob-impl-clear-btn" style="width:100%;justify-content:center;font-size:12px;margin-top:8px;display:none" onclick="clearImplants()">✕ Clear Implants</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -4037,51 +4076,77 @@ function mobZoomReset() { if(bgImage){mobFitBg();} updateMobDpad(); mobRedraw();
 
 // ── Mobile implant controls ───────────────────────────────────
 function mobInitPlateGrid() {
-  const grid = document.getElementById('mob-plate-grid'); if (!grid) return;
-  grid.innerHTML = PLATES.map(p => `
+  const html = PLATES.map(p => `
     <div onclick="mobPlaceImplant('${p.id}')" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 4px;cursor:pointer;text-align:center;transition:all .15s">
       <div style="height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:3px">${plateSVGThumb(p)}</div>
       <div style="font-size:8px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
     </div>`).join('');
+  // Populate all mob-plate-grid elements (old sheet + fracture sheet)
+  document.querySelectorAll('#mob-plate-grid').forEach(g => g.innerHTML = html);
 }
 
 function mobPlaceImplant(plateId) {
   placeImplant(plateId);
   mobUpdateImplantControls();
-  mobRedraw();
+  redrawAll(); mobRedraw();
 }
 
 function mobUpdateImplantControls() {
-  const ctrl = document.getElementById('mob-implant-controls'); if (!ctrl) return;
-  if (!selImplant) { ctrl.style.display = 'none'; return; }
-  ctrl.style.display = 'block';
-  document.getElementById('mob-rot-slider').value = selImplant.angle || 0;
-  document.getElementById('mob-rot-val').textContent = Math.round(selImplant.angle || 0) + '°';
-  document.getElementById('mob-scale-slider').value = Math.round((selImplant.scale || 1) * 100);
-  document.getElementById('mob-scale-val').textContent = (selImplant.scale || 1).toFixed(1) + '×';
-  document.getElementById('mob-holes-slider').value = selImplant.plate.holes || 6;
-  document.getElementById('mob-holes-val').textContent = selImplant.plate.holes || 6;
+  // Update controls in both old sheet and fracture sheet
+  ['mob-implant-controls'].forEach(id => {
+    const ctrl = document.getElementById(id); if (!ctrl) return;
+    if (!selImplant) { ctrl.style.display='none'; return; }
+    ctrl.style.display = 'block';
+    const nh  = selImplant.plate._holes || selImplant.plate.defHoles || 6;
+    const len = plateLength(selImplant.plate);
+    document.getElementById('mob-impl-sel-name').textContent = selImplant.plate.name;
+    document.getElementById('mob-rot-slider').value   = selImplant.angle || 0;
+    document.getElementById('mob-rot-val').textContent = Math.round(selImplant.angle||0)+'°';
+    document.getElementById('mob-scale-slider').value  = Math.round((selImplant.scale||1)*100);
+    document.getElementById('mob-scale-val').textContent = (selImplant.scale||1).toFixed(1)+'×';
+    document.getElementById('mob-holes-slider').min    = selImplant.plate.minHoles;
+    document.getElementById('mob-holes-slider').max    = selImplant.plate.maxHoles;
+    document.getElementById('mob-holes-slider').value  = nh;
+    document.getElementById('mob-holes-val').textContent = `${nh}h · ${len}mm`;
+    // Update clear button visibility
+    const clr = document.getElementById('mob-impl-clear-btn');
+    if (clr) clr.style.display = implants.length ? 'block' : 'none';
+  });
+  // Render the implant list
+  mobRenderImplantList();
+}
+
+function mobRenderImplantList() {
+  const el = document.getElementById('mob-implant-list'); if (!el) return;
+  if (!implants.length) { el.innerHTML=''; return; }
+  el.innerHTML = implants.map(i => `
+    <div class="impl-item${selImplant?.uid===i.uid?' selected':''}" onclick="selImplant=implants.find(x=>x.uid===${i.uid})||null;mobUpdateImplantControls();redrawAll();mobRedraw()">
+      <div class="impl-name">${i.plate.name} (${i.plate._holes||i.plate.defHoles}h · ${plateLength(i.plate)}mm)</div>
+      <button class="impl-del" onclick="event.stopPropagation();deleteImplant(${i.uid});mobUpdateImplantControls()">✕</button>
+    </div>`).join('');
 }
 
 function mobImplantRotate(val) {
   if (!selImplant) return;
   selImplant.angle = parseFloat(val);
-  document.getElementById('mob-rot-val').textContent = Math.round(val) + '°';
-  redraw(); mobRedraw();
+  document.getElementById('mob-rot-val').textContent = Math.round(val)+'°';
+  redrawAll(); mobRedraw();
 }
 
 function mobImplantScale(val) {
   if (!selImplant) return;
-  selImplant.scale = val / 100;
-  document.getElementById('mob-scale-val').textContent = selImplant.scale.toFixed(1) + '×';
-  redraw(); mobRedraw();
+  selImplant.scale = val/100;
+  document.getElementById('mob-scale-val').textContent = selImplant.scale.toFixed(1)+'×';
+  redrawAll(); mobRedraw();
 }
 
 function mobImplantHoles(val) {
   if (!selImplant) return;
-  selImplant.plate = { ...selImplant.plate, holes: parseInt(val) };
-  document.getElementById('mob-holes-val').textContent = val;
-  redraw(); mobRedraw();
+  const n = Math.max(selImplant.plate.minHoles, Math.min(selImplant.plate.maxHoles, parseInt(val)));
+  selImplant.plate._holes = n;
+  const len = plateLength(selImplant.plate);
+  document.getElementById('mob-holes-val').textContent = `${n}h · ${len}mm`;
+  redrawAll(); mobRedraw();
 }
 
 // ── Mobile AO wizard ──────────────────────────────────────────
@@ -4200,7 +4265,7 @@ function mobOpen(name) {
   if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); }
   if (name === 'ao')       mobInitAO();
   if (name === 'calib')    updateMobCalib();
-  if (name === 'fracmap')  fmSyncMobUI();
+  if (name === 'fracmap')  { fmSyncMobUI(); mobInitPlateGrid(); mobUpdateImplantControls(); }
   if (name === 'xray') {
     ['hip','knee'].forEach(t => {
       const src=TEMPLATE_SRCS[t], img=document.getElementById('mbt-'+t);
@@ -4258,10 +4323,13 @@ function mobDeleteImage() {
 
 function setImplantCanvas(mode) {
   implantCanvas = mode;
+  // Desktop toggle
   document.getElementById('impl-cvs-xray')?.classList.toggle('active', mode==='xray');
   document.getElementById('impl-cvs-diag')?.classList.toggle('active', mode==='diagram');
-  redraw(); // redraw X-ray (removes or adds implant)
-  if (fm.generated && fmCvs && fmCtx) fmRedrawFull(); // redraw diagram
+  // Mobile toggle
+  document.getElementById('mob-impl-cvs-xray')?.classList.toggle('active', mode==='xray');
+  document.getElementById('mob-impl-cvs-diag')?.classList.toggle('active', mode==='diagram');
+  redrawAll();
 }
 
 function fmRedrawFull() {
@@ -4388,12 +4456,19 @@ function renderImplantList() {
       document.getElementById('desk-holes-val').innerHTML = `${nh} holes · <span id="desk-plate-len">${plateLength(selImplant.plate)}mm</span>`;
     } else { ctrl.style.display = 'none'; }
   }
+  // Sync mobile too
+  mobRenderImplantList();
+  const mClr = document.getElementById('mob-impl-clear-btn');
+  if (mClr) mClr.style.display = implants.length ? 'block' : 'none';
 }
 
 function selectImplant(uid) {
-  selImplant = implants.find(i=>i.uid===uid)||null;
+  selImplant = implants.find(i => i.uid === uid) || null;
   renderImplantList(); redrawAll();
 }
+
+
+function updateImplantControls() { renderImplantList(); }
 
 // Draw all implants on canvas
 function drawImplantsOnCtx(c, scale, ox, oy) {
