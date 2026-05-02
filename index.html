@@ -5278,10 +5278,9 @@ function fmDrawFragments(canvas, ctx2) {
   // Store for hit detection
   fm._drawScale=scale; fm._drawOffX=offX; fm._drawOffY=offY;
 
-  // Project image-space point to canvas, applying fragment transform
+  // Project image-space → canvas, with fragment transform applied
   function proj(p, frag) {
     if (!frag) return {x: p.x*scale+offX, y: p.y*scale+offY};
-    // Fragment pivot = centroid of its original points
     const pivot = frag._pivot;
     const dx=p.x-pivot.x, dy=p.y-pivot.y;
     const cos=Math.cos(frag.angle), sin=Math.sin(frag.angle);
@@ -5291,7 +5290,68 @@ function fmDrawFragments(canvas, ctx2) {
     };
   }
 
-  // Draw each fragment's lines
+  // Project image-space → canvas WITHOUT any fragment transform (original position)
+  function projOrig(p) {
+    return { x: p.x*scale+offX, y: p.y*scale+offY };
+  }
+
+  // ── Pass 1: Draw ghost lines (original positions) ────────────
+  // Only shown when a fragment has been moved or rotated
+  fm.fragments.forEach(frag => {
+    const moved = Math.abs(frag.ox) > 0.5 || Math.abs(frag.oy) > 0.5 || Math.abs(frag.angle) > 0.01;
+    if (!moved) return;
+    frag.lineIndices.forEach(li => {
+      const fl = fm.fracLines[li];
+      if (!fl || fl.points.length < 2) return;
+      ctx2.save();
+      ctx2.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx2.lineWidth = 1.5;
+      ctx2.setLineDash([6, 5]);
+      ctx2.lineCap = 'round'; ctx2.lineJoin = 'round';
+      ctx2.beginPath();
+      fl.points.forEach((p,i) => {
+        const c = projOrig(p);
+        i===0 ? ctx2.moveTo(c.x,c.y) : ctx2.lineTo(c.x,c.y);
+      });
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+      // Ghost endpoint dots
+      [fl.points[0], fl.points[fl.points.length-1]].forEach(p => {
+        const c = projOrig(p);
+        ctx2.beginPath(); ctx2.arc(c.x,c.y,3,0,Math.PI*2);
+        ctx2.fillStyle='rgba(255,255,255,0.2)'; ctx2.fill();
+      });
+      ctx2.restore();
+    });
+  });
+
+  // ── Pass 2: Draw displacement arrows (ghost → current) ───────
+  fm.fragments.forEach(frag => {
+    const moved = Math.abs(frag.ox) > 0.5 || Math.abs(frag.oy) > 0.5 || Math.abs(frag.angle) > 0.01;
+    if (!moved || !frag._pivot) return;
+    const orig = projOrig(frag._pivot);
+    const curr = proj(frag._pivot, frag);
+    const dx = curr.x-orig.x, dy = curr.y-orig.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 4) return;
+    ctx2.save();
+    ctx2.strokeStyle = 'rgba(251,191,36,0.45)'; // amber
+    ctx2.lineWidth = 1;
+    ctx2.setLineDash([3, 4]);
+    ctx2.beginPath(); ctx2.moveTo(orig.x, orig.y); ctx2.lineTo(curr.x, curr.y); ctx2.stroke();
+    ctx2.setLineDash([]);
+    // Arrowhead at curr end
+    const angle = Math.atan2(dy, dx);
+    ctx2.fillStyle = 'rgba(251,191,36,0.55)';
+    ctx2.beginPath();
+    ctx2.moveTo(curr.x, curr.y);
+    ctx2.lineTo(curr.x - 8*Math.cos(angle-0.4), curr.y - 8*Math.sin(angle-0.4));
+    ctx2.lineTo(curr.x - 8*Math.cos(angle+0.4), curr.y - 8*Math.sin(angle+0.4));
+    ctx2.closePath(); ctx2.fill();
+    ctx2.restore();
+  });
+
+  // ── Pass 3: Draw current (moved) fragment lines ──────────────
   fm.fragments.forEach((frag, fi) => {
     const isSel = fi === fm.selFrag;
     ctx2.save();
@@ -5299,7 +5359,6 @@ function fmDrawFragments(canvas, ctx2) {
     ctx2.lineWidth = isSel ? 3.5 : 2.5;
     ctx2.lineCap='round'; ctx2.lineJoin='round';
 
-    // Draw each line belonging to this fragment
     frag.lineIndices.forEach(li => {
       const fl = fm.fracLines[li];
       if (!fl || fl.points.length < 2) return;
@@ -5311,7 +5370,7 @@ function fmDrawFragments(canvas, ctx2) {
       ctx2.stroke();
     });
 
-    // Selection highlight: draw dots on endpoints
+    // Endpoint dots + rotation handle when selected
     if (isSel) {
       frag.lineIndices.forEach(li => {
         const fl = fm.fracLines[li];
@@ -5322,7 +5381,6 @@ function fmDrawFragments(canvas, ctx2) {
           ctx2.fillStyle=frag.color; ctx2.fill();
         });
       });
-      // Rotation handle at top-right of first line
       const fl0 = fm.fracLines[frag.lineIndices[0]];
       if (fl0 && fl0.points.length) {
         const hp = fl0.points[0];
@@ -5332,17 +5390,16 @@ function fmDrawFragments(canvas, ctx2) {
         ctx2.strokeStyle=frag.color; ctx2.lineWidth=2; ctx2.stroke();
         ctx2.fillStyle=frag.color; ctx2.font='bold 14px sans-serif';
         ctx2.textAlign='center'; ctx2.fillText('↻',hc.x,hc.y+5); ctx2.textAlign='left';
-        // Store handle pos for hit detection
         frag._rotHandle = hc;
       }
     }
     ctx2.restore();
 
-    // Fragment label
+    // Label at current pivot position
     if (frag._pivot) {
       const lc = proj(frag._pivot, frag);
       ctx2.fillStyle=frag.color+'cc'; ctx2.font='bold 10px IBM Plex Sans,sans-serif';
-      ctx2.textAlign='center'; ctx2.fillText(frag.name, lc.x, lc.y); ctx2.textAlign='left';
+      ctx2.textAlign='center'; ctx2.fillText(frag.name, lc.x, lc.y+14); ctx2.textAlign='left';
     }
   });
 
@@ -5354,10 +5411,7 @@ function fmDrawFragments(canvas, ctx2) {
 
   // Draw implants on diagram canvas if in diagram mode
   if (implantCanvas === 'diagram' && implants.length) {
-    const scale = fm._drawScale || 1;
-    const offX  = fm._drawOffX  || 0;
-    const offY  = fm._drawOffY  || 0;
-    drawImplantsOnCtx(ctx2, scale, offX, offY);
+    drawImplantsOnCtx(ctx2, fm._drawScale, fm._drawOffX, fm._drawOffY);
   }
 }
 
