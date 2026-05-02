@@ -908,10 +908,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">🔩 Implants</div>
           <!-- Canvas toggle -->
-          <div style="display:flex;gap:4px">
-            <button id="impl-cvs-xray" class="btn active" style="font-size:9px;padding:3px 8px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
-            <button id="impl-cvs-diag" class="btn"        style="font-size:9px;padding:3px 8px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
-          </div>
+  
         </div>
         <div id="plate-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px"></div>
         <div id="implant-controls-desktop" style="display:none">
@@ -1436,11 +1433,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div style="font-size:12px;font-weight:700;color:var(--text);flex:1">🔩 Select Implant</div>
       <button onclick="closeMobImplantPicker()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
     </div>
-    <!-- Canvas toggle -->
-    <div style="display:flex;gap:8px;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
-      <button id="mob-impl-cvs-xray" class="btn" style="flex:1;justify-content:center;font-size:11px" onclick="setImplantCanvas('xray')">🩻 On X-Ray</button>
-      <button id="mob-impl-cvs-diag" class="btn active" style="flex:1;justify-content:center;font-size:11px" onclick="setImplantCanvas('diagram')">🔀 On Diagram</button>
-    </div>
+
     <!-- Plate grid -->
     <div style="padding:10px 14px 16px">
       <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Tap a plate to place it</div>
@@ -1805,7 +1798,7 @@ let implants = [];
 let selImplant = null;
 let implantDragging = false, implantDragStart = null;
 let implantIdCounter = 0;
-let implantCanvas = 'xray'; // 'xray' | 'diagram' — which canvas shows implants
+let implantCanvas = 'diagram'; // always diagram by default
 
 // ── AO data (needed by both desktop and mobile) ──────────────
 const AO_BONES = [
@@ -2981,15 +2974,40 @@ function undoLast() {
 }
 
 function clearAll() {
-  if (!objs.length && !wip.length) return;
   saveHistory();
+  // Clear measurements
   objs=[]; wip=[]; selObj=null; dragPt=null; dragLbl=null;
   mobDragPt=null; mobDragLbl=null; showLens=false; mobShowLens=false;
-  // Reset calibration since calib line is cleared too
+  // Reset calibration
   calib = { pxPerMm:null, refName:'', refMm:null, refPx:null, lineObj:null };
   calibMode=false;
+  // Clear fracture mapper completely
+  fm.fracLines=[]; fm.currentLine=[]; fm.fragments=[]; fm.generated=false;
+  fm.drawing=false; fmRefDrawing=false; fmActiveDrawMode=null;
+  fm.refLine=null; fm.refMm=null; fm.pxPerMm=null;
+  fm.selFrag=null; fm.dragFrag=null;
+  fmHideDrawBanner();
+  // Clear implants
+  implants=[]; selImplant=null; implantDragging=false;
+  // Hide fracture schema panels
+  const panel = document.getElementById('fm-schema-panel');
+  if (panel) panel.style.display='none';
+  const mobSchema = document.getElementById('mob-fm-schema');
+  if (mobSchema) mobSchema.style.display='none';
+  // Reset fracture UI
+  ['fm-view-toggle','fm-fragment-list','fm-generate-row','fm-scale-result',
+   'mob-fm-generate-row','mob-fm-scale-result'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  ['fm-draw-btn','mob-fm-draw-btn'].forEach(id => {
+    const el=document.getElementById(id);
+    if(el){el.textContent='✏ Start Drawing on X-Ray';el.style.borderColor='';el.style.color='';}
+  });
+  // Update all UI
   updateList(); mobUpdateResults();
   updateCalibUI(); updateMobCalib();
+  renderImplantList();
+  fmSyncMobUI();
   redraw(); mobRedraw();
 }
 
@@ -4435,7 +4453,7 @@ function mobOpen(name) {
   if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); }
   if (name === 'ao')       mobInitAO();
   if (name === 'calib')    updateMobCalib();
-  if (name === 'fracmap')  { fmSyncMobUI(); mobInitPlateGrid(); mobUpdateImplantControls(); }
+  if (name === 'fracmap')  { fmSyncMobUI(); }
   if (name === 'xray') {
     ['hip','knee'].forEach(t => {
       const src=TEMPLATE_SRCS[t], img=document.getElementById('mbt-'+t);
@@ -4493,12 +4511,6 @@ function mobDeleteImage() {
 
 function setImplantCanvas(mode) {
   implantCanvas = mode;
-  // Desktop toggle
-  document.getElementById('impl-cvs-xray')?.classList.toggle('active', mode==='xray');
-  document.getElementById('impl-cvs-diag')?.classList.toggle('active', mode==='diagram');
-  // Mobile toggle
-  document.getElementById('mob-impl-cvs-xray')?.classList.toggle('active', mode==='xray');
-  document.getElementById('mob-impl-cvs-diag')?.classList.toggle('active', mode==='diagram');
   redrawAll();
 }
 
@@ -4530,6 +4542,7 @@ function plateSVGThumb(p) {
 }
 
 function placeImplant(plateId) {
+  implantCanvas = 'diagram'; // always on diagram canvas
   const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
   // Clone plate and set default holes
   const p = { ...plate, _holes: plate.defHoles };
@@ -5452,7 +5465,7 @@ function closeMobImplantPicker() {
 }
 
 function mobPickImplant(plateId) {
-  // Place implant centred on diagram canvas
+  implantCanvas = 'diagram'; // always on diagram
   const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
   const p = { ...plate, _holes: plate.defHoles };
   const W = mobFmCvs ? mobFmCvs.width  : 300;
