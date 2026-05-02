@@ -4533,12 +4533,30 @@ function initImplants() {
 }
 
 function plateSVGThumb(p) {
-  const w=40, h=10, rx=h/2;
-  if (p.shape === 'T') return `<svg width="30" height="22" viewBox="0 0 30 22"><rect x="0" y="0" width="30" height="6" rx="1.5" fill="#78909c"/><rect x="11" y="6" width="8" height="16" rx="1.5" fill="#78909c"/></svg>`;
-  if (p.shape === 'L') return `<svg width="28" height="22" viewBox="0 0 28 22"><rect x="0" y="0" width="8" height="22" rx="1.5" fill="#78909c"/><rect x="8" y="14" width="20" height="8" rx="1.5" fill="#78909c"/></svg>`;
-  if (p.shape === 'dhs') return `<svg width="40" height="16" viewBox="0 0 40 16"><rect x="0" y="4" width="28" height="8" rx="2" fill="#78909c"/><line x1="24" y1="8" x2="40" y2="2" stroke="#78909c" stroke-width="5" stroke-linecap="round"/></svg>`;
-  const n=4; const sp=(w-8)/(n-1);
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="#78909c"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${4+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#1e2226"/>`).join('')}</svg>`;
+  const col = p.color;
+  const n = 4; // always show 4 holes in thumb
+  const sp = 8, cap = 5, w = 44, h = 10;
+
+  if (p.shape === 'T') return `<svg width="32" height="28" viewBox="0 0 32 28"><rect x="0" y="0" width="32" height="8" rx="2" fill="${col}"/><rect x="12" y="8" width="8" height="20" rx="2" fill="${col}"/>${[0,1,2,3].map(i=>`<ellipse cx="${4+i*7}" cy="4" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
+
+  if (p.shape === 'L') return `<svg width="36" height="28" viewBox="0 0 36 28"><rect x="0" y="0" width="36" height="8" rx="2" fill="${col}"/><rect x="24" y="8" width="8" height="20" rx="2" fill="${col}"/>${[0,1,2].map(i=>`<ellipse cx="${5+i*9}" cy="4" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
+
+  if (p.shape === 'dhs') return `<svg width="52" height="16" viewBox="0 0 52 16"><rect x="0" y="4" width="28" height="8" rx="2" fill="${col}"/>${[0,1,2].map(i=>`<ellipse cx="${4+i*8}" cy="8" rx="2" ry="3" fill="#111"/>`).join('')}<g transform="translate(28,8) rotate(-45)"><rect x="0" y="-5" width="18" height="10" rx="3" fill="${col}"/><rect x="18" y="-3" width="14" height="6" rx="2" fill="#78909c"/></g></svg>`;
+
+  if (p.shape === 'recon') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/><rect x="${cap+i*sp+2}" y="3" width="2" height="${h-6}" rx="1" fill="${col}" opacity="0.4"/>`).join('')}</svg>`;
+
+  // LCP — combi holes
+  if (p.id==='lcp-35'||p.id==='lcp-45') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp-1}" cy="${h/2}" rx="1.5" ry="2.5" fill="#111"/><circle cx="${cap+i*sp+2}" cy="${h/2}" r="2" fill="#111"/><circle cx="${cap+i*sp+2}" cy="${h/2}" r="3" fill="none" stroke="#546e7a" stroke-width="0.8"/>`).join('')}</svg>`;
+
+  // LC-DCP — raised between holes
+  if (p.id==='lc-dcp') return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<rect x="${cap+i*sp+3}" y="3" width="3" height="${h-6}" rx="1" fill="${_svgLighten(col)}"/><ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
+
+  // Standard DCP oval holes
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="0" y="2" width="${w}" height="${h-4}" rx="${(h-4)/2}" fill="${col}"/>${Array.from({length:n},(_,i)=>`<ellipse cx="${cap+i*sp}" cy="${h/2}" rx="2" ry="3" fill="#111"/>`).join('')}</svg>`;
+}
+
+function _svgLighten(hex) {
+  try { const r=parseInt(hex.slice(1,3),16)+25,g=parseInt(hex.slice(3,5),16)+25,b=parseInt(hex.slice(5,7),16)+25; const cl=v=>Math.min(255,v); return `rgb(${cl(r)},${cl(g)},${cl(b)})`; } catch(e){ return hex; }
 }
 
 function placeImplant(plateId) {
@@ -4692,98 +4710,269 @@ function drawImplants() {
   drawImplantsOnCtx(ctx, 1, 0, 0);
 }
 
-function drawImplantBody(c, p, w, ph, isSel) {
-  c.fillStyle = p.color;
-  c.strokeStyle = isSel ? '#ffffff' : '#37474f';
-  c.lineWidth = isSel ? 2 : 1;
+// ── Accurate plate drawing ────────────────────────────────────
+// All dimensions in the same unit as w/ph (either raw mm or scaled canvas px)
+// s = uniform scale factor (1 for raw mm, mmToCanvas for diagram)
 
-  if (p.shape === 'T') {
-    // Stem down, cross bar at top
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
-    c.beginPath(); c.roundRect(-10, ph/2, 20, w*0.55, 2); c.fill(); c.stroke();
+function drawImplantBody(c, p, w, ph, isSel, s=1) {
+  const col  = p.color;
+  const str  = isSel ? '#e0e8f0' : '#546e7a';
+  const lw   = isSel ? 2 : 1.2;
+  c.lineWidth = lw;
+
+  if (p.shape === 'dhs') {
+    _drawDHS(c, p, w, ph, col, str, isSel, s);
+  } else if (p.shape === 'T') {
+    _drawTPlate(c, p, w, ph, col, str, s);
   } else if (p.shape === 'L') {
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
-    c.beginPath(); c.roundRect(w/2-20, ph/2, 20, w*0.45, 2); c.fill(); c.stroke();
-  } else if (p.shape === 'dhs') {
-    // Side plate with barrel
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
-    // Barrel (cylinder protruding at one end at 135°)
-    c.save();
-    c.translate(w/2, 0);
-    c.rotate(-45 * Math.PI/180);
-    c.beginPath(); c.roundRect(0, -6, 55, 12, 5); c.fill(); c.stroke();
-    // Lag screw shaft
-    c.beginPath(); c.moveTo(12, 0); c.lineTo(90, 0);
-    c.strokeStyle = isSel ? '#fff' : '#37474f'; c.lineWidth = 8; c.lineCap='round'; c.stroke();
-    c.strokeStyle = '#1e2226'; c.lineWidth = 3; c.stroke();
-    // Thread tip
-    c.beginPath(); c.arc(90, 0, 7, 0, Math.PI*2);
-    c.fillStyle='#9e9e9e'; c.fill();
-    c.restore();
+    _drawLPlate(c, p, w, ph, col, str, s);
   } else if (p.shape === 'recon') {
-    // Reconstruction plate — notched between holes
+    _drawRecon(c, p, w, ph, col, str, s);
+  } else {
+    // DCP / LC-DCP / LCP — straight plate
+    _drawStraight(c, p, w, ph, col, str, s);
+  }
+}
+
+function _drawStraight(c, p, w, ph, col, str, s) {
+  const r = Math.min(ph/2, 3*s);
+  const isLC = p.id === 'lc-dcp';
+
+  if (isLC) {
+    // LC-DCP: raised central ridge, flat contact areas between holes
+    // Main body
+    c.fillStyle = col; c.strokeStyle = str;
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
+    // Raised central ridge (plate is elevated — contact only at ends between holes)
     const n = p._holes || p.defHoles;
-    const sp = p.holeSpacing;
-    const cap = 10;
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2); c.fill(); c.stroke();
-    // Add notches between holes
-    c.fillStyle = '#1e2226';
+    const sp = p.holeSpacing * s;
+    const cap = 10*s;
+    c.fillStyle = _lighten(col, 25);
     for (let i=0; i<n-1; i++) {
       const nx = -w/2 + cap + sp*i + sp/2;
-      c.beginPath(); c.roundRect(nx-3, -ph/2+1, 6, ph-2, 1); c.fill();
+      c.beginPath(); c.roundRect(nx - sp*0.18, -ph/2+2*s, sp*0.36, ph-4*s, 1*s);
+      c.fill();
     }
   } else {
-    // Straight plate (DCP, LCP etc)
-    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, ph/2); c.fill(); c.stroke();
+    // DCP / LCP — flat plate with rounded ends
+    c.fillStyle = col; c.strokeStyle = str;
+    c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, r); c.fill(); c.stroke();
+    // Subtle lengthwise groove on DCP
+    if (p.id==='dcp-35'||p.id==='dcp-45') {
+      c.strokeStyle = _darken(col, 15); c.lineWidth = 0.7*s;
+      c.beginPath(); c.moveTo(-w/2+8*s, 0); c.lineTo(w/2-8*s, 0); c.stroke();
+    }
   }
 }
 
-function drawImplantHoles(c, p, w, ph) {
-  const n = p._holes || p.defHoles;
-  const sp = p.holeSpacing;
-  const cap = 10; // end cap mm
-  c.fillStyle = '#1a1f26';
+function _drawRecon(c, p, w, ph, col, str, s) {
+  const n  = p._holes || p.defHoles;
+  const sp = p.holeSpacing * s;
+  const cap= 10*s;
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+  // Draw as series of connected tabs (scalloped between holes)
+  c.beginPath();
+  // Start left cap
+  c.moveTo(-w/2, 0);
+  c.arc(-w/2+cap/2, 0, ph/2, Math.PI, 0); // left end cap
+  for (let i=0; i<n-1; i++) {
+    const cx = -w/2 + cap + sp*i + sp/2;
+    // Narrow waist between holes
+    c.lineTo(cx - sp*0.15, -ph/2);
+    c.quadraticCurveTo(cx, -ph/2+ph*0.3, cx + sp*0.15, -ph/2);
+  }
+  c.arc(w/2-cap/2, 0, ph/2, Math.PI, 0, true); // right end cap
+  for (let i=n-2; i>=0; i--) {
+    const cx = -w/2 + cap + sp*i + sp/2;
+    c.lineTo(cx + sp*0.15, ph/2);
+    c.quadraticCurveTo(cx, ph/2-ph*0.3, cx - sp*0.15, ph/2);
+  }
+  c.closePath(); c.fill(); c.stroke();
+}
 
-  if (p.shape === 'T') {
-    // Cross bar holes
-    for (let i=0; i<n; i++) {
-      c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill();
-      if (p.id === 'lcp-35'||p.id==='lcp-45') { // locking ring on LCP
-        c.strokeStyle='#607d8b'; c.lineWidth=1;
-        c.beginPath(); c.arc(-w/2+cap+i*sp, 0, 4.5, 0, Math.PI*2); c.stroke();
-      }
-    }
-    // Stem holes (3)
-    for (let i=0; i<3; i++) { c.beginPath(); c.arc(0, ph/2+8+i*sp, 3.5, 0, Math.PI*2); c.fill(); }
-  } else if (p.shape === 'L') {
-    // Shaft holes
-    for (let i=0; i<4; i++) { c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill(); }
-    // Flange holes
-    for (let i=0; i<3; i++) { c.beginPath(); c.arc(w/2-10-i*sp, ph/2+8+i*10, 3.5, 0, Math.PI*2); c.fill(); }
-  } else if (p.shape === 'dhs') {
-    // Cortical screw holes in the side plate
-    for (let i=0; i<n; i++) {
-      c.beginPath(); c.ellipse(-w/2+cap+i*sp, 0, 3.5, 5, 0, 0, Math.PI*2); c.fill();
-    }
-  } else {
-    // Straight plates — combi holes (oval with locking ring for LCP)
-    const isLCP = p.id==='lcp-35'||p.id==='lcp-45';
+function _drawTPlate(c, p, w, ph, col, str, s) {
+  const stemH = Math.max(40*s, w*0.5);
+  const stemW = 14*s;
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+  // Cross-bar
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
+  // Stem
+  c.beginPath(); c.roundRect(-stemW/2, ph/2, stemW, stemH, 2*s); c.fill(); c.stroke();
+}
+
+function _drawLPlate(c, p, w, ph, col, str, s) {
+  const stemH = Math.max(40*s, w*0.45);
+  const stemW = 14*s;
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+  // Shaft
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
+  // Angled flange at right end
+  c.beginPath(); c.roundRect(w/2-stemW, ph/2, stemW, stemH, 2*s); c.fill(); c.stroke();
+}
+
+function _drawDHS(c, p, w, ph, col, str, isSel, s) {
+  // Side plate body
+  c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, 2*s); c.fill(); c.stroke();
+
+  // Barrel assembly at right end, angled at 135° (45° from horizontal)
+  const barrelLen = 38*s, barrelW = 13*s, barrelR = 3*s;
+  c.save();
+  c.translate(w/2, 0);
+  c.rotate(-45 * Math.PI/180); // 135° barrel angle
+
+  // Barrel tube
+  c.fillStyle = _darken(col, 10); c.strokeStyle = str; c.lineWidth = 1.2;
+  c.beginPath(); c.roundRect(0, -barrelW/2, barrelLen, barrelW, barrelR);
+  c.fill(); c.stroke();
+
+  // Inner channel (barrel lumen)
+  c.fillStyle = '#1a1f26';
+  c.beginPath(); c.roundRect(4*s, -4*s, barrelLen-6*s, 8*s, 2*s); c.fill();
+
+  // Lag screw shaft extending from barrel
+  const screwLen = 80*s;
+  c.strokeStyle = isSel ? '#cfd8dc' : '#78909c';
+  c.lineWidth = 10*s; c.lineCap='round';
+  c.beginPath(); c.moveTo(barrelLen, 0); c.lineTo(barrelLen+screwLen, 0); c.stroke();
+  // Core
+  c.strokeStyle = '#1a1f26'; c.lineWidth = 5*s;
+  c.beginPath(); c.moveTo(barrelLen, 0); c.lineTo(barrelLen+screwLen, 0); c.stroke();
+  // Thread lines
+  c.strokeStyle = '#37474f'; c.lineWidth = 0.8*s;
+  for (let i=0; i<12; i++) {
+    const tx = barrelLen + 10*s + i*7*s;
+    c.beginPath(); c.moveTo(tx,-5*s); c.lineTo(tx,5*s); c.stroke();
+  }
+  // Screw tip
+  c.fillStyle = '#90a4ae';
+  c.beginPath(); c.moveTo(barrelLen+screwLen, 0);
+  c.lineTo(barrelLen+screwLen-6*s, -4*s);
+  c.lineTo(barrelLen+screwLen-6*s,  4*s);
+  c.closePath(); c.fill();
+
+  c.restore();
+}
+
+function _lighten(hex, amt) {
+  // Simple lightener for plate accent colour
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const clamp = v => Math.min(255,Math.max(0,v));
+  return `rgb(${clamp(r+amt)},${clamp(g+amt)},${clamp(b+amt)})`;
+}
+function _darken(hex, amt) { return _lighten(hex, -amt); }
+
+function drawImplantHoles(c, p, w, ph, s=1) {
+  _drawHoles(c, p, w, ph, s);
+}
+
+function drawImplantHolesScaled(c, p, w, ph, mmToCanvas) {
+  _drawHoles(c, p, w, ph, mmToCanvas);
+}
+
+function _drawHoles(c, p, w, ph, s) {
+  const n   = p._holes || p.defHoles;
+  const sp  = p.holeSpacing * s;
+  const cap = 10*s;
+  const isLCP  = p.id==='lcp-35'||p.id==='lcp-45';
+  const isDCP  = p.id==='dcp-35'||p.id==='dcp-45';
+  const isLC   = p.id==='lc-dcp';
+  const isDHS  = p.shape==='dhs';
+  const isT    = p.shape==='T';
+  const isL    = p.shape==='L';
+  const isRecon= p.shape==='recon';
+
+  // Oval radii
+  const hr = Math.max(1.5, 3*s), hry = Math.max(2, 4.5*s);
+
+  c.fillStyle = '#111518';
+
+  if (isDHS) {
+    // DHS: oval holes in side plate body only
     for (let i=0; i<n; i++) {
       const hx = -w/2 + cap + i*sp;
-      if (isLCP) {
-        // Left half oval (DCU), right half circle (locking)
-        c.beginPath(); c.ellipse(hx-1.5, 0, 2.5, 4.5, 0, 0, Math.PI*2); c.fill();
-        c.beginPath(); c.arc(hx+2.5, 0, 3, 0, Math.PI*2); c.fill();
-        c.strokeStyle='#607d8b'; c.lineWidth=0.8;
-        c.beginPath(); c.arc(hx+2.5, 0, 4.5, 0, Math.PI*2); c.stroke();
-      } else {
-        // DCP oval hole
-        c.beginPath(); c.ellipse(hx, 0, 3, 4.5, 0, 0, Math.PI*2); c.fill();
-      }
+      c.beginPath(); c.ellipse(hx, 0, hr, hry, 0, 0, Math.PI*2); c.fill();
+    }
+    return;
+  }
+
+  if (isT) {
+    // Cross-bar holes
+    for (let i=0; i<n; i++) {
+      _drawHole(c, -w/2+cap+i*sp, 0, hr, hry, isLCP, s);
+    }
+    // Stem holes (3)
+    const stemSp = 12*s;
+    for (let i=0; i<3; i++) {
+      c.beginPath(); c.arc(0, ph/2+stemSp/2+i*stemSp, hr, 0, Math.PI*2); c.fill();
+    }
+    return;
+  }
+
+  if (isL) {
+    // Shaft holes
+    for (let i=0; i<Math.min(n,4); i++) {
+      _drawHole(c, -w/2+cap+i*sp, 0, hr, hry, false, s);
+    }
+    // Flange holes
+    const stemSp = 12*s;
+    for (let i=0; i<3; i++) {
+      c.beginPath(); c.arc(w/2-12*s, ph/2+stemSp/2+i*stemSp, hr, 0, Math.PI*2); c.fill();
+    }
+    return;
+  }
+
+  if (isRecon) {
+    // Oval holes centred in each tab
+    for (let i=0; i<n; i++) {
+      const hx = -w/2 + cap + i*sp;
+      c.beginPath(); c.ellipse(hx, 0, hr, hry, 0, 0, Math.PI*2); c.fill();
+    }
+    return;
+  }
+
+  // Straight plates (DCP, LC-DCP, LCP)
+  for (let i=0; i<n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    _drawHole(c, hx, 0, hr, hry, isLCP, s);
+    // LC-DCP: undercut tick marks at each end of hole
+    if (isLC) {
+      c.strokeStyle = '#263238'; c.lineWidth = 0.8*s;
+      c.beginPath(); c.moveTo(hx-hr, -hry*0.6); c.lineTo(hx-hr, hry*0.6); c.stroke();
+      c.beginPath(); c.moveTo(hx+hr, -hry*0.6); c.lineTo(hx+hr, hry*0.6); c.stroke();
     }
   }
 }
 
+function _drawHole(c, hx, hy, hr, hry, isLCP, s) {
+  if (isLCP) {
+    // Combi hole: left=oval (dynamic slot), right=circle with threaded ring
+    const shift = 1.5*s;
+    // Dynamic slot half
+    c.fillStyle = '#111518';
+    c.beginPath(); c.ellipse(hx-shift, hy, hr*0.8, hry, 0, 0, Math.PI*2); c.fill();
+    // Locking hole half
+    const lr = hr * 0.95;
+    c.beginPath(); c.arc(hx+shift, hy, lr, 0, Math.PI*2); c.fill();
+    // Threaded locking ring
+    c.strokeStyle = '#546e7a'; c.lineWidth = 0.8*s;
+    c.beginPath(); c.arc(hx+shift, hy, lr+1.8*s, 0, Math.PI*2); c.stroke();
+    // 6-point thread marks on locking ring
+    for (let t=0; t<6; t++) {
+      const a = t*Math.PI/3;
+      const rx = hx+shift + Math.cos(a)*(lr+1.8*s);
+      const ry = hy + Math.sin(a)*(lr+1.8*s);
+      c.beginPath(); c.arc(rx, ry, 0.6*s, 0, Math.PI*2);
+      c.fillStyle='#546e7a'; c.fill(); c.fillStyle='#111518';
+    }
+  } else {
+    // Standard oval (DCP slot)
+    c.fillStyle = '#111518';
+    c.beginPath(); c.ellipse(hx, hy, hr, hry, 0, 0, Math.PI*2); c.fill();
+  }
+}
+
+// ── Implant mouse interaction
 // Implant mouse interaction
 function handleImplantMouseDown(x, y) {
   for (let i = implants.length-1; i >= 0; i--) {
@@ -5547,9 +5736,8 @@ function drawImplantsOnDiagram(canvas, ctx2) {
     ctx2.translate(impl.x, impl.y);
     ctx2.rotate(impl.angle);
     ctx2.globalAlpha = isSel ? 0.95 : 0.75;
-    drawImplantBody(ctx2, p, w, ph, isSel);
-    // Draw holes scaled too
-    drawImplantHolesScaled(ctx2, p, w, ph, mmToCanvas);
+    drawImplantBody(ctx2, p, w, ph, isSel, mmToCanvas);
+    drawImplantHoles(ctx2, p, w, ph, mmToCanvas);
     ctx2.globalAlpha = 1;
 
     if (isSel) {
@@ -5711,36 +5899,6 @@ function fmShowMobSchema() {
   };
 }
 
-function drawImplantHolesScaled(c, p, w, ph, mmToCanvas) {
-  const n   = p._holes || p.defHoles;
-  const sp  = p.holeSpacing * mmToCanvas;
-  const cap = 10 * mmToCanvas;
-  const hr  = Math.max(2, 3 * mmToCanvas);
-  const hry = Math.max(2, 4.5 * mmToCanvas);
-  c.fillStyle = '#1a1f26';
-  const isLCP = p.id==='lcp-35'||p.id==='lcp-45';
-  if (p.shape==='T') {
-    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
-    for(let i=0;i<3;i++){c.beginPath();c.arc(0,ph/2+cap+i*sp,hr,0,Math.PI*2);c.fill();}
-  } else if(p.shape==='L') {
-    for(let i=0;i<4;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
-    for(let i=0;i<3;i++){c.beginPath();c.arc(w/2-cap-i*sp,ph/2+cap,hr,0,Math.PI*2);c.fill();}
-  } else if(p.shape==='dhs') {
-    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
-  } else {
-    for(let i=0;i<n;i++){
-      const hx=-w/2+cap+i*sp;
-      if(isLCP){
-        c.beginPath();c.ellipse(hx-1.5*mmToCanvas,0,hr*0.7,hry,0,0,Math.PI*2);c.fill();
-        c.beginPath();c.arc(hx+2.5*mmToCanvas,0,hr,0,Math.PI*2);c.fill();
-        c.strokeStyle='#607d8b';c.lineWidth=0.8;
-        c.beginPath();c.arc(hx+2.5*mmToCanvas,0,hr*1.5,0,Math.PI*2);c.stroke();
-      } else {
-        c.beginPath();c.ellipse(hx,0,hr,hry,0,0,Math.PI*2);c.fill();
-      }
-    }
-  }
-}
 
 // ── Anatomical Reference Landmark dimensions (mm) ────────────
 const FM_LANDMARKS = {
