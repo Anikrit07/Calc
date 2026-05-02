@@ -4087,7 +4087,6 @@ function mobZoomOut() { mobZoomBy(0.75); }
 function mobZoomBy(f) {
   const cx = mobW/2, cy = mobH/2;
   mobOx = cx-(cx-mobOx)*f; mobOy = cy-(cy-mobOy)*f; mobZl *= f;
-  objs.forEach(o => { o.points = o.points.map(p => ({ x: cx+(p.x-cx)*f, y: cy+(p.y-cy)*f })); });
   updateMobDpad(); mobRedraw();
 }
 function mobZoomReset() { if(bgImage){mobFitBg();} updateMobDpad(); mobRedraw(); }
