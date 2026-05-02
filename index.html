@@ -684,6 +684,17 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <div class="canvas-wrap" id="canvas-wrap">
     <canvas id="cvs"></canvas>
     <div id="step-hint" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.92);color:#fff;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;pointer-events:none;white-space:nowrap;z-index:4"></div>
+
+    <!-- FM draw mode banner — shown when fracture or reference drawing is active -->
+    <div id="fm-draw-banner" style="display:none;position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:all">
+      <div id="fm-draw-banner-inner" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;backdrop-filter:blur(8px)">
+        <div>
+          <div id="fm-draw-banner-title" style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px"></div>
+          <div id="fm-draw-banner-sub"   style="font-size:10px;opacity:.8;color:#fff"></div>
+        </div>
+        <button onclick="fmCancelDraw()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap">✕ Cancel</button>
+      </div>
+    </div>
     <div class="zbar">
       <button onclick="doZoom(1.2)">+</button>
       <div class="zlbl" id="zlbl">100%</div>
@@ -963,6 +974,17 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <!-- Mobile canvas -->
   <div class="mob-canvas-area" id="mob-canvas-area">
     <canvas id="mob-cvs"></canvas>
+
+    <!-- FM draw mode banner (mobile) -->
+    <div id="mob-fm-draw-banner" style="display:none;position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:all">
+      <div id="mob-fm-draw-banner-inner" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;backdrop-filter:blur(8px)">
+        <div>
+          <div id="mob-fm-draw-banner-title" style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px"></div>
+          <div id="mob-fm-draw-banner-sub"   style="font-size:10px;opacity:.8;color:#fff"></div>
+        </div>
+        <button onclick="fmCancelDraw()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">✕ Cancel</button>
+      </div>
+    </div>
     <div class="mob-tool-badge" id="mob-tool-badge">SELECT / PAN</div>
     <div class="mob-zoom-btns">
       <button class="mob-zbtn" onclick="mobZoomIn()">+</button>
@@ -5230,28 +5252,86 @@ function fmSelectBone(key, el) {
   document.getElementById('fmv-schema')?.classList.remove('active');
 }
 
-function fmActivateDraw() {
-  fm.drawing = true;
-  fm.bone = fm.bone || 'generic'; // no bone required
-  const btn = document.getElementById('fm-draw-btn');
-  if (btn) { btn.textContent = '🔴 Drawing — drag on X-Ray, release to finish'; btn.style.borderColor='#ef4444'; btn.style.color='#ef4444'; btn.onclick = fmStopDraw; }
+// ── FM Draw mode management ───────────────────────────────────
+// Only one mode active at a time: 'fracture' | 'reference' | null
+let fmActiveDrawMode = null;
+
+function fmShowDrawBanner(mode) {
+  const isFrac = mode === 'fracture';
+  const bg     = isFrac ? 'rgba(192,57,43,.92)' : 'rgba(34,197,94,.9)';
+  const title  = isFrac ? '✏ Drawing Fracture Line'   : '📏 Drawing Reference Line';
+  const sub    = isFrac ? 'Drag across the fracture — release to finish each line'
+                        : 'Drag across the anatomical landmark — release to confirm';
+  // Desktop
+  const b = document.getElementById('fm-draw-banner');
+  const bi = document.getElementById('fm-draw-banner-inner');
+  if (b && bi) {
+    b.style.display = 'block';
+    bi.style.background = bg;
+    document.getElementById('fm-draw-banner-title').textContent = title;
+    document.getElementById('fm-draw-banner-sub').textContent   = sub;
+  }
+  // Mobile
+  const mb = document.getElementById('mob-fm-draw-banner');
+  const mbi = document.getElementById('mob-fm-draw-banner-inner');
+  if (mb && mbi) {
+    mb.style.display = 'block';
+    mbi.style.background = bg;
+    document.getElementById('mob-fm-draw-banner-title').textContent = title;
+    document.getElementById('mob-fm-draw-banner-sub').textContent   = sub;
+  }
+  // Cursor
+  if (cvs) cvs.style.cursor = 'crosshair';
+}
+
+function fmHideDrawBanner() {
+  ['fm-draw-banner','mob-fm-draw-banner'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display='none';
+  });
+  if (cvs) cvs.style.cursor = '';
+}
+
+function fmCancelDraw() {
+  fm.drawing    = false;
+  fmRefDrawing  = false;
+  fmActiveDrawMode = null;
+  fm.currentLine = []; fm._refStart = null;
+  fmHideDrawBanner();
+  // Reset buttons
+  const btn  = document.getElementById('fm-draw-btn');
   const mBtn = document.getElementById('mob-fm-draw-btn');
-  if (mBtn) { mBtn.textContent = '🔴 Drawing — drag on X-Ray'; mBtn.style.borderColor='#ef4444'; mBtn.style.color='#ef4444'; }
-  showStepHint('Drag to draw fracture line — release to finish');
+  const rBtn = document.getElementById('fm-ref-draw-btn');
+  const mrBtn= document.getElementById('mob-fm-ref-draw-btn');
+  [btn,mBtn].forEach(b => { if(b){ b.textContent = fm.fracLines.length?'✏ Draw Another Line':'✏ Start Drawing on X-Ray'; b.style.borderColor=''; b.style.color=''; b.onclick=fmActivateDraw; }});
+  [rBtn,mrBtn].forEach(b => { if(b){ b.textContent='📏 Draw Reference Line on X-Ray'; b.style.borderColor=''; b.style.color=''; }});
+  redraw(); mobRedraw();
+}
+
+function fmActivateDraw() {
+  // Cancel reference mode if active
+  fmRefDrawing = false; fm._refStart = null;
+  fm.drawing = true;
+  fm.bone = fm.bone || 'generic';
+  fmActiveDrawMode = 'fracture';
+  fmShowDrawBanner('fracture');
+  // Update buttons
+  const btn  = document.getElementById('fm-draw-btn');
+  const mBtn = document.getElementById('mob-fm-draw-btn');
+  [btn,mBtn].forEach(b => { if(b){ b.textContent='🔴 Drawing…'; b.style.borderColor='#ef4444'; b.style.color='#ef4444'; }});
 }
 
 function fmStopDraw() {
-  fm.drawing = false;
+  fm.drawing = false; fmActiveDrawMode = null;
   if (fm.currentLine.length >= 2) {
     const simplified = fm.currentLine.filter((_,i) => i%4===0||i===fm.currentLine.length-1);
     fm.fracLines.push({ points: simplified });
     fm.currentLine = [];
   }
+  fmHideDrawBanner();
   const label = fm.fracLines.length ? '✏ Draw Another Line' : '✏ Start Drawing on X-Ray';
-  const btn = document.getElementById('fm-draw-btn');
-  if (btn) { btn.textContent=label; btn.style.borderColor=''; btn.style.color=''; btn.onclick=fmActivateDraw; }
-  const mBtn = document.getElementById('mob-fm-draw-btn');
-  if (mBtn) { mBtn.textContent=label; mBtn.style.borderColor=''; mBtn.style.color=''; }
+  [document.getElementById('fm-draw-btn'), document.getElementById('mob-fm-draw-btn')].forEach(b => {
+    if (b) { b.textContent=label; b.style.borderColor=''; b.style.color=''; b.onclick=fmActivateDraw; }
+  });
   fmUpdateStatus();
   document.getElementById('fm-generate-row').style.display = fm.fracLines.length ? 'block' : 'none';
   document.getElementById('mob-fm-generate-row').style.display = fm.fracLines.length ? 'block' : 'none';
@@ -5702,40 +5782,39 @@ function fmMobRefActivateDraw() { _fmRefActivate('mobile'); }
 
 function _fmRefActivate(device) {
   const mm = fmGetRefMm(device);
-  if (!mm) { alert('Enter a mm value first.'); return; }
+  if (!mm) { alert('Select a landmark and enter a value first.'); return; }
+  // Cancel fracture draw mode if active
+  fm.drawing = false; fm.currentLine = [];
   fmRefDevice  = device;
   fmRefDrawing = true;
+  fmActiveDrawMode = 'reference';
   fm.refLine   = null;
   fm.refMm     = mm;
-  // Activate a green reference line draw on X-ray canvas
-  const isDesk = device==='desktop';
+  fmShowDrawBanner('reference');
+  // Update buttons
+  const isDesk = device === 'desktop';
   const btn = document.getElementById(isDesk ? 'fm-ref-draw-btn' : 'mob-fm-ref-draw-btn');
-  if (btn) { btn.textContent='🟢 Drag on X-Ray to draw reference…'; btn.style.borderColor='#22c55e'; btn.style.color='#22c55e'; }
-  const st = document.getElementById(isDesk ? 'fm-ref-status' : 'mob-fm-ref-status');
-  if (st) { st.textContent='Drag across the '+FM_LANDMARKS[document.getElementById(isDesk?'fm-ref-landmark':'mob-fm-ref-landmark').value]?.name+' on the X-ray'; st.style.color='#22c55e'; }
-  showStepHint('Drag to draw anatomical reference line');
-  if (device==='mobile') mobClose(); // close sheet, go to canvas
+  if (btn) { btn.textContent='🟢 Drawing reference…'; btn.style.borderColor='#22c55e'; btn.style.color='#22c55e'; }
+  if (device === 'mobile') mobClose();
 }
 
 function fmRefConfirm(p1, p2, device) {
-  // Called when reference line is drawn
   const px = Math.hypot(p2.x-p1.x, p2.y-p1.y);
   if (px < 5) return;
   fm.refLine  = { p1, p2 };
   fm.pxPerMm  = px / fm.refMm;
-  fmRefDrawing = false;
-  // Reset button
+  fmRefDrawing = false; fmActiveDrawMode = null;
+  fmHideDrawBanner();
   const isDesk = device==='desktop';
   const btn = document.getElementById(isDesk ? 'fm-ref-draw-btn' : 'mob-fm-ref-draw-btn');
   if (btn) { btn.textContent='📏 Redraw Reference Line'; btn.style.borderColor=''; btn.style.color=''; }
-  // Show result
   const resultEl = document.getElementById(isDesk ? 'fm-scale-result' : 'mob-fm-scale-result');
   const valEl    = document.getElementById(isDesk ? 'fm-scale-val'    : 'mob-fm-scale-val');
   if (resultEl) resultEl.style.display='block';
   if (valEl)    valEl.textContent = `${fm.refMm}mm = ${Math.round(px)}px → ${fm.pxPerMm.toFixed(2)} px/mm`;
   const st = document.getElementById(isDesk ? 'fm-ref-status' : 'mob-fm-ref-status');
-  if (st) { st.textContent=`✅ Scale set: 1mm = ${(1/fm.pxPerMm).toFixed(1)}px`; st.style.color='var(--green)'; }
-  redraw(); mobRedraw(); // redraw X-ray to show reference line
+  if (st) { st.textContent=`✅ 1mm = ${fm.pxPerMm.toFixed(1)}px`; st.style.color='var(--green)'; }
+  redraw(); mobRedraw();
 }
 
 function fmRefReset() {
