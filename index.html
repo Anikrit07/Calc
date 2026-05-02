@@ -1280,65 +1280,83 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         </div>
       </div>
 
-      <!-- Implants -->
-      <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:4px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">🔩 Implants</div>
-          <div style="display:flex;gap:5px">
-            <button id="mob-impl-cvs-xray" class="btn active" style="font-size:9px;padding:4px 10px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
-            <button id="mob-impl-cvs-diag" class="btn"        style="font-size:9px;padding:4px 10px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
-          </div>
-        </div>
-        <div id="mob-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
-        <!-- Controls for selected implant -->
-        <div id="mob-implant-controls" style="display:none">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Selected: <span id="mob-impl-sel-name">—</span></div>
-          <div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-              <label style="font-size:11px;color:var(--muted)">Rotation</label>
-              <span id="mob-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">0°</span>
-            </div>
-            <input type="range" id="mob-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="mobImplantRotate(this.value)">
-          </div>
-          <div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-              <label style="font-size:11px;color:var(--muted)">Scale</label>
-              <span id="mob-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">1.0×</span>
-            </div>
-            <input type="range" id="mob-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="mobImplantScale(this.value)">
-          </div>
-          <div style="margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-              <label style="font-size:11px;color:var(--muted)">Holes</label>
-              <span id="mob-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">6 · —</span>
-            </div>
-            <input type="range" id="mob-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="mobImplantHoles(this.value)">
-          </div>
-        </div>
-        <div id="mob-implant-list" style="margin-top:4px"></div>
-        <button class="btn danger-outline" id="mob-impl-clear-btn" style="width:100%;justify-content:center;font-size:12px;margin-top:8px;display:none" onclick="clearImplants()">✕ Clear Implants</button>
-      </div>
-
     </div>
   </div>
 </div>
 
 <!-- Fracture fragment diagram — full-screen overlay (mobile) -->
 <div id="mob-fm-schema" style="display:none;position:fixed;inset:0;z-index:400;background:#0a0c10;">
+
+  <!-- Canvas — height shrinks when implant panel is open -->
   <canvas id="mob-fm-cvs" style="display:block;width:100%;height:calc(100% - 96px);margin-top:52px;touch-action:none"></canvas>
+
   <!-- Top bar -->
-  <div style="position:absolute;top:0;left:0;right:0;height:52px;background:rgba(10,12,18,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:8px;z-index:2">
-    <button onclick="fmMobToggle('xray')" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">🩻 X-Ray</button>
-    <div style="flex:1;text-align:center;font-size:10px;color:rgba(255,255,255,.35);font-family:'IBM Plex Mono',monospace">FRAGMENT DIAGRAM</div>
-    <button onclick="mobOpen('fracmap')" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">⚙</button>
+  <div style="position:absolute;top:0;left:0;right:0;height:52px;background:rgba(10,12,18,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:8px;z-index:3">
+    <button onclick="fmMobToggle('xray')" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">🩻 X-Ray</button>
+    <div style="flex:1;text-align:center;font-size:10px;color:rgba(255,255,255,.3);font-family:'IBM Plex Mono',monospace">FRAGMENT DIAGRAM</div>
+    <button onclick="toggleMobImplantPanel()" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif" id="mob-impl-panel-btn">🔩 Implants</button>
   </div>
-  <!-- Bottom controls -->
-  <div style="position:absolute;bottom:0;left:0;right:0;height:44px;background:rgba(10,12,18,.95);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:6px;z-index:2">
+
+  <!-- Bottom fragment controls -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:44px;background:rgba(10,12,18,.95);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:6px;z-index:3">
     <span style="font-size:10px;color:var(--muted);flex:1" id="mob-fm-sel-label">Tap a line to select</span>
     <button onclick="fmMobRotSel(-0.15)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 14px;border-radius:7px;font-size:18px;cursor:pointer">↺</button>
     <button onclick="fmMobRotSel(0.15)"  style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 14px;border-radius:7px;font-size:18px;cursor:pointer">↻</button>
     <button onclick="fmReset();fmDrawFragments(mobFmCvs,mobFmCtx)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Reset</button>
   </div>
+
+  <!-- Implant slide-up panel (inside the fragment diagram overlay) -->
+  <div id="mob-impl-panel" style="
+    display:none;position:absolute;bottom:44px;left:0;right:0;
+    background:rgba(10,12,18,.98);border-top:1px solid var(--border);
+    z-index:4;max-height:55vh;overflow-y:auto;
+  ">
+    <!-- Panel header -->
+    <div style="display:flex;align-items:center;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--text);flex:1">🔩 Implants</div>
+      <!-- Canvas toggle -->
+      <div style="display:flex;gap:5px;margin-right:8px">
+        <button id="mob-impl-cvs-xray" class="btn active" style="font-size:9px;padding:4px 8px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
+        <button id="mob-impl-cvs-diag" class="btn"        style="font-size:9px;padding:4px 8px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
+      </div>
+      <button onclick="toggleMobImplantPanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+
+    <!-- Plate grid -->
+    <div style="padding:10px 14px 6px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Select Plate</div>
+      <div id="mob-impl-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+    </div>
+
+    <!-- Selected implant controls -->
+    <div id="mob-implant-controls" style="display:none;padding:0 14px 10px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Selected: <span id="mob-impl-sel-name">—</span></div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <label style="font-size:11px;color:var(--muted)">Rotation</label>
+          <span id="mob-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">0°</span>
+        </div>
+        <input type="range" id="mob-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="mobImplantRotate(this.value)">
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <label style="font-size:11px;color:var(--muted)">Scale</label>
+          <span id="mob-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">1.0×</span>
+        </div>
+        <input type="range" id="mob-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="mobImplantScale(this.value)">
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <label style="font-size:11px;color:var(--muted)">Holes</label>
+          <span id="mob-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">6h · —</span>
+        </div>
+        <input type="range" id="mob-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="mobImplantHoles(this.value)">
+      </div>
+      <div id="mob-implant-list" style="margin-bottom:6px"></div>
+      <button class="btn danger-outline" id="mob-impl-clear-btn" style="width:100%;justify-content:center;font-size:12px;display:none" onclick="clearImplants()">✕ Clear Implants</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- ════════════════════════════════════════════
@@ -4089,6 +4107,11 @@ function mobPlaceImplant(plateId) {
   placeImplant(plateId);
   mobUpdateImplantControls();
   redrawAll(); mobRedraw();
+  // If the implant panel is open, keep it open and show controls
+  const panel = document.getElementById('mob-impl-panel');
+  if (panel && panel.style.display !== 'none') {
+    mobUpdateImplantControls();
+  }
 }
 
 function mobUpdateImplantControls() {
@@ -5175,6 +5198,34 @@ function fmUpdateMobToolbar() {
 function fmSetDrawMode(mode) {
   fm.drawMode = mode;
   fmUpdateMobToolbar();
+}
+
+function toggleMobImplantPanel() {
+  const panel = document.getElementById('mob-impl-panel');
+  const btn   = document.getElementById('mob-impl-panel-btn');
+  const cvs   = document.getElementById('mob-fm-cvs');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+    if (btn) { btn.style.borderColor=''; btn.style.color=''; }
+    if (cvs) cvs.style.height = 'calc(100% - 96px)';
+  } else {
+    panel.style.display = 'block';
+    if (btn) { btn.style.borderColor='var(--red)'; btn.style.color='#e88a84'; }
+    // Shrink canvas to make room
+    if (cvs) cvs.style.height = 'calc(45% - 52px)';
+    // Populate plate grid if empty
+    const grid = document.getElementById('mob-impl-plate-grid');
+    if (grid && !grid.innerHTML.trim()) {
+      grid.innerHTML = PLATES.map(p => `
+        <div onclick="mobPlaceImplant('${p.id}')" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 4px;cursor:pointer;text-align:center">
+          <div style="height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:2px">${plateSVGThumb(p)}</div>
+          <div style="font-size:8px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
+        </div>`).join('');
+    }
+    mobUpdateImplantControls();
+  }
 }
 
 function fmShowMobSchema() {
