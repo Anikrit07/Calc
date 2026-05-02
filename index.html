@@ -1287,74 +1287,59 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <!-- Fracture fragment diagram — full-screen overlay (mobile) -->
 <div id="mob-fm-schema" style="display:none;position:fixed;inset:0;z-index:400;background:#0a0c10;">
 
-  <!-- Canvas — height shrinks when implant panel is open -->
+  <!-- Canvas — full height minus top+bottom bars -->
   <canvas id="mob-fm-cvs" style="display:block;width:100%;height:calc(100% - 96px);margin-top:52px;touch-action:none"></canvas>
 
   <!-- Top bar -->
   <div style="position:absolute;top:0;left:0;right:0;height:52px;background:rgba(10,12,18,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:8px;z-index:3">
     <button onclick="fmMobToggle('xray')" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">🩻 X-Ray</button>
-    <div style="flex:1;text-align:center;font-size:10px;color:rgba(255,255,255,.3);font-family:'IBM Plex Mono',monospace">FRAGMENT DIAGRAM</div>
-    <button onclick="toggleMobImplantPanel()" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif" id="mob-impl-panel-btn">🔩 Implants</button>
+    <div style="flex:1;text-align:center;font-size:10px;color:rgba(255,255,255,.3);font-family:'IBM Plex Mono',monospace" id="mob-fm-mode-label">FRAGMENT DIAGRAM</div>
+    <button onclick="openMobImplantPicker()" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:7px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif" id="mob-impl-panel-btn">🔩 Add Implant</button>
   </div>
 
-  <!-- Bottom fragment controls -->
+  <!-- Bottom bar: fragment controls + implant info when implant selected -->
   <div style="position:absolute;bottom:0;left:0;right:0;height:44px;background:rgba(10,12,18,.95);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:6px;z-index:3">
-    <span style="font-size:10px;color:var(--muted);flex:1" id="mob-fm-sel-label">Tap a line to select</span>
-    <button onclick="fmMobRotSel(-0.15)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 14px;border-radius:7px;font-size:18px;cursor:pointer">↺</button>
-    <button onclick="fmMobRotSel(0.15)"  style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 14px;border-radius:7px;font-size:18px;cursor:pointer">↻</button>
-    <button onclick="fmReset();fmDrawFragments(mobFmCvs,mobFmCtx)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Reset</button>
+    <!-- Fragment mode controls -->
+    <div id="mob-frag-controls" style="display:flex;align-items:center;gap:6px;width:100%">
+      <span style="font-size:10px;color:var(--muted);flex:1" id="mob-fm-sel-label">Tap a line to select</span>
+      <button onclick="fmMobRotSel(-0.15)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:16px;cursor:pointer">↺</button>
+      <button onclick="fmMobRotSel(0.15)"  style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:16px;cursor:pointer">↻</button>
+      <button onclick="fmReset();fmDrawFragments(mobFmCvs,mobFmCtx)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 10px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Reset</button>
+    </div>
+    <!-- Implant mode controls (shown when implant selected on canvas) -->
+    <div id="mob-impl-controls" style="display:none;align-items:center;gap:6px;width:100%">
+      <span style="font-size:10px;color:var(--muted);flex:1" id="mob-impl-sel-label-bottom">—</span>
+      <button onclick="implDeleteSelected()" style="background:rgba(192,57,43,.15);border:1px solid var(--red);color:#e88a84;padding:6px 10px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">✕ Remove</button>
+      <button onclick="switchToFragMode()" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 10px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">← Fragments</button>
+    </div>
   </div>
 
-  <!-- Implant slide-up panel (inside the fragment diagram overlay) -->
-  <div id="mob-impl-panel" style="
-    display:none;position:absolute;bottom:44px;left:0;right:0;
-    background:rgba(10,12,18,.98);border-top:1px solid var(--border);
-    z-index:4;max-height:55vh;overflow-y:auto;
-  ">
-    <!-- Panel header -->
-    <div style="display:flex;align-items:center;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:var(--text);flex:1">🔩 Implants</div>
-      <!-- Canvas toggle -->
-      <div style="display:flex;gap:5px;margin-right:8px">
-        <button id="mob-impl-cvs-xray" class="btn active" style="font-size:9px;padding:4px 8px" onclick="setImplantCanvas('xray')">🩻 X-Ray</button>
-        <button id="mob-impl-cvs-diag" class="btn"        style="font-size:9px;padding:4px 8px" onclick="setImplantCanvas('diagram')">🔀 Diagram</button>
-      </div>
-      <button onclick="toggleMobImplantPanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+  <!-- Implant picker sheet — slides up, minimises after selection -->
+  <div id="mob-impl-picker" style="display:none;position:absolute;bottom:44px;left:0;right:0;background:rgba(10,12,18,.98);border-top:2px solid var(--red);border-radius:16px 16px 0 0;z-index:5;max-height:60vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;padding:12px 14px 8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:700;color:var(--text);flex:1">🔩 Select Implant</div>
+      <button onclick="closeMobImplantPicker()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
     </div>
-
+    <!-- Canvas toggle -->
+    <div style="display:flex;gap:8px;padding:10px 14px 8px;border-bottom:1px solid var(--border)">
+      <button id="mob-impl-cvs-xray" class="btn" style="flex:1;justify-content:center;font-size:11px" onclick="setImplantCanvas('xray')">🩻 On X-Ray</button>
+      <button id="mob-impl-cvs-diag" class="btn active" style="flex:1;justify-content:center;font-size:11px" onclick="setImplantCanvas('diagram')">🔀 On Diagram</button>
+    </div>
     <!-- Plate grid -->
-    <div style="padding:10px 14px 6px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Select Plate</div>
-      <div id="mob-impl-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+    <div style="padding:10px 14px 16px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Tap a plate to place it</div>
+      <div id="mob-impl-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
     </div>
+  </div>
 
-    <!-- Selected implant controls -->
-    <div id="mob-implant-controls" style="display:none;padding:0 14px 10px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Selected: <span id="mob-impl-sel-name">—</span></div>
-      <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <label style="font-size:11px;color:var(--muted)">Rotation</label>
-          <span id="mob-rot-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">0°</span>
-        </div>
-        <input type="range" id="mob-rot-slider" min="0" max="360" value="0" style="width:100%;accent-color:var(--red)" oninput="mobImplantRotate(this.value)">
-      </div>
-      <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <label style="font-size:11px;color:var(--muted)">Scale</label>
-          <span id="mob-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">1.0×</span>
-        </div>
-        <input type="range" id="mob-scale-slider" min="30" max="300" value="100" style="width:100%;accent-color:var(--red)" oninput="mobImplantScale(this.value)">
-      </div>
-      <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <label style="font-size:11px;color:var(--muted)">Holes</label>
-          <span id="mob-holes-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)">6h · —</span>
-        </div>
-        <input type="range" id="mob-holes-slider" min="2" max="16" value="6" step="1" style="width:100%;accent-color:var(--red)" oninput="mobImplantHoles(this.value)">
-      </div>
-      <div id="mob-implant-list" style="margin-bottom:6px"></div>
-      <button class="btn danger-outline" id="mob-impl-clear-btn" style="width:100%;justify-content:center;font-size:12px;display:none" onclick="clearImplants()">✕ Clear Implants</button>
-    </div>
+  <!-- Floating implant fab — shown when implant is placed, picker is closed -->
+  <div id="mob-impl-fab" style="display:none;position:absolute;bottom:56px;right:12px;z-index:4">
+    <button onclick="openMobImplantPicker()" style="
+      background:linear-gradient(160deg,var(--red),#8b1a14);
+      border:none;color:#fff;width:44px;height:44px;border-radius:50%;
+      font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.5);
+      display:flex;align-items:center;justify-content:center;
+    " title="Add another implant">🔩</button>
   </div>
 
 </div>
@@ -5214,33 +5199,229 @@ function fmSetDrawMode(mode) {
   fmUpdateMobToolbar();
 }
 
-function toggleMobImplantPanel() {
-  const panel = document.getElementById('mob-impl-panel');
-  const btn   = document.getElementById('mob-impl-panel-btn');
-  const cvs   = document.getElementById('mob-fm-cvs');
-  if (!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  if (isOpen) {
-    panel.style.display = 'none';
-    if (btn) { btn.style.borderColor=''; btn.style.color=''; }
-    if (cvs) cvs.style.height = 'calc(100% - 96px)';
-  } else {
-    panel.style.display = 'block';
-    if (btn) { btn.style.borderColor='var(--red)'; btn.style.color='#e88a84'; }
-    // Shrink canvas to make room
-    if (cvs) cvs.style.height = 'calc(45% - 52px)';
-    // Populate plate grid if empty
-    const grid = document.getElementById('mob-impl-plate-grid');
-    if (grid && !grid.innerHTML.trim()) {
-      grid.innerHTML = PLATES.map(p => `
-        <div onclick="mobPlaceImplant('${p.id}')" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 4px;cursor:pointer;text-align:center">
-          <div style="height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:2px">${plateSVGThumb(p)}</div>
-          <div style="font-size:8px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
-        </div>`).join('');
-    }
-    mobUpdateImplantControls();
+// ── Implant canvas interaction state ─────────────────────────
+let implMode = 'fragment'; // 'fragment' | 'implant'
+let implDrag = null; // {impl, mode:'move'|'rotate'|'resizeL'|'resizeR', startX, startY, ...}
+
+function openMobImplantPicker() {
+  const picker = document.getElementById('mob-impl-picker');
+  const fab    = document.getElementById('mob-impl-fab');
+  if (!picker) return;
+  picker.style.display = 'block';
+  if (fab) fab.style.display = 'none';
+  // Populate grid
+  const grid = document.getElementById('mob-impl-plate-grid');
+  if (grid && !grid.innerHTML.trim()) {
+    grid.innerHTML = PLATES.map(p => `
+      <div onclick="mobPickImplant('${p.id}')" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 6px;cursor:pointer;text-align:center;active:background:var(--bg)">
+        <div style="height:24px;display:flex;align-items:center;justify-content:center;margin-bottom:4px">${plateSVGThumb(p)}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--text);line-height:1.3">${p.name}</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:1px">${p.sub}</div>
+      </div>`).join('');
   }
 }
+
+function closeMobImplantPicker() {
+  const picker = document.getElementById('mob-impl-picker');
+  if (picker) picker.style.display = 'none';
+  // Show FAB if implants exist
+  const fab = document.getElementById('mob-impl-fab');
+  if (fab) fab.style.display = implants.length ? 'block' : 'none';
+}
+
+function mobPickImplant(plateId) {
+  // Place implant centred on diagram canvas
+  const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
+  const p = { ...plate, _holes: plate.defHoles };
+  const W = mobFmCvs ? mobFmCvs.width  : 300;
+  const H = mobFmCvs ? mobFmCvs.height : 400;
+  const impl = {
+    uid: ++implantIdCounter, plateId,
+    // Position in canvas pixel space (diagram canvas coords, not image-space)
+    x: W/2, y: H/2,
+    angle: 0,
+    plate: p,
+  };
+  implants.push(impl);
+  selImplant = impl;
+  closeMobImplantPicker();
+  switchToImplMode();
+  fmDrawFragments(mobFmCvs, mobFmCtx);
+  renderImplantList();
+}
+
+function switchToImplMode() {
+  implMode = 'implant';
+  const fc = document.getElementById('mob-frag-controls');
+  const ic = document.getElementById('mob-impl-controls');
+  if (fc) fc.style.display = 'none';
+  if (ic) ic.style.display = 'flex';
+  // Update label
+  const lbl = document.getElementById('mob-impl-sel-label-bottom');
+  if (lbl && selImplant) {
+    const nh = selImplant.plate._holes || selImplant.plate.defHoles;
+    lbl.textContent = `${selImplant.plate.name} · ${nh}h · ${plateLength(selImplant.plate)}mm`;
+  }
+  const ml = document.getElementById('mob-fm-mode-label');
+  if (ml) ml.textContent = 'IMPLANT POSITIONING';
+}
+
+function switchToFragMode() {
+  implMode = 'fragment';
+  selImplant = null;
+  implDrag = null;
+  const fc = document.getElementById('mob-frag-controls');
+  const ic = document.getElementById('mob-impl-controls');
+  if (fc) fc.style.display = 'flex';
+  if (ic) ic.style.display = 'none';
+  const ml = document.getElementById('mob-fm-mode-label');
+  if (ml) ml.textContent = 'FRAGMENT DIAGRAM';
+  fmDrawFragments(mobFmCvs, mobFmCtx);
+}
+
+function implDeleteSelected() {
+  if (!selImplant) return;
+  implants = implants.filter(i => i.uid !== selImplant.uid);
+  selImplant = null; implDrag = null;
+  switchToFragMode();
+  renderImplantList();
+  fmDrawFragments(mobFmCvs, mobFmCtx);
+}
+
+// ── Implant drawing on fragment diagram canvas ────────────────
+// Implants in diagram mode use canvas-pixel coords directly (not image-space)
+function drawImplantsOnDiagram(canvas, ctx2) {
+  if (!implants.length) return;
+  implants.forEach(impl => {
+    const p  = impl.plate;
+    const w  = plateLength(p);
+    const ph = p.plateH;
+    const isSel = impl === selImplant;
+    ctx2.save();
+    ctx2.translate(impl.x, impl.y);
+    ctx2.rotate(impl.angle);
+    ctx2.globalAlpha = isSel ? 0.95 : 0.75;
+    drawImplantBody(ctx2, p, w, ph, isSel);
+    drawImplantHoles(ctx2, p, w, ph);
+    ctx2.globalAlpha = 1;
+
+    if (isSel) {
+      // Rotation handle — top-right
+      const rhx = w/2 + 22, rhy = -ph/2 - 22;
+      ctx2.beginPath(); ctx2.arc(rhx, rhy, 12, 0, Math.PI*2);
+      ctx2.fillStyle='#1e2226'; ctx2.fill();
+      ctx2.strokeStyle='#e88a84'; ctx2.lineWidth=2; ctx2.stroke();
+      ctx2.fillStyle='#e88a84'; ctx2.font='bold 14px sans-serif';
+      ctx2.textAlign='center'; ctx2.fillText('↻', rhx, rhy+5); ctx2.textAlign='left';
+      // Store handle in screen coords (already in canvas px)
+      impl._rotHandle = { x: impl.x + Math.cos(impl.angle)*rhx - Math.sin(impl.angle)*rhy,
+                          y: impl.y + Math.sin(impl.angle)*rhx + Math.cos(impl.angle)*rhy };
+
+      // Resize handles — left and right ends
+      ctx2.fillStyle='#3b82f6';
+      [[-w/2, 0],[w/2, 0]].forEach(([hx, hy]) => {
+        ctx2.beginPath(); ctx2.arc(hx, hy, 9, 0, Math.PI*2);
+        ctx2.fillStyle='#1e2226'; ctx2.fill();
+        ctx2.strokeStyle='#3b82f6'; ctx2.lineWidth=2; ctx2.stroke();
+        ctx2.fillStyle='#3b82f6'; ctx2.font='bold 11px sans-serif';
+        ctx2.textAlign='center'; ctx2.fillText('↔', hx, hy+4); ctx2.textAlign='left';
+      });
+
+      // Plate length label
+      ctx2.fillStyle='#ffffffcc'; ctx2.font='bold 10px IBM Plex Sans,sans-serif';
+      ctx2.textAlign='center';
+      const nh = p._holes || p.defHoles;
+      ctx2.fillText(`${nh} holes · ${plateLength(p)}mm`, 0, ph/2+16);
+      ctx2.textAlign='left';
+    }
+    ctx2.restore();
+  });
+}
+
+// ── Hit test for implant handles (canvas px coords) ──────────
+function implHitTest(pos) {
+  // Returns {impl, mode} or null
+  for (let i = implants.length-1; i >= 0; i--) {
+    const impl = implants[i];
+    const p = impl.plate;
+    const w = plateLength(p), ph = p.plateH;
+
+    // Convert pos to implant-local coords
+    const dx = pos.x - impl.x, dy = pos.y - impl.y;
+    const cos = Math.cos(-impl.angle), sin = Math.sin(-impl.angle);
+    const lx = cos*dx - sin*dy, ly = sin*dx + cos*dy;
+
+    // Rotation handle
+    const rhx = w/2+22, rhy = -ph/2-22;
+    if (Math.hypot(lx-rhx, ly-rhy) < 16) return { impl, mode:'rotate' };
+
+    // Left resize handle
+    if (Math.hypot(lx+w/2, ly) < 14) return { impl, mode:'resizeL' };
+
+    // Right resize handle
+    if (Math.hypot(lx-w/2, ly) < 14) return { impl, mode:'resizeR' };
+
+    // Body hit
+    if (Math.abs(lx) <= w/2+4 && Math.abs(ly) <= ph/2+4) return { impl, mode:'move' };
+  }
+  return null;
+}
+
+// ── Implant touch/mouse handlers for diagram canvas ──────────
+function implPointerDown(pos) {
+  const hit = implHitTest(pos);
+  if (hit) {
+    selImplant = hit.impl;
+    const impl = hit.impl;
+    implDrag = {
+      mode: hit.mode,
+      startX: pos.x, startY: pos.y,
+      origX: impl.x, origY: impl.y,
+      origAngle: impl.angle,
+      origHoles: impl.plate._holes || impl.plate.defHoles,
+      pivotScreen: { x: impl.x, y: impl.y },
+      startAngle: Math.atan2(pos.y - impl.y, pos.x - impl.x),
+    };
+    if (implMode !== 'implant') switchToImplMode();
+    return true;
+  }
+  return false;
+}
+
+function implPointerMove(pos) {
+  if (!implDrag || !selImplant) return;
+  const { mode, startX, startY, origX, origY, origAngle, origHoles, startAngle } = implDrag;
+  const impl = selImplant;
+  const p = impl.plate;
+
+  if (mode === 'move') {
+    impl.x = origX + (pos.x - startX);
+    impl.y = origY + (pos.y - startY);
+  } else if (mode === 'rotate') {
+    const a1 = startAngle;
+    const a2 = Math.atan2(pos.y - impl.y, pos.x - impl.x);
+    impl.angle = origAngle + (a2 - a1);
+  } else if (mode === 'resizeR' || mode === 'resizeL') {
+    // Convert drag delta to implant-local x
+    const dx = pos.x - startX, dy = pos.y - startY;
+    const cos = Math.cos(impl.angle), sin = Math.sin(impl.angle);
+    const localDx = cos*dx + sin*dy; // projected onto plate axis
+    const sign = mode === 'resizeR' ? 1 : -1;
+    const origLen = p.holeSpacing * (origHoles-1) + 20;
+    const newLen = Math.max(p.holeSpacing*p.minHoles, origLen + sign*localDx*2);
+    const newHoles = Math.round((newLen-20)/p.holeSpacing) + 1;
+    p._holes = Math.max(p.minHoles, Math.min(p.maxHoles, newHoles));
+  }
+
+  // Update bottom label
+  const lbl = document.getElementById('mob-impl-sel-label-bottom');
+  if (lbl) {
+    const nh = impl.plate._holes || impl.plate.defHoles;
+    lbl.textContent = `${impl.plate.name} · ${nh}h · ${plateLength(impl.plate)}mm`;
+  }
+}
+
+function implPointerUp() { implDrag = null; }
 
 function fmShowMobSchema() {
   const s = document.getElementById('mob-fm-schema'); if (!s) return;
@@ -5249,23 +5430,34 @@ function fmShowMobSchema() {
   if (!mobFmCvs) return;
   mobFmCtx = mobFmCvs.getContext('2d');
   mobFmCvs.width  = window.innerWidth;
-  mobFmCvs.height = window.innerHeight - 96; // 52px topbar + 44px bottom controls
+  mobFmCvs.height = window.innerHeight - 96;
+  implMode = 'fragment';
   fmDrawFragments(mobFmCvs, mobFmCtx);
   fmSyncMobUI();
-  // Touch events for drag/rotate
+
+  // Unified touch handler — dispatches to implant or fragment mode
   mobFmCvs.ontouchstart = e => {
     e.preventDefault();
-    fmPointerDown(fmTouchToXY(e, mobFmCvs));
+    const pos = fmTouchToXY(e, mobFmCvs);
+    // Try implant hit first if in implant mode
+    if (implMode === 'implant' || implants.length) {
+      if (implPointerDown(pos)) { fmDrawFragments(mobFmCvs, mobFmCtx); return; }
+    }
+    // Fall through to fragment interaction
+    fmPointerDown(pos);
     fmDrawFragments(mobFmCvs, mobFmCtx);
     fmSyncMobUI();
   };
   mobFmCvs.ontouchmove = e => {
     e.preventDefault();
-    fmPointerMove(fmTouchToXY(e, mobFmCvs));
+    const pos = fmTouchToXY(e, mobFmCvs);
+    if (implDrag) { implPointerMove(pos); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
+    fmPointerMove(pos);
     fmDrawFragments(mobFmCvs, mobFmCtx);
   };
   mobFmCvs.ontouchend = e => {
     e.preventDefault();
+    if (implDrag) { implPointerUp(); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
     fmPointerUp();
     fmDrawFragments(mobFmCvs, mobFmCtx);
     fmSyncMobUI();
@@ -5476,7 +5668,12 @@ function fmDrawFragments(canvas, ctx2) {
 
   // Draw implants on diagram canvas if in diagram mode
   if (implantCanvas === 'diagram' && implants.length) {
-    drawImplantsOnCtx(ctx2, fm._drawScale, fm._drawOffX, fm._drawOffY);
+    // Check if this is the mob overlay canvas or desktop schema canvas
+    if (canvas === mobFmCvs) {
+      drawImplantsOnDiagram(canvas, ctx2);
+    } else {
+      drawImplantsOnCtx(ctx2, fm._drawScale, fm._drawOffX, fm._drawOffY);
+    }
   }
 }
 
