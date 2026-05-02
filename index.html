@@ -3574,7 +3574,7 @@ function initMobileEvents() {
 
         // 3. Pan (only when image is unlocked)
         dismissPtPicker();
-        if (!imageLocked) { mobPanning = true; mobPanStart = ts; } // screen coords for pan
+        mobPanning = true; mobPanStart = ts; // allow pan regardless of lock
       }
     }
     if (e.touches.length === 2) {
@@ -5166,11 +5166,26 @@ function fmClear() {
   redraw(); // clear X-ray overlay
 }
 
+function fmUndoLine() {
+  if (fm.currentLine.length > 0) {
+    fm.currentLine = []; // cancel in-progress line
+  } else if (fm.fracLines.length > 0) {
+    fm.fracLines.pop();
+  }
+  fm.generated = false; fm.fragments = [];
+  fmUpdateStatus(); redraw(); mobRedraw();
+  fmSyncMobUI();
+}
+
 function fmClearLines() {
   fm.fracLines = []; fm.currentLine = []; fm.drawing = false;
+  fm.generated = false; fm.fragments = [];
   const btn = document.getElementById('fm-draw-btn');
   if (btn) { btn.textContent = '✏ Start Drawing on X-Ray'; btn.style.borderColor=''; btn.style.color=''; btn.onclick = fmActivateDraw; }
-  fmUpdateStatus(); redraw();
+  const mBtn = document.getElementById('mob-fm-draw-btn');
+  if (mBtn) { mBtn.textContent = '✏ Start Drawing on X-Ray'; mBtn.style.borderColor=''; mBtn.style.color=''; }
+  fmUpdateStatus(); redraw(); mobRedraw();
+  fmSyncMobUI();
 }
 
 function fmSelectSide(side, el) {
