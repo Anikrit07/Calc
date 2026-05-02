@@ -825,6 +825,54 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       </div>
 
       <div id="fm-generate-row" style="display:none;padding:10px;border-bottom:1px solid var(--border);flex-shrink:0">
+
+        <!-- Step 2.5: Anatomical Reference for Scale -->
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">② Set Scale Reference</div>
+        <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Select an anatomical landmark visible on the X-ray. Draw a line across it, then confirm its dimension to calibrate plate sizing.</div>
+
+        <select id="fm-ref-landmark" style="width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;margin-bottom:6px;font-family:'IBM Plex Sans',sans-serif" onchange="fmRefLandmarkChanged()">
+          <option value="">— Select landmark —</option>
+          <optgroup label="Hip / Femur">
+            <option value="fem-head-m">Femoral Head (Male avg. 46mm)</option>
+            <option value="fem-head-f">Femoral Head (Female avg. 42mm)</option>
+            <option value="fem-shaft">Femoral Shaft Isthmus (avg. 14mm)</option>
+            <option value="fem-neck">Femoral Neck Width (avg. 32mm)</option>
+          </optgroup>
+          <optgroup label="Knee / Tibia">
+            <option value="tib-plateau">Tibial Plateau Width (avg. 82mm)</option>
+            <option value="tib-shaft">Tibial Shaft Width (avg. 22mm)</option>
+          </optgroup>
+          <optgroup label="Upper Limb">
+            <option value="hum-head">Humeral Head Diameter (avg. 43mm)</option>
+            <option value="hum-shaft">Humeral Shaft Width (avg. 18mm)</option>
+            <option value="radius-distal">Distal Radius Width (avg. 28mm)</option>
+          </optgroup>
+          <optgroup label="Custom">
+            <option value="custom">Custom measurement</option>
+          </optgroup>
+        </select>
+
+        <!-- Custom mm input -->
+        <div id="fm-ref-custom" style="display:none;margin-bottom:6px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="fm-ref-custom-mm" placeholder="Enter mm" min="5" max="500" style="flex:1;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+            <span style="font-size:11px;color:var(--muted)">mm</span>
+          </div>
+        </div>
+
+        <!-- Draw reference line button -->
+        <div id="fm-ref-draw-row" style="display:none;margin-bottom:6px">
+          <button class="btn" id="fm-ref-draw-btn" style="width:100%;justify-content:center;font-size:10px;padding:7px" onclick="fmRefActivateDraw()">📏 Draw Reference Line on X-Ray</button>
+          <div id="fm-ref-status" style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px"></div>
+        </div>
+
+        <!-- Scale result -->
+        <div id="fm-scale-result" style="display:none;margin-bottom:8px;padding:8px;background:var(--bg);border-radius:6px;border-left:2px solid var(--green)">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Scale Set</div>
+          <div id="fm-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green)"></div>
+          <button onclick="fmRefReset()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:0;margin-top:4px;text-decoration:underline">Reset</button>
+        </div>
+
         <button class="btn primary" style="width:100%;justify-content:center;padding:9px" onclick="fmGenerate()">🔀 Generate Fragment Diagram</button>
       </div>
 
@@ -1266,6 +1314,52 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
       <!-- Generate -->
       <div id="mob-fm-generate-row" style="display:none;margin-bottom:12px;padding-top:8px;border-top:1px solid var(--border)">
+
+        <!-- Scale reference -->
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Set Scale Reference</div>
+        <select id="mob-fm-ref-landmark" style="width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:12px;margin-bottom:8px;font-family:'IBM Plex Sans',sans-serif" onchange="fmMobRefLandmarkChanged()">
+          <option value="">— Select anatomical landmark —</option>
+          <optgroup label="Hip / Femur">
+            <option value="fem-head-m">Femoral Head ♂ (avg. 46mm)</option>
+            <option value="fem-head-f">Femoral Head ♀ (avg. 42mm)</option>
+            <option value="fem-shaft">Femoral Shaft Isthmus (avg. 14mm)</option>
+            <option value="fem-neck">Femoral Neck Width (avg. 32mm)</option>
+          </optgroup>
+          <optgroup label="Knee / Tibia">
+            <option value="tib-plateau">Tibial Plateau Width (avg. 82mm)</option>
+            <option value="tib-shaft">Tibial Shaft (avg. 22mm)</option>
+          </optgroup>
+          <optgroup label="Upper Limb">
+            <option value="hum-head">Humeral Head (avg. 43mm)</option>
+            <option value="hum-shaft">Humeral Shaft (avg. 18mm)</option>
+            <option value="radius-distal">Distal Radius Width (avg. 28mm)</option>
+          </optgroup>
+          <optgroup label="Custom">
+            <option value="custom">Custom measurement</option>
+          </optgroup>
+        </select>
+
+        <!-- Custom mm -->
+        <div id="mob-fm-ref-custom" style="display:none;margin-bottom:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="mob-fm-ref-custom-mm" placeholder="Enter mm" min="5" max="500" style="flex:1;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:13px;font-family:'IBM Plex Mono',monospace">
+            <span style="font-size:13px;color:var(--muted)">mm</span>
+          </div>
+        </div>
+
+        <!-- Draw reference line -->
+        <div id="mob-fm-ref-draw-row" style="display:none;margin-bottom:8px">
+          <button class="btn" id="mob-fm-ref-draw-btn" style="width:100%;justify-content:center;padding:11px;font-size:13px" onclick="fmMobRefActivateDraw()">📏 Draw Reference Line on X-Ray</button>
+          <div id="mob-fm-ref-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px"></div>
+        </div>
+
+        <!-- Scale result -->
+        <div id="mob-fm-scale-result" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg);border-radius:8px;border-left:2px solid var(--green)">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Scale Set ✅</div>
+          <div id="mob-fm-scale-val" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green)"></div>
+          <button onclick="fmRefReset()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;margin-top:4px;text-decoration:underline">Reset scale</button>
+        </div>
+
         <button class="btn primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="fmGenerate();mobClose();fmShowMobSchema()">🔀 Generate Fragment Diagram</button>
       </div>
 
@@ -2177,6 +2271,23 @@ function redraw() {
 
   if (typeof drawImplants === 'function') drawImplants();
 
+  // Draw FM reference line (green) on X-ray
+  if (fm.refLine) {
+    ctx.save(); ctx.translate(panX,panY); ctx.scale(zl,zl);
+    ctx.strokeStyle='#22c55e'; ctx.lineWidth=2/zl; ctx.setLineDash([6/zl,3/zl]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(fm.refLine.p1.x, fm.refLine.p1.y); ctx.lineTo(fm.refLine.p2.x, fm.refLine.p2.y); ctx.stroke();
+    // Endpoint ticks
+    [fm.refLine.p1, fm.refLine.p2].forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x,p.y,5/zl,0,Math.PI*2); ctx.fillStyle='#22c55e'; ctx.fill();
+    });
+    // Label
+    ctx.setLineDash([]);
+    const mx=(fm.refLine.p1.x+fm.refLine.p2.x)/2, my=(fm.refLine.p1.y+fm.refLine.p2.y)/2;
+    ctx.fillStyle='#22c55e'; ctx.font=`bold ${11/zl}px IBM Plex Sans,sans-serif`;
+    ctx.textAlign='center'; ctx.fillText(`${fm.refMm}mm`, mx, my-8/zl); ctx.textAlign='left';
+    ctx.restore();
+  }
+
   // Draw fracture lines traced on X-ray (FM overlay)
   if (fm.bone && (fm.fracLines.length || fm.currentLine.length > 1)) {
     ctx.save();
@@ -2466,6 +2577,9 @@ function initDesktopEvents() {
     // FM fracture drawing mode — capture freehand line on X-ray
     if (fm.drawing) { fm.currentLine = [{ x, y }]; cvs.style.cursor = 'crosshair'; return; }
 
+    // FM reference line drawing
+    if (fmRefDrawing) { fm._refStart = { x, y }; cvs.style.cursor = 'crosshair'; return; }
+
     if (tool !== 'select') return;
 
     // 0. Implant drag (screen coords)
@@ -2504,6 +2618,13 @@ function initDesktopEvents() {
       fm.fracLines.push({ points: simplified });
       fm.currentLine = [];
       fmUpdateStatus(); redraw(); cvs.style.cursor='crosshair'; return;
+    }
+    // FM reference line: confirm on mouse up
+    if (fmRefDrawing && fm._refStart) {
+      const { x, y } = gp({ clientX: event?.clientX||0, clientY: event?.clientY||0 });
+      // use mpos (last known mouse position in image coords)
+      fmRefConfirm(fm._refStart, mpos, fmRefDevice);
+      fm._refStart = null; cvs.style.cursor=''; return;
     }
     if (implantDragging) { handleImplantMouseUp(); cvs.style.cursor=handC; return; }
     dragging=false; dobj=null;
@@ -3365,9 +3486,19 @@ function mobRedraw() {
     }
     mobCtx.restore();
   }
-}
 
-// Geometry only — called inside canvas transform
+  // FM reference line (green) on X-ray
+  if (fm.refLine) {
+    mobCtx.save(); mobCtx.translate(mobOx,mobOy); mobCtx.scale(mobZl,mobZl);
+    mobCtx.strokeStyle='#22c55e'; mobCtx.lineWidth=2.5/mobZl; mobCtx.setLineDash([6/mobZl,3/mobZl]); mobCtx.lineCap='round';
+    mobCtx.beginPath(); mobCtx.moveTo(fm.refLine.p1.x,fm.refLine.p1.y); mobCtx.lineTo(fm.refLine.p2.x,fm.refLine.p2.y); mobCtx.stroke();
+    [fm.refLine.p1,fm.refLine.p2].forEach(p=>{mobCtx.beginPath();mobCtx.arc(p.x,p.y,5/mobZl,0,Math.PI*2);mobCtx.fillStyle='#22c55e';mobCtx.fill();});
+    const mx=(fm.refLine.p1.x+fm.refLine.p2.x)/2, my=(fm.refLine.p1.y+fm.refLine.p2.y)/2;
+    mobCtx.setLineDash([]); mobCtx.fillStyle='#22c55e'; mobCtx.font=`bold ${11/mobZl}px IBM Plex Sans,sans-serif`;
+    mobCtx.textAlign='center'; mobCtx.fillText(`${fm.refMm}mm`,mx,my-8/mobZl); mobCtx.textAlign='left';
+    mobCtx.restore();
+  }
+}
 function mobDrawGeometry(o) {
   const p = o.points, c = o.color;
   const arcR = 24 / mobZl; // arc radius compensates for scale transform
@@ -3490,6 +3621,10 @@ function initMobileEvents() {
     if (fm.drawing) {
       const t = mobGpt(e.touches[0]);
       fm.currentLine = [t]; return;
+    }
+    // FM reference line drawing
+    if (fmRefDrawing) {
+      fm._refStart = mobGpt(e.touches[0]); return;
     }
     // If a point was selected from the picker, don't reset it on the next touchstart
     if (mobDragPt) return;
@@ -3636,6 +3771,12 @@ function initMobileEvents() {
       fm.fracLines.push({ points: simplified });
       fm.currentLine = [];
       fmUpdateStatus(); mobRedraw(); return;
+    }
+    // FM reference line — confirm on lift
+    if (fmRefDrawing && fm._refStart) {
+      const t = mobGpt(e.changedTouches[0]);
+      fmRefConfirm(fm._refStart, t, 'mobile');
+      fm._refStart = null; mobRedraw(); return;
     }
     const wasDragPt  = !!mobDragPt;
     const wasPanning = mobPanning;
@@ -5164,6 +5305,7 @@ function fmUndoLine() {
 function fmClearLines() {
   fm.fracLines = []; fm.currentLine = []; fm.drawing = false;
   fm.generated = false; fm.fragments = [];
+  fm.pxPerMm = null; fm.refLine = null; fm.refMm = null;
   const btn = document.getElementById('fm-draw-btn');
   if (btn) { btn.textContent = '✏ Start Drawing on X-Ray'; btn.style.borderColor=''; btn.style.color=''; btn.onclick = fmActivateDraw; }
   const mBtn = document.getElementById('mob-fm-draw-btn');
@@ -5292,33 +5434,40 @@ function implDeleteSelected() {
 // Implants in diagram mode use canvas-pixel coords directly (not image-space)
 function drawImplantsOnDiagram(canvas, ctx2) {
   if (!implants.length) return;
+  // diagramScale converts mm → canvas pixels in the diagram
+  // fm._drawScale = image_px → canvas_px conversion
+  // fm.pxPerMm   = image_px per mm
+  // so: 1mm → fm._drawScale / fm.pxPerMm canvas px
+  const mmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale / fm.pxPerMm : 1;
+
   implants.forEach(impl => {
     const p  = impl.plate;
-    const w  = plateLength(p);
-    const ph = p.plateH;
+    const w  = plateLength(p) * mmToCanvas;  // plate length in canvas px
+    const ph = p.plateH * mmToCanvas;         // plate height in canvas px
     const isSel = impl === selImplant;
     ctx2.save();
     ctx2.translate(impl.x, impl.y);
     ctx2.rotate(impl.angle);
     ctx2.globalAlpha = isSel ? 0.95 : 0.75;
     drawImplantBody(ctx2, p, w, ph, isSel);
-    drawImplantHoles(ctx2, p, w, ph);
+    // Draw holes scaled too
+    drawImplantHolesScaled(ctx2, p, w, ph, mmToCanvas);
     ctx2.globalAlpha = 1;
 
     if (isSel) {
-      // Rotation handle — top-right
-      const rhx = w/2 + 22, rhy = -ph/2 - 22;
+      // Rotation handle
+      const rhx = w/2+22, rhy = -ph/2-22;
       ctx2.beginPath(); ctx2.arc(rhx, rhy, 12, 0, Math.PI*2);
       ctx2.fillStyle='#1e2226'; ctx2.fill();
       ctx2.strokeStyle='#e88a84'; ctx2.lineWidth=2; ctx2.stroke();
       ctx2.fillStyle='#e88a84'; ctx2.font='bold 14px sans-serif';
       ctx2.textAlign='center'; ctx2.fillText('↻', rhx, rhy+5); ctx2.textAlign='left';
-      // Store handle in screen coords (already in canvas px)
-      impl._rotHandle = { x: impl.x + Math.cos(impl.angle)*rhx - Math.sin(impl.angle)*rhy,
-                          y: impl.y + Math.sin(impl.angle)*rhx + Math.cos(impl.angle)*rhy };
+      impl._rotHandle = {
+        x: impl.x + Math.cos(impl.angle)*rhx - Math.sin(impl.angle)*rhy,
+        y: impl.y + Math.sin(impl.angle)*rhx + Math.cos(impl.angle)*rhy,
+      };
 
-      // Resize handles — left and right ends
-      ctx2.fillStyle='#3b82f6';
+      // Resize handles
       [[-w/2, 0],[w/2, 0]].forEach(([hx, hy]) => {
         ctx2.beginPath(); ctx2.arc(hx, hy, 9, 0, Math.PI*2);
         ctx2.fillStyle='#1e2226'; ctx2.fill();
@@ -5327,11 +5476,17 @@ function drawImplantsOnDiagram(canvas, ctx2) {
         ctx2.textAlign='center'; ctx2.fillText('↔', hx, hy+4); ctx2.textAlign='left';
       });
 
-      // Plate length label
+      // Label
+      const nh = p._holes || p.defHoles;
+      const lenMm = plateLength(p);
       ctx2.fillStyle='#ffffffcc'; ctx2.font='bold 10px IBM Plex Sans,sans-serif';
       ctx2.textAlign='center';
-      const nh = p._holes || p.defHoles;
-      ctx2.fillText(`${nh} holes · ${plateLength(p)}mm`, 0, ph/2+16);
+      ctx2.fillText(`${nh} holes · ${lenMm}mm`, 0, ph/2+16);
+      // Scale indicator if calibrated
+      if (fm.pxPerMm) {
+        ctx2.fillStyle='rgba(34,197,94,.7)'; ctx2.font='9px IBM Plex Mono,monospace';
+        ctx2.fillText(`(calibrated)`, 0, ph/2+28);
+      }
       ctx2.textAlign='left';
     }
     ctx2.restore();
@@ -5340,28 +5495,19 @@ function drawImplantsOnDiagram(canvas, ctx2) {
 
 // ── Hit test for implant handles (canvas px coords) ──────────
 function implHitTest(pos) {
-  // Returns {impl, mode} or null
+  const mmToCanvas = (fm._drawScale && fm.pxPerMm) ? fm._drawScale / fm.pxPerMm : 1;
   for (let i = implants.length-1; i >= 0; i--) {
     const impl = implants[i];
     const p = impl.plate;
-    const w = plateLength(p), ph = p.plateH;
-
-    // Convert pos to implant-local coords
+    const w = plateLength(p) * mmToCanvas;
+    const ph = p.plateH * mmToCanvas;
     const dx = pos.x - impl.x, dy = pos.y - impl.y;
     const cos = Math.cos(-impl.angle), sin = Math.sin(-impl.angle);
     const lx = cos*dx - sin*dy, ly = sin*dx + cos*dy;
-
-    // Rotation handle
     const rhx = w/2+22, rhy = -ph/2-22;
     if (Math.hypot(lx-rhx, ly-rhy) < 16) return { impl, mode:'rotate' };
-
-    // Left resize handle
     if (Math.hypot(lx+w/2, ly) < 14) return { impl, mode:'resizeL' };
-
-    // Right resize handle
     if (Math.hypot(lx-w/2, ly) < 14) return { impl, mode:'resizeR' };
-
-    // Body hit
     if (Math.abs(lx) <= w/2+4 && Math.abs(ly) <= ph/2+4) return { impl, mode:'move' };
   }
   return null;
@@ -5464,6 +5610,145 @@ function fmShowMobSchema() {
   };
 }
 
+function drawImplantHolesScaled(c, p, w, ph, mmToCanvas) {
+  const n   = p._holes || p.defHoles;
+  const sp  = p.holeSpacing * mmToCanvas;
+  const cap = 10 * mmToCanvas;
+  const hr  = Math.max(2, 3 * mmToCanvas);
+  const hry = Math.max(2, 4.5 * mmToCanvas);
+  c.fillStyle = '#1a1f26';
+  const isLCP = p.id==='lcp-35'||p.id==='lcp-45';
+  if (p.shape==='T') {
+    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
+    for(let i=0;i<3;i++){c.beginPath();c.arc(0,ph/2+cap+i*sp,hr,0,Math.PI*2);c.fill();}
+  } else if(p.shape==='L') {
+    for(let i=0;i<4;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
+    for(let i=0;i<3;i++){c.beginPath();c.arc(w/2-cap-i*sp,ph/2+cap,hr,0,Math.PI*2);c.fill();}
+  } else if(p.shape==='dhs') {
+    for(let i=0;i<n;i++){c.beginPath();c.ellipse(-w/2+cap+i*sp,0,hr,hry,0,0,Math.PI*2);c.fill();}
+  } else {
+    for(let i=0;i<n;i++){
+      const hx=-w/2+cap+i*sp;
+      if(isLCP){
+        c.beginPath();c.ellipse(hx-1.5*mmToCanvas,0,hr*0.7,hry,0,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(hx+2.5*mmToCanvas,0,hr,0,Math.PI*2);c.fill();
+        c.strokeStyle='#607d8b';c.lineWidth=0.8;
+        c.beginPath();c.arc(hx+2.5*mmToCanvas,0,hr*1.5,0,Math.PI*2);c.stroke();
+      } else {
+        c.beginPath();c.ellipse(hx,0,hr,hry,0,0,Math.PI*2);c.fill();
+      }
+    }
+  }
+}
+
+// ── Anatomical Reference Landmark dimensions (mm) ────────────
+const FM_LANDMARKS = {
+  'fem-head-m':    { name:'Femoral Head (♂)', mm: 46 },
+  'fem-head-f':    { name:'Femoral Head (♀)', mm: 42 },
+  'fem-shaft':     { name:'Femoral Shaft Isthmus', mm: 14 },
+  'fem-neck':      { name:'Femoral Neck Width', mm: 32 },
+  'tib-plateau':   { name:'Tibial Plateau Width', mm: 82 },
+  'tib-shaft':     { name:'Tibial Shaft Width', mm: 22 },
+  'hum-head':      { name:'Humeral Head Diameter', mm: 43 },
+  'hum-shaft':     { name:'Humeral Shaft Width', mm: 18 },
+  'radius-distal': { name:'Distal Radius Width', mm: 28 },
+  'custom':        { name:'Custom', mm: null },
+};
+
+// fm.pxPerMm — set when reference line is drawn + confirmed
+// fm.refLine — {p1, p2} in image-space
+// fm.refMm   — the known mm value
+
+function fmRefLandmarkChanged() {
+  const sel = document.getElementById('fm-ref-landmark')?.value;
+  fmApplyLandmarkSelection(sel, 'desktop');
+}
+function fmMobRefLandmarkChanged() {
+  const sel = document.getElementById('mob-fm-ref-landmark')?.value;
+  fmApplyLandmarkSelection(sel, 'mobile');
+}
+
+function fmApplyLandmarkSelection(sel, device) {
+  const isDesk = device === 'desktop';
+  const customEl  = document.getElementById(isDesk ? 'fm-ref-custom'   : 'mob-fm-ref-custom');
+  const drawRow   = document.getElementById(isDesk ? 'fm-ref-draw-row' : 'mob-fm-ref-draw-row');
+  const resultEl  = document.getElementById(isDesk ? 'fm-scale-result' : 'mob-fm-scale-result');
+  if (!sel) { customEl.style.display='none'; drawRow.style.display='none'; return; }
+  customEl.style.display = sel==='custom' ? 'block' : 'none';
+  drawRow.style.display  = 'block';
+  if (resultEl) resultEl.style.display = 'none';
+  // Pre-fill status
+  const lm = FM_LANDMARKS[sel];
+  const statusEl = document.getElementById(isDesk ? 'fm-ref-status' : 'mob-fm-ref-status');
+  if (statusEl && lm) statusEl.textContent = lm.mm ? `Reference: ${lm.name} = ${lm.mm}mm` : 'Enter custom mm above, then draw line';
+}
+
+function fmGetRefMm(device) {
+  const isDesk = device === 'desktop';
+  const sel = document.getElementById(isDesk ? 'fm-ref-landmark' : 'mob-fm-ref-landmark')?.value;
+  if (!sel) return null;
+  if (sel === 'custom') {
+    const v = parseFloat(document.getElementById(isDesk ? 'fm-ref-custom-mm' : 'mob-fm-ref-custom-mm')?.value);
+    return isNaN(v) ? null : v;
+  }
+  return FM_LANDMARKS[sel]?.mm || null;
+}
+
+let fmRefDrawing = false; // is the user drawing the reference line?
+let fmRefDevice  = 'desktop';
+
+function fmRefActivateDraw() { _fmRefActivate('desktop'); }
+function fmMobRefActivateDraw() { _fmRefActivate('mobile'); }
+
+function _fmRefActivate(device) {
+  const mm = fmGetRefMm(device);
+  if (!mm) { alert('Enter a mm value first.'); return; }
+  fmRefDevice  = device;
+  fmRefDrawing = true;
+  fm.refLine   = null;
+  fm.refMm     = mm;
+  // Activate a green reference line draw on X-ray canvas
+  const isDesk = device==='desktop';
+  const btn = document.getElementById(isDesk ? 'fm-ref-draw-btn' : 'mob-fm-ref-draw-btn');
+  if (btn) { btn.textContent='🟢 Drag on X-Ray to draw reference…'; btn.style.borderColor='#22c55e'; btn.style.color='#22c55e'; }
+  const st = document.getElementById(isDesk ? 'fm-ref-status' : 'mob-fm-ref-status');
+  if (st) { st.textContent='Drag across the '+FM_LANDMARKS[document.getElementById(isDesk?'fm-ref-landmark':'mob-fm-ref-landmark').value]?.name+' on the X-ray'; st.style.color='#22c55e'; }
+  showStepHint('Drag to draw anatomical reference line');
+  if (device==='mobile') mobClose(); // close sheet, go to canvas
+}
+
+function fmRefConfirm(p1, p2, device) {
+  // Called when reference line is drawn
+  const px = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+  if (px < 5) return;
+  fm.refLine  = { p1, p2 };
+  fm.pxPerMm  = px / fm.refMm;
+  fmRefDrawing = false;
+  // Reset button
+  const isDesk = device==='desktop';
+  const btn = document.getElementById(isDesk ? 'fm-ref-draw-btn' : 'mob-fm-ref-draw-btn');
+  if (btn) { btn.textContent='📏 Redraw Reference Line'; btn.style.borderColor=''; btn.style.color=''; }
+  // Show result
+  const resultEl = document.getElementById(isDesk ? 'fm-scale-result' : 'mob-fm-scale-result');
+  const valEl    = document.getElementById(isDesk ? 'fm-scale-val'    : 'mob-fm-scale-val');
+  if (resultEl) resultEl.style.display='block';
+  if (valEl)    valEl.textContent = `${fm.refMm}mm = ${Math.round(px)}px → ${fm.pxPerMm.toFixed(2)} px/mm`;
+  const st = document.getElementById(isDesk ? 'fm-ref-status' : 'mob-fm-ref-status');
+  if (st) { st.textContent=`✅ Scale set: 1mm = ${(1/fm.pxPerMm).toFixed(1)}px`; st.style.color='var(--green)'; }
+  redraw(); mobRedraw(); // redraw X-ray to show reference line
+}
+
+function fmRefReset() {
+  fm.pxPerMm = null; fm.refLine = null; fm.refMm = null;
+  ['fm-scale-result','mob-fm-scale-result'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  ['fm-ref-status','mob-fm-ref-status'].forEach(id => {
+    const el=document.getElementById(id); if(el) { el.textContent=''; }
+  });
+  redraw(); mobRedraw();
+}
+
 function fmGenerate() {
   if (!fm.bone || !fm.fracLines.length) {
     alert('Draw at least one fracture line on the X-ray first.'); return;
@@ -5528,7 +5813,22 @@ function fmDrawFragments(canvas, ctx2) {
   const bx1=Math.min(...xs)-pad, bx2=Math.max(...xs)+pad;
   const by1=Math.min(...ys)-pad, by2=Math.max(...ys)+pad;
   const bw=bx2-bx1, bh=by2-by1;
-  const scale = Math.min((W-60)/bw, (H-60)/bh);
+
+  // If calibrated (fm.pxPerMm set), compute canvas scale so 1mm = consistent size
+  // Target: fit the real bone size into canvas, maintaining true mm proportions
+  let scale;
+  if (fm.pxPerMm && fm.pxPerMm > 0) {
+    // Real bone extent in mm
+    const realW = bw / fm.pxPerMm, realH = bh / fm.pxPerMm;
+    // Scale so real mm fits in canvas with padding
+    scale = Math.min((W-60)/realW, (H-60)/realH) / fm.pxPerMm;
+    // But never exceed the uncalibrated fit scale (avoid overflowing small canvas)
+    const fitScale = Math.min((W-60)/bw, (H-60)/bh);
+    scale = Math.min(scale * fm.pxPerMm, fitScale);
+  } else {
+    scale = Math.min((W-60)/bw, (H-60)/bh);
+  }
+
   const offX = (W - bw*scale)/2 - bx1*scale;
   const offY = (H - bh*scale)/2 - by1*scale;
 
