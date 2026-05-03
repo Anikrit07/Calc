@@ -1427,6 +1427,31 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     </div>
   </div>
 
+  <!-- Screw picker modal -->
+  <div id="mob-screw-picker" style="display:none;position:absolute;bottom:44px;left:0;right:0;background:rgba(10,12,18,.98);border-top:2px solid #80cbc4;border-radius:16px 16px 0 0;z-index:6;max-height:65vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;padding:12px 14px 8px;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:#fff">Add Screw</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px" id="mob-screw-hole-label">Hole —</div>
+      </div>
+      <button onclick="closeScrewPicker()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0">×</button>
+    </div>
+    <div style="padding:10px 14px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Screw Type</div>
+      <div id="mob-screw-type-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px"></div>
+      <div id="mob-screw-length-row" style="display:none">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Length (mm)</div>
+        <div id="mob-screw-length-grid" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Angle <span id="mob-screw-angle-val" style="color:#80cbc4;font-family:'IBM Plex Mono',monospace">0°</span></div>
+        <input type="range" id="mob-screw-angle-slider" min="-25" max="25" value="0" style="width:100%;accent-color:#80cbc4;margin-bottom:12px" oninput="document.getElementById('mob-screw-angle-val').textContent=this.value+'°'">
+        <button id="mob-screw-confirm-btn" style="width:100%;padding:12px;background:linear-gradient(160deg,#00838f,#004d55);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif" onclick="confirmScrew()">🔩 Place Screw</button>
+      </div>
+      <div id="mob-screw-remove-row" style="display:none;margin-top:8px">
+        <button onclick="removeScrew()" style="width:100%;padding:10px;background:rgba(192,57,43,.1);border:1px solid var(--red);color:#e88a84;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">✕ Remove Screw from this Hole</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Implant picker sheet — slides up, minimises after selection -->
   <div id="mob-impl-picker" style="display:none;position:absolute;bottom:44px;left:0;right:0;background:rgba(10,12,18,.98);border-top:2px solid var(--red);border-radius:16px 16px 0 0;z-index:5;max-height:60vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;padding:12px 14px 8px;border-bottom:1px solid var(--border)">
@@ -1791,6 +1816,65 @@ const PLATES = [
 
 // Compute plate total length from holes: end-caps 8mm each side
 function plateLength(p) { return p.holeSpacing * ((p._holes||p.defHoles) - 1) + 20; }
+
+// ── Screw data ────────────────────────────────────────────────
+const SCREW_TYPES = [
+  {
+    id: 'cortical-27', name: 'Cortical 2.7mm', type: 'cortical',
+    shaftD: 2.7, headD: 5.0, threadPitch: 1.25, color: '#90a4ae',
+    lengths: [10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50],
+    compatibleWith: ['dcp-35','lc-dcp','lcp-35','recon'],
+    canLock: false,
+  },
+  {
+    id: 'cortical-35', name: 'Cortical 3.5mm', type: 'cortical',
+    shaftD: 3.5, headD: 6.0, threadPitch: 1.25, color: '#90a4ae',
+    lengths: [14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,55,60,65,70,80],
+    compatibleWith: ['dcp-35','lc-dcp','lcp-35','recon'],
+    canLock: false,
+  },
+  {
+    id: 'cortical-45', name: 'Cortical 4.5mm', type: 'cortical',
+    shaftD: 4.5, headD: 8.0, threadPitch: 1.75, color: '#90a4ae',
+    lengths: [24,26,28,30,32,34,36,38,40,42,44,46,48,50,55,60,65,70,80,90,100],
+    compatibleWith: ['dcp-45','lc-dcp','lcp-45','recon'],
+    canLock: false,
+  },
+  {
+    id: 'locking-35', name: 'Locking 3.5mm', type: 'locking',
+    shaftD: 3.5, headD: 6.0, threadPitch: 1.25, color: '#80cbc4',
+    lengths: [14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,55,60],
+    compatibleWith: ['lcp-35'],
+    canLock: true,
+  },
+  {
+    id: 'locking-45', name: 'Locking 4.5mm', type: 'locking',
+    shaftD: 4.5, headD: 8.0, threadPitch: 1.75, color: '#80cbc4',
+    lengths: [24,26,28,30,32,34,36,38,40,42,44,46,48,50,55,60,65,70,80],
+    compatibleWith: ['lcp-45'],
+    canLock: true,
+  },
+  {
+    id: 'cancellous-40', name: 'Cancellous 4.0mm', type: 'cancellous',
+    shaftD: 4.0, headD: 7.0, threadPitch: 1.75, color: '#ffcc80',
+    lengths: [20,25,30,35,40,45,50,55,60,65,70,80,90,100],
+    partialThread: true, // thread only distal 16mm
+    compatibleWith: ['dcp-35','dcp-45','lc-dcp','lcp-35','lcp-45','recon'],
+    canLock: false,
+  },
+  {
+    id: 'cancellous-65', name: 'Cancellous 6.5mm', type: 'cancellous',
+    shaftD: 6.5, headD: 10.0, threadPitch: 2.0, color: '#ffcc80',
+    lengths: [30,35,40,45,50,55,60,65,70,80,90,100,110,120],
+    partialThread: true,
+    compatibleWith: ['dcp-45','lcp-45','recon'],
+    canLock: false,
+  },
+];
+
+// State: screws placed per implant
+// impl._screws = [{ holeIdx, screwTypeId, lengthMm, angleDeg, insertOrder }]
+let screwInsertCounter = 0; // global insertion order counter
 let implants = [];
 let selImplant = null;
 let implantDragging = false, implantDragStart = null;
@@ -2985,7 +3069,7 @@ function clearAll() {
   fm.selFrag=null; fm.dragFrag=null;
   fmHideDrawBanner();
   // Clear implants
-  implants=[]; selImplant=null; implantDragging=false;
+  implants=[]; selImplant=null; implantDragging=false; screwInsertCounter=0;
   // Hide fracture schema panels
   const panel = document.getElementById('fm-schema-panel');
   if (panel) panel.style.display='none';
@@ -5411,12 +5495,29 @@ function fmInit() {
   fmCvs = document.getElementById('fm-cvs');
   if (!fmCvs) return;
   fmCtx = fmCvs.getContext('2d');
-  fmCvs.addEventListener('mousedown', e => { e.preventDefault(); fmPointerDown(fmEvtToXY(e, fmCvs)); });
-  fmCvs.addEventListener('mousemove', e => { fmPointerMove(fmEvtToXY(e, fmCvs)); });
-  fmCvs.addEventListener('mouseup',   e => { fmPointerUp(); });
+  let _fmDragStartPos = null, _fmDragged = false;
+  fmCvs.addEventListener('mousedown', e => {
+    e.preventDefault();
+    _fmDragStartPos = fmEvtToXY(e, fmCvs); _fmDragged = false;
+    const pos = _fmDragStartPos;
+    if (implants.length && implPointerDown(pos)) { fmDrawFragments(fmCvs, fmCtx); return; }
+    fmPointerDown(pos);
+  });
+  fmCvs.addEventListener('mousemove', e => {
+    const pos = fmEvtToXY(e, fmCvs);
+    if (_fmDragStartPos && Math.hypot(pos.x-_fmDragStartPos.x, pos.y-_fmDragStartPos.y) > 4) _fmDragged = true;
+    if (implDrag) { implPointerMove(pos); fmDrawFragments(fmCvs, fmCtx); return; }
+    fmPointerMove(pos); fmDrawFragments(fmCvs, fmCtx);
+  });
+  fmCvs.addEventListener('mouseup', e => {
+    const pos = fmEvtToXY(e, fmCvs);
+    if (implDrag) { implPointerUp(); fmDrawFragments(fmCvs, fmCtx); return; }
+    if (!_fmDragged && implants.length && handleDiagramTap(pos)) return;
+    fmPointerUp(); fmDrawFragments(fmCvs, fmCtx);
+  });
   fmCvs.addEventListener('touchstart', e => { e.preventDefault(); fmPointerDown(fmTouchToXY(e, fmCvs)); }, { passive:false });
-  fmCvs.addEventListener('touchmove',  e => { e.preventDefault(); fmPointerMove(fmTouchToXY(e, fmCvs)); }, { passive:false });
-  fmCvs.addEventListener('touchend',   e => { e.preventDefault(); fmPointerUp(); }, { passive:false });
+  fmCvs.addEventListener('touchmove',  e => { e.preventDefault(); fmPointerMove(fmTouchToXY(e, fmCvs)); fmDrawFragments(fmCvs, fmCtx); }, { passive:false });
+  fmCvs.addEventListener('touchend',   e => { e.preventDefault(); fmPointerUp(); fmDrawFragments(fmCvs, fmCtx); }, { passive:false });
 }
 
 function fmEvtToXY(e, canvas) {
@@ -5624,7 +5725,8 @@ function fmSetDrawMode(mode) {
 
 // ── Implant canvas interaction state ─────────────────────────
 let implMode = 'fragment'; // 'fragment' | 'implant'
-let implDrag = null; // {impl, mode:'move'|'rotate'|'resizeL'|'resizeR', startX, startY, ...}
+let implDrag = null;
+let _touchStartPos = null, _touchStartTime = 0, _touchMoved = false;
 
 function openMobImplantPicker() {
   const picker = document.getElementById('mob-impl-picker');
@@ -5773,8 +5875,13 @@ function drawImplantsOnDiagram(canvas, ctx2) {
       }
       ctx2.textAlign='left';
     }
+    // Draw screws on this implant
+    drawScrewsOnImplant(ctx2, impl, mmToCanvas);
     ctx2.restore();
   });
+
+  // Draw legend at bottom
+  drawScrewLegend(canvas, ctx2);
 }
 
 // ── Hit test for implant handles (canvas px coords) ──────────
@@ -5872,6 +5979,8 @@ function fmShowMobSchema() {
   mobFmCvs.ontouchstart = e => {
     e.preventDefault();
     const pos = fmTouchToXY(e, mobFmCvs);
+    // 1. Check if a screw hole was tapped (short tap, not drag)
+    _touchStartPos = pos; _touchStartTime = Date.now();
     // Try implant hit first if in implant mode
     if (implMode === 'implant' || implants.length) {
       if (implPointerDown(pos)) { fmDrawFragments(mobFmCvs, mobFmCtx); return; }
@@ -5884,13 +5993,20 @@ function fmShowMobSchema() {
   mobFmCvs.ontouchmove = e => {
     e.preventDefault();
     const pos = fmTouchToXY(e, mobFmCvs);
+    _touchMoved = Math.hypot(pos.x - (_touchStartPos?.x||0), pos.y - (_touchStartPos?.y||0)) > 8;
     if (implDrag) { implPointerMove(pos); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
     fmPointerMove(pos);
     fmDrawFragments(mobFmCvs, mobFmCtx);
   };
   mobFmCvs.ontouchend = e => {
     e.preventDefault();
+    const pos = fmTouchToXY(e, mobFmCvs);
+    const wasTap = !_touchMoved && (Date.now() - (_touchStartTime||0)) < 400;
     if (implDrag) { implPointerUp(); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
+    // Short tap → check if it hit a screw hole
+    if (wasTap && implants.length) {
+      if (handleDiagramTap(pos)) return;
+    }
     fmPointerUp();
     fmDrawFragments(mobFmCvs, mobFmCtx);
     fmSyncMobUI();
@@ -6447,6 +6563,332 @@ window.addEventListener('resize', () => {
   if (fm.bone) { fmResizeCvs(fmCvs); fmDrawFragments(fmCvs, fmCtx); }
 });
 
+
+// ============================================================
+// SCREW SYSTEM
+// ============================================================
+
+// State for the screw picker
+let _screwPickerImpl = null;  // which implant
+let _screwPickerHole = null;  // which hole index
+let _screwSelType    = null;  // selected SCREW_TYPES entry
+let _screwSelLen     = null;  // selected length mm
+
+// ── Open/close screw picker ───────────────────────────────────
+function openScrewPicker(impl, holeIdx, mmToCanvas) {
+  _screwPickerImpl = impl;
+  _screwPickerHole = holeIdx;
+  _screwSelType    = null;
+  _screwSelLen     = null;
+
+  // Label
+  const lbl = document.getElementById('mob-screw-hole-label');
+  if (lbl) lbl.textContent = `Hole ${holeIdx + 1} of ${impl.plate._holes || impl.plate.defHoles}`;
+
+  // Which screws are compatible with this plate + hole type
+  const plateId  = impl.plate.id;
+  const isLCPHole = impl.plate.shape === 'lcp';
+  const n    = impl.plate._holes || impl.plate.defHoles;
+  const mid  = Math.floor(n / 2);
+  // LCP: left half holes have locking on right → both screw types valid
+  // All LCP holes can take both cortical (dynamic slot) or locking (locking circle)
+
+  const compatible = SCREW_TYPES.filter(st => st.compatibleWith.includes(plateId));
+
+  // Build type grid
+  const typeGrid = document.getElementById('mob-screw-type-grid');
+  if (typeGrid) {
+    typeGrid.innerHTML = compatible.map(st => `
+      <div onclick="selectScrewType('${st.id}')" id="stype-${st.id}" style="
+        background:var(--panel);border:1px solid var(--border);border-radius:8px;
+        padding:10px 8px;cursor:pointer;text-align:center;transition:all .15s
+      ">
+        <div style="width:20px;height:20px;border-radius:50%;background:${st.color};border:2px solid ${st.type==='locking'?'#00838f':'#546e7a'};margin:0 auto 5px;display:flex;align-items:center;justify-content:center">
+          <div style="width:8px;height:8px;background:#0d1117;border-radius:50%"></div>
+        </div>
+        <div style="font-size:9px;font-weight:700;color:var(--text);line-height:1.3">${st.name}</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:2px">${st.type}</div>
+      </div>`).join('');
+  }
+
+  // Reset length + angle rows
+  const lenRow = document.getElementById('mob-screw-length-row');
+  if (lenRow) lenRow.style.display = 'none';
+  const angEl = document.getElementById('mob-screw-angle-slider');
+  if (angEl) angEl.value = 0;
+  document.getElementById('mob-screw-angle-val').textContent = '0°';
+
+  // Show remove option if screw already in this hole
+  const existing = (impl._screws || []).find(s => s.holeIdx === holeIdx);
+  const removeRow = document.getElementById('mob-screw-remove-row');
+  if (removeRow) removeRow.style.display = existing ? 'block' : 'none';
+
+  document.getElementById('mob-screw-picker').style.display = 'block';
+}
+
+function closeScrewPicker() {
+  document.getElementById('mob-screw-picker').style.display = 'none';
+  _screwPickerImpl = null; _screwPickerHole = null;
+  _screwSelType = null; _screwSelLen = null;
+}
+
+function selectScrewType(typeId) {
+  _screwSelType = SCREW_TYPES.find(s => s.id === typeId);
+  _screwSelLen  = null;
+  // Highlight selected
+  document.querySelectorAll('[id^="stype-"]').forEach(el => {
+    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--panel)';
+  });
+  const el = document.getElementById('stype-' + typeId);
+  if (el) { el.style.borderColor = '#80cbc4'; el.style.background = 'rgba(128,203,196,.12)'; }
+
+  // Show lengths
+  const lenRow = document.getElementById('mob-screw-length-row');
+  if (lenRow) lenRow.style.display = 'block';
+  const lenGrid = document.getElementById('mob-screw-length-grid');
+  if (lenGrid && _screwSelType) {
+    lenGrid.innerHTML = _screwSelType.lengths.map(l => `
+      <div onclick="selectScrewLen(${l})" id="slen-${l}" style="
+        background:var(--panel);border:1px solid var(--border);border-radius:6px;
+        padding:5px 10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+        font-size:11px;color:var(--text);
+      ">${l}</div>`).join('');
+  }
+}
+
+function selectScrewLen(len) {
+  _screwSelLen = len;
+  document.querySelectorAll('[id^="slen-"]').forEach(el => {
+    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--panel)';
+  });
+  const el = document.getElementById('slen-' + len);
+  if (el) { el.style.borderColor = '#80cbc4'; el.style.background = 'rgba(128,203,196,.12)'; }
+}
+
+function confirmScrew() {
+  if (!_screwPickerImpl || _screwPickerHole === null || !_screwSelType || !_screwSelLen) {
+    alert('Select a screw type and length first.'); return;
+  }
+  const angle = parseInt(document.getElementById('mob-screw-angle-slider')?.value || '0');
+  if (!_screwPickerImpl._screws) _screwPickerImpl._screws = [];
+  // Remove existing screw in this hole if any
+  _screwPickerImpl._screws = _screwPickerImpl._screws.filter(s => s.holeIdx !== _screwPickerHole);
+  // Add new screw
+  _screwPickerImpl._screws.push({
+    holeIdx: _screwPickerHole,
+    screwTypeId: _screwSelType.id,
+    lengthMm: _screwSelLen,
+    angleDeg: angle,
+    insertOrder: ++screwInsertCounter,
+  });
+  closeScrewPicker();
+  // Redraw
+  if (mobFmCvs) fmDrawFragments(mobFmCvs, mobFmCtx);
+  if (fmCvs)    fmDrawFragments(fmCvs, fmCtx);
+}
+
+function removeScrew() {
+  if (!_screwPickerImpl || _screwPickerHole === null) return;
+  _screwPickerImpl._screws = (_screwPickerImpl._screws || []).filter(s => s.holeIdx !== _screwPickerHole);
+  closeScrewPicker();
+  if (mobFmCvs) fmDrawFragments(mobFmCvs, mobFmCtx);
+  if (fmCvs)    fmDrawFragments(fmCvs, fmCtx);
+}
+
+// ── Hit test: did user tap a hole? ────────────────────────────
+function screwHitTestHole(pos, impl, mmToCanvas) {
+  // Returns holeIdx or -1
+  const p   = impl.plate;
+  const w   = plateLength(p) * mmToCanvas;
+  const ph  = p.plateH * mmToCanvas;
+  const n   = p._holes || p.defHoles;
+  const sp  = p.holeSpacing * mmToCanvas;
+  const cap = 10 * mmToCanvas;
+  const bossR = ph * 0.44;
+
+  // Convert pos → implant local coords
+  const dx = pos.x - impl.x, dy = pos.y - impl.y;
+  const cos = Math.cos(-impl.angle), sin = Math.sin(-impl.angle);
+  const lx = cos*dx - sin*dy, ly = sin*dx + cos*dy;
+
+  for (let i = 0; i < n; i++) {
+    const hx = -w/2 + cap + i*sp;
+    if (Math.hypot(lx - hx, ly) <= bossR * 1.3) return i;
+  }
+  return -1;
+}
+
+// ── Draw screws on the plate ──────────────────────────────────
+function drawScrewsOnImplant(ctx2, impl, mmToCanvas) {
+  if (!impl._screws || !impl._screws.length) return;
+  const p   = impl.plate;
+  const w   = plateLength(p) * mmToCanvas;
+  const n   = p._holes || p.defHoles;
+  const sp  = p.holeSpacing * mmToCanvas;
+  const cap = 10 * mmToCanvas;
+  const ph  = p.plateH * mmToCanvas;
+
+  // Sort by insertion order for legend numbering
+  const sorted = [...impl._screws].sort((a,b) => a.insertOrder - b.insertOrder);
+
+  ctx2.save();
+  ctx2.translate(impl.x, impl.y);
+  ctx2.rotate(impl.angle);
+
+  sorted.forEach(screw => {
+    const st = SCREW_TYPES.find(t => t.id === screw.screwTypeId);
+    if (!st) return;
+    const hx = -w/2 + cap + screw.holeIdx * sp;
+    const angleRad = screw.angleDeg * Math.PI / 180;
+
+    // Screw length in canvas px
+    const screwLenPx = screw.lengthMm * mmToCanvas;
+    const headR      = (st.headD / 2) * mmToCanvas;
+    const shaftR     = (st.shaftD / 2) * mmToCanvas;
+
+    ctx2.save();
+    ctx2.translate(hx, 0);
+    ctx2.rotate(angleRad);
+
+    // Shaft extending below plate
+    const shaftStart = ph/2;
+    const shaftEnd   = shaftStart + screwLenPx;
+
+    // Thread lines on shaft
+    ctx2.strokeStyle = _darken(st.color, 20);
+    ctx2.lineWidth = 0.5;
+    const threadPitchPx = st.threadPitch * mmToCanvas;
+    const threadStart = st.partialThread ? shaftEnd - 16*mmToCanvas : shaftStart;
+    let ty = Math.max(shaftStart, threadStart);
+    while (ty < shaftEnd) {
+      ctx2.beginPath();
+      ctx2.moveTo(-shaftR * 1.6, ty);
+      ctx2.lineTo(shaftR * 1.6, ty);
+      ctx2.stroke();
+      ty += Math.max(1, threadPitchPx);
+    }
+
+    // Shaft body
+    ctx2.fillStyle = st.color;
+    ctx2.beginPath();
+    ctx2.roundRect(-shaftR, shaftStart, shaftR*2, screwLenPx, shaftR);
+    ctx2.fill();
+
+    // Screw tip
+    ctx2.fillStyle = _darken(st.color, 15);
+    ctx2.beginPath();
+    ctx2.moveTo(-shaftR, shaftEnd - shaftR);
+    ctx2.lineTo(0, shaftEnd + shaftR*2);
+    ctx2.lineTo(shaftR, shaftEnd - shaftR);
+    ctx2.closePath(); ctx2.fill();
+
+    // Head (circle with recess)
+    ctx2.fillStyle = st.color;
+    ctx2.strokeStyle = _darken(st.color, 25);
+    ctx2.lineWidth = 1;
+    ctx2.beginPath(); ctx2.arc(0, 0, headR, 0, Math.PI*2); ctx2.fill(); ctx2.stroke();
+
+    // Head recess
+    if (st.type === 'locking') {
+      // Star/torx recess
+      ctx2.strokeStyle = '#0d1117'; ctx2.lineWidth = 1.2;
+      for (let a = 0; a < 6; a++) {
+        const ang = (a * Math.PI/3);
+        ctx2.beginPath();
+        ctx2.moveTo(0, 0);
+        ctx2.lineTo(Math.cos(ang)*headR*0.55, Math.sin(ang)*headR*0.55);
+        ctx2.stroke();
+      }
+    } else {
+      // Hex recess
+      ctx2.strokeStyle = '#0d1117'; ctx2.lineWidth = 1;
+      ctx2.beginPath();
+      for (let a = 0; a < 6; a++) {
+        const ang = a*Math.PI/3 - Math.PI/6;
+        const rx = Math.cos(ang)*headR*0.5, ry = Math.sin(ang)*headR*0.5;
+        a===0 ? ctx2.moveTo(rx,ry) : ctx2.lineTo(rx,ry);
+      }
+      ctx2.closePath(); ctx2.stroke();
+    }
+
+    ctx2.restore();
+
+    // Insertion order number badge on head
+    const num = screw.insertOrder;
+    ctx2.save();
+    ctx2.translate(hx, 0);
+    // Badge circle
+    const badgeR = Math.max(4, headR * 0.75);
+    ctx2.fillStyle = '#ef4444';
+    ctx2.beginPath(); ctx2.arc(headR + badgeR*0.6, -headR*0.8, badgeR, 0, Math.PI*2); ctx2.fill();
+    ctx2.fillStyle = '#fff';
+    ctx2.font = `bold ${Math.max(6, badgeR*1.4)}px IBM Plex Sans,sans-serif`;
+    ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+    ctx2.fillText(String(num), headR + badgeR*0.6, -headR*0.8);
+    ctx2.textAlign = 'left'; ctx2.textBaseline = 'alphabetic';
+    ctx2.restore();
+  });
+
+  ctx2.restore();
+}
+
+// ── Draw screw legend below diagram ──────────────────────────
+function drawScrewLegend(canvas, ctx2) {
+  // Collect all screws across all implants
+  const allScrews = [];
+  implants.forEach(impl => {
+    (impl._screws || []).forEach(s => {
+      const st = SCREW_TYPES.find(t => t.id === s.screwTypeId);
+      if (st) allScrews.push({ ...s, st, plateName: impl.plate.name });
+    });
+  });
+  if (!allScrews.length) return;
+  allScrews.sort((a,b) => a.insertOrder - b.insertOrder);
+
+  const W = canvas.width;
+  const lineH = 14, pad = 10, startY = canvas.height - allScrews.length*lineH - pad - 4;
+
+  // Background
+  ctx2.fillStyle = 'rgba(10,12,18,.75)';
+  ctx2.fillRect(pad, startY - 6, W - pad*2, allScrews.length*lineH + 14);
+
+  allScrews.forEach((s, i) => {
+    const y = startY + i*lineH;
+    // Number badge
+    ctx2.fillStyle = '#ef4444';
+    ctx2.beginPath(); ctx2.arc(pad+10, y+5, 5, 0, Math.PI*2); ctx2.fill();
+    ctx2.fillStyle = '#fff'; ctx2.font = 'bold 6px IBM Plex Sans,sans-serif';
+    ctx2.textAlign='center'; ctx2.fillText(String(s.insertOrder), pad+10, y+8); ctx2.textAlign='left';
+    // Screw colour dot
+    ctx2.fillStyle = s.st.color;
+    ctx2.beginPath(); ctx2.arc(pad+20, y+5, 3.5, 0, Math.PI*2); ctx2.fill();
+    // Text
+    ctx2.fillStyle = 'rgba(255,255,255,.8)'; ctx2.font = '9px IBM Plex Sans,sans-serif';
+    ctx2.fillText(`${s.st.name} × ${s.lengthMm}mm  [${s.plateName}, hole ${s.holeIdx+1}]`, pad+26, y+9);
+  });
+}
+
+// ── Hole tap detection in fmShowMobSchema ─────────────────────
+function handleDiagramTap(pos) {
+  // Called on touch/click — check if a hole was tapped
+  const mmToCanvas = _getMmToCanvas();
+  for (let i = implants.length-1; i >= 0; i--) {
+    const impl = implants[i];
+    const hIdx = screwHitTestHole(pos, impl, mmToCanvas);
+    if (hIdx >= 0) {
+      openScrewPicker(impl, hIdx, mmToCanvas);
+      return true;
+    }
+  }
+  return false;
+}
+
+function _getMmToCanvas() {
+  const rawMTC = (fm._drawScale && fm.pxPerMm) ? fm._drawScale * fm.pxPerMm : 1;
+  const maxLen = Math.max(...implants.map(i => plateLength(i.plate)), 1);
+  const cW = (mobFmCvs ? mobFmCvs.width : 0) || (fmCvs ? fmCvs.width : 400);
+  return Math.min(rawMTC, (cW * 0.8) / maxLen);
+}
 
 // ── INIT ────────────────────────────────────────────────────
 // Desktop
