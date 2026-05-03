@@ -5976,40 +5976,85 @@ function fmShowMobSchema() {
   fmSyncMobUI();
 
   // Unified touch handler — dispatches to implant or fragment mode
+  let _fmTouchStart = null, _fmTouchDragging = false, _fmDragInit = false;
+
   mobFmCvs.ontouchstart = e => {
     e.preventDefault();
-    const pos = fmTouchToXY(e, mobFmCvs);
-    // 1. Check if a screw hole was tapped (short tap, not drag)
-    _touchStartPos = pos; _touchStartTime = Date.now();
-    // Try implant hit first if in implant mode
-    if (implMode === 'implant' || implants.length) {
-      if (implPointerDown(pos)) { fmDrawFragments(mobFmCvs, mobFmCtx); return; }
-    }
-    // Fall through to fragment interaction
-    fmPointerDown(pos);
-    fmDrawFragments(mobFmCvs, mobFmCtx);
-    fmSyncMobUI();
+    const t = e.touches[0];
+    _fmTouchStart = { x: (t.clientX - mobFmCvs.getBoundingClientRect().left) * (mobFmCvs.width / mobFmCvs.getBoundingClientRect().width),
+                      y: (t.clientY - mobFmCvs.getBoundingClientRect().top)  * (mobFmCvs.height / mobFmCvs.getBoundingClientRect().height),
+                      time: Date.now() };
+    _fmTouchDragging = false;
+    _fmDragInit = false;
+    implDrag = null;
   };
+
   mobFmCvs.ontouchmove = e => {
     e.preventDefault();
-    const pos = fmTouchToXY(e, mobFmCvs);
-    _touchMoved = Math.hypot(pos.x - (_touchStartPos?.x||0), pos.y - (_touchStartPos?.y||0)) > 8;
-    if (implDrag) { implPointerMove(pos); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
-    fmPointerMove(pos);
-    fmDrawFragments(mobFmCvs, mobFmCtx);
+    const t = e.touches[0];
+    const r = mobFmCvs.getBoundingClientRect();
+    const pos = { x: (t.clientX - r.left)*(mobFmCvs.width/r.width),
+                  y: (t.clientY - r.top)*(mobFmCvs.height/r.height) };
+
+    if (!_fmTouchStart) return;
+    const dist = Math.hypot(pos.x - _fmTouchStart.x, pos.y - _fmTouchStart.y);
+
+    if (!_fmTouchDragging && dist > 8) {
+      // Crossed drag threshold — init drag from original start position
+      _fmTouchDragging = true;
+      _fmDragInit = true;
+      // Try implant drag first
+      if (implants.length) {
+        if (implPointerDown(_fmTouchStart)) { _fmDragInit = false; }
+      }
+      // Try fragment drag if no implant hit
+      if (_fmDragInit) { fmPointerDown(_fmTouchStart); _fmDragInit = false; }
+    }
+
+    if (_fmTouchDragging) {
+      if (implDrag) { implPointerMove(pos); }
+      else { fmPointerMove(pos); }
+      fmDrawFragments(mobFmCvs, mobFmCtx);
+    }
   };
+
   mobFmCvs.ontouchend = e => {
     e.preventDefault();
-    const pos = fmTouchToXY(e, mobFmCvs);
-    const wasTap = !_touchMoved && (Date.now() - (_touchStartTime||0)) < 400;
-    if (implDrag) { implPointerUp(); fmDrawFragments(mobFmCvs, mobFmCtx); return; }
-    // Short tap → check if it hit a screw hole
-    if (wasTap && implants.length) {
-      if (handleDiagramTap(pos)) return;
+    const t = e.changedTouches[0];
+    const r = mobFmCvs.getBoundingClientRect();
+    const pos = { x: (t.clientX - r.left)*(mobFmCvs.width/r.width),
+                  y: (t.clientY - r.top)*(mobFmCvs.height/r.height) };
+
+    if (_fmTouchDragging) {
+      // End of drag
+      if (implDrag) { implPointerUp(); }
+      else { fmPointerUp(); }
+      fmDrawFragments(mobFmCvs, mobFmCtx);
+      fmSyncMobUI();
+    } else {
+      // It was a tap — use start position for accuracy
+      const tapPos = _fmTouchStart || pos;
+      // 1. Check hole tap first
+      if (implants.length && handleDiagramTap(tapPos)) {
+        _fmTouchStart = null; return;
+      }
+      // 2. Check implant body tap (select it)
+      if (implants.length) {
+        const hit = implHitTest(tapPos);
+        if (hit) {
+          selImplant = hit.impl;
+          if (implMode !== 'implant') switchToImplMode();
+          fmDrawFragments(mobFmCvs, mobFmCtx);
+          _fmTouchStart = null; return;
+        }
+      }
+      // 3. Fragment tap
+      fmPointerDown(tapPos); fmPointerUp();
+      fmDrawFragments(mobFmCvs, mobFmCtx);
+      fmSyncMobUI();
     }
-    fmPointerUp();
-    fmDrawFragments(mobFmCvs, mobFmCtx);
-    fmSyncMobUI();
+    _fmTouchStart = null;
+    _fmTouchDragging = false;
   };
 }
 
