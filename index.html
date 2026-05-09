@@ -609,6 +609,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="btn danger-outline" id="del-img-btn" onclick="deleteImage()" style="display:none">✕ Delete Image</button>
       <button class="btn" id="lock-btn" onclick="toggleImageLock()" title="Lock/unlock image position" style="display:none">🔓 Unlocked</button>
       <button class="btn" onclick="openPtEditor()" title="Customise measurement points">● Points</button>
+      <button class="btn" id="help-btn" onclick="toggleHelpMode()" title="Help — click then hover any tool to learn what it does" style="font-weight:700;font-size:13px">?</button>
     </div>
   </div>
 
@@ -800,14 +801,56 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <!-- CALIBRATION TAB -->
     <div class="tab-pane" id="tab-calib">
       <div style="padding:12px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scale Calibration</div>
-        <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">Place two points on a reference object of known size. The app will calculate the px/mm ratio and convert all distance measurements automatically.</div>
-        <button class="btn primary" style="width:100%;justify-content:center;padding:9px" onclick="startCalibLine()">
-          📏 Place Calibration Points
-        </button>
-        <div id="calib-line-status" style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">No calibration set</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Scale Calibration</div>
 
-        <!-- Active calibration status -->
+        <!-- Method toggle -->
+        <div style="display:flex;gap:5px;margin-bottom:12px">
+          <button id="calib-method-a-btn" class="btn active" style="flex:1;justify-content:center;font-size:9px;padding:6px" onclick="switchCalibMethod('a')">📏 Known Object</button>
+          <button id="calib-method-b-btn" class="btn"        style="flex:1;justify-content:center;font-size:9px;padding:6px" onclick="switchCalibMethod('b')">🦴 Anatomical Ref</button>
+        </div>
+
+        <!-- Method A: manual -->
+        <div id="calib-method-a">
+          <div style="font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:10px">Place two points on a reference object of known size (coin, nail, ruler).</div>
+          <button class="btn primary" style="width:100%;justify-content:center;padding:9px" onclick="startCalibLine()">📏 Place Calibration Points</button>
+          <div id="calib-line-status" style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">No calibration set</div>
+        </div>
+
+        <!-- Method B: anatomical -->
+        <div id="calib-method-b" style="display:none">
+          <div style="font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:8px">Select a visible anatomical landmark and drag a line across it on the X-ray. Scale is calculated from the known average dimension.</div>
+          <select id="calib-landmark-sel" style="width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:10px;margin-bottom:8px;font-family:'IBM Plex Sans',sans-serif" onchange="calibLandmarkChanged()">
+            <option value="">— Select landmark —</option>
+            <optgroup label="Hip / Femur">
+              <option value="fem-head-m">Femoral Head (Male avg. 46mm)</option>
+              <option value="fem-head-f">Femoral Head (Female avg. 42mm)</option>
+              <option value="fem-shaft">Femoral Shaft Isthmus (avg. 14mm)</option>
+              <option value="fem-neck">Femoral Neck Width (avg. 32mm)</option>
+            </optgroup>
+            <optgroup label="Knee / Tibia">
+              <option value="tib-plateau">Tibial Plateau Width (avg. 82mm)</option>
+              <option value="tib-shaft">Tibial Shaft Width (avg. 22mm)</option>
+            </optgroup>
+            <optgroup label="Upper Limb">
+              <option value="hum-head">Humeral Head Diameter (avg. 43mm)</option>
+              <option value="hum-shaft">Humeral Shaft Width (avg. 18mm)</option>
+              <option value="radius-distal">Distal Radius Width (avg. 28mm)</option>
+            </optgroup>
+            <optgroup label="Custom">
+              <option value="custom">Custom measurement</option>
+            </optgroup>
+          </select>
+          <div id="calib-custom-mm-row" style="display:none;margin-bottom:8px">
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="calib-custom-mm" placeholder="Enter mm" min="1" max="500" style="flex:1;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:10px;font-family:'IBM Plex Mono',monospace">
+              <span style="font-size:10px;color:var(--muted)">mm</span>
+            </div>
+          </div>
+          <button id="calib-landmark-draw-btn" class="btn" style="width:100%;justify-content:center;padding:8px;display:none;font-size:10px" onclick="startCalibLandmarkLine()">📏 Draw Reference Line on X-Ray</button>
+          <div id="calib-landmark-status" style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px"></div>
+        </div>
+
+        <!-- Active calibration status (shared) -->
         <div id="calib-status" style="margin-top:10px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--green);display:none">
           <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Active Calibration</div>
           <div id="calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green);margin-bottom:6px"></div>
@@ -965,6 +1008,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <button id="mob-lock-btn" class="mob-topbtn" onclick="toggleImageLock();updateMobLockBtn()" style="display:none">🔓</button>
     <button class="mob-topbtn" onclick="openPtEditor()" style="padding:5px 7px">●</button>
     <button class="mob-topbtn" onclick="undoLast()">↩</button>
+    <button class="mob-topbtn" id="mob-help-btn" onclick="toggleHelpMode()" style="font-weight:800;font-size:14px">?</button>
     <button class="mob-topbtn save" onclick="saveSnapshot()">💾</button>
   </div>
 
@@ -1043,6 +1087,32 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <img id="mob-export-img" style="max-width:100%;max-height:70vh;border-radius:8px;border:1px solid rgba(255,255,255,.15)" src="" alt="Annotated X-ray">
   </div>
 </div>
+
+<!-- Help overlay tooltip -->
+<div id="help-overlay" style="display:none;position:fixed;inset:0;z-index:2000;pointer-events:none">
+  <!-- Pulsing border to show help mode is active -->
+  <div id="help-border" style="position:absolute;inset:0;border:3px solid rgba(251,191,36,.6);pointer-events:none;animation:helpPulse 2s ease-in-out infinite"></div>
+  <!-- Tooltip bubble -->
+  <div id="help-tooltip" style="display:none;position:absolute;max-width:280px;background:#1a1f26;border:1.5px solid #fbbf24;border-radius:12px;padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none;z-index:2001">
+    <div id="help-tooltip-title" style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px;font-family:'IBM Plex Sans',sans-serif"></div>
+    <div id="help-tooltip-body"  style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.7;font-family:'IBM Plex Sans',sans-serif"></div>
+    <div id="help-tooltip-tip"   style="font-size:10px;color:rgba(251,191,36,.6);margin-top:8px;font-style:italic;font-family:'IBM Plex Sans',sans-serif"></div>
+    <!-- Arrow -->
+    <div id="help-arrow" style="position:absolute;width:10px;height:10px;background:#1a1f26;border-left:1.5px solid #fbbf24;border-bottom:1.5px solid #fbbf24;transform:rotate(-45deg)"></div>
+  </div>
+  <!-- Mode banner -->
+  <div style="position:fixed;top:0;left:50%;transform:translateX(-50%);background:#fbbf24;color:#1a1f26;padding:6px 20px;border-radius:0 0 10px 10px;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;pointer-events:all;cursor:pointer;z-index:2002" onclick="toggleHelpMode()">
+    ? HELP MODE — Hover any tool to learn · Click here to exit
+  </div>
+</div>
+
+<style>
+@keyframes helpPulse {
+  0%,100% { border-color: rgba(251,191,36,.4); }
+  50%      { border-color: rgba(251,191,36,.9); }
+}
+.help-target { cursor: help !important; }
+</style>
 
 <!-- Backdrop -->
 <div id="mob-backdrop" onclick="mobClose()" ontouchstart="mobClose()"></div>
@@ -1269,15 +1339,57 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   <div class="mob-sheet-title">📏 Calibration</div>
   <div class="mob-sheet-inner">
     <div style="padding:14px">
-      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px">Tap two points on a reference object of known size. A dialog will ask for the real dimensions, then you can immediately draw measurements.</div>
 
-      <button class="btn primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="startCalibLine();mobClose()">
-        📏 Place Calibration Points
-      </button>
+      <!-- Method toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="mob-calib-method-a-btn" class="btn active" style="flex:1;justify-content:center;font-size:11px;padding:9px" onclick="switchCalibMethod('a')">📏 Known Object</button>
+        <button id="mob-calib-method-b-btn" class="btn"        style="flex:1;justify-content:center;font-size:11px;padding:9px" onclick="switchCalibMethod('b')">🦴 Anatomical Ref</button>
+      </div>
 
-      <div id="mob-calib-line-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px">No calibration set</div>
+      <!-- Method A -->
+      <div id="mob-calib-method-a">
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px">Tap two points on a reference object of known size (coin, nail, ruler). A dialog will ask for the real size in mm.</div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="startCalibLine();mobClose()">
+          📏 Place Calibration Points
+        </button>
+        <div id="mob-calib-line-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px">No calibration set</div>
+      </div>
 
-      <!-- Active status -->
+      <!-- Method B -->
+      <div id="mob-calib-method-b" style="display:none">
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px">Select an anatomical landmark visible on the X-ray. Drag a line across it — scale is calculated from the known average dimension.</div>
+        <select id="mob-calib-landmark-sel" style="width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:10px;font-family:'IBM Plex Sans',sans-serif" onchange="mobCalibLandmarkChanged()">
+          <option value="">— Select anatomical landmark —</option>
+          <optgroup label="Hip / Femur">
+            <option value="fem-head-m">Femoral Head ♂ (avg. 46mm)</option>
+            <option value="fem-head-f">Femoral Head ♀ (avg. 42mm)</option>
+            <option value="fem-shaft">Femoral Shaft Isthmus (avg. 14mm)</option>
+            <option value="fem-neck">Femoral Neck Width (avg. 32mm)</option>
+          </optgroup>
+          <optgroup label="Knee / Tibia">
+            <option value="tib-plateau">Tibial Plateau Width (avg. 82mm)</option>
+            <option value="tib-shaft">Tibial Shaft (avg. 22mm)</option>
+          </optgroup>
+          <optgroup label="Upper Limb">
+            <option value="hum-head">Humeral Head (avg. 43mm)</option>
+            <option value="hum-shaft">Humeral Shaft (avg. 18mm)</option>
+            <option value="radius-distal">Distal Radius Width (avg. 28mm)</option>
+          </optgroup>
+          <optgroup label="Custom">
+            <option value="custom">Custom measurement</option>
+          </optgroup>
+        </select>
+        <div id="mob-calib-custom-row" style="display:none;margin-bottom:10px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="mob-calib-custom-mm" placeholder="Enter mm" min="1" max="500" style="flex:1;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:'IBM Plex Mono',monospace">
+            <span style="font-size:13px;color:var(--muted)">mm</span>
+          </div>
+        </div>
+        <button id="mob-calib-landmark-draw-btn" class="btn" style="width:100%;justify-content:center;padding:12px;font-size:13px;display:none" onclick="startCalibLandmarkLine();mobClose()">📏 Draw Reference Line on X-Ray</button>
+        <div id="mob-calib-landmark-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px"></div>
+      </div>
+
+      <!-- Active calibration status (shared) -->
       <div id="mob-calib-status" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:9px;border:1px solid var(--green);display:none">
         <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Active Calibration</div>
         <div id="mob-calib-status-text" style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green);margin-bottom:8px"></div>
@@ -2777,7 +2889,29 @@ function handleCalibFinish(lineObj) {
   calib.lineObj = lineObj;
   const p = lineObj.points;
   calib.refPx = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
-  // Open the calibration input modal
+
+  // Method B: landmark — auto-apply without modal
+  if (calib._isLandmark && calib._landmarkMm) {
+    const mm   = calib._landmarkMm;
+    const name = calib._landmarkName;
+    calib._isLandmark = false; calib._landmarkMm = null; calib._landmarkName = null;
+    fmHideDrawBanner();
+    ['calib-landmark-draw-btn','mob-calib-landmark-draw-btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent='📏 Redraw Reference Line'; el.style.borderColor=''; el.style.color=''; }
+    });
+    _applyCalib(mm, `${name} (${mm}mm)`);
+    ['calib-landmark-status','mob-calib-landmark-status'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = `✅ 1mm = ${(calib.refPx/mm).toFixed(1)}px`; el.style.color='var(--green)'; }
+    });
+    col = '#ef4444'; setTool('line');
+    const badge = document.getElementById('mob-tool-badge');
+    if (badge) badge.textContent = 'DRAW DISTANCE LINE';
+    return;
+  }
+
+  // Method A: manual — open the mm input modal
   openCalibModal();
 }
 
@@ -2818,18 +2952,98 @@ function cancelCalibModal() {
   setTool('select'); updateList(); redraw(); mobRedraw();
 }
 
-function setCalibPreset(mm, name) {
-  document.getElementById('calib-real-mm').value = mm;
-  const ref = document.getElementById('calib-ref-name');
-  if (ref) ref.textContent = '📌 ' + name;
-  const step2 = document.getElementById('calib-step2');
-  if (step2) step2.style.display = 'block';
+// ── Calibration method switching ────────────────────────────
+function switchCalibMethod(method) {
+  ['a','b'].forEach(m => {
+    document.getElementById(`calib-method-${m}`)?.style && (document.getElementById(`calib-method-${m}`).style.display = m===method ? 'block' : 'none');
+    document.getElementById(`mob-calib-method-${m}`)?.style && (document.getElementById(`mob-calib-method-${m}`).style.display = m===method ? 'block' : 'none');
+    document.getElementById(`calib-method-${m}-btn`)?.classList.toggle('active', m===method);
+    document.getElementById(`mob-calib-method-${m}-btn`)?.classList.toggle('active', m===method);
+  });
 }
+
+// ── Method B: landmark changed ────────────────────────────────
+function calibLandmarkChanged() {
+  const sel = document.getElementById('calib-landmark-sel')?.value;
+  _syncCalibLandmarkUI(sel, 'desktop');
+}
+function mobCalibLandmarkChanged() {
+  const sel = document.getElementById('mob-calib-landmark-sel')?.value;
+  _syncCalibLandmarkUI(sel, 'mobile');
+}
+function _syncCalibLandmarkUI(sel, device) {
+  const isDesk = device === 'desktop';
+  const customRow = document.getElementById(isDesk ? 'calib-custom-mm-row'       : 'mob-calib-custom-row');
+  const drawBtn   = document.getElementById(isDesk ? 'calib-landmark-draw-btn'   : 'mob-calib-landmark-draw-btn');
+  const statusEl  = document.getElementById(isDesk ? 'calib-landmark-status'     : 'mob-calib-landmark-status');
+  if (!sel) {
+    if (customRow) customRow.style.display = 'none';
+    if (drawBtn)   drawBtn.style.display   = 'none';
+    return;
+  }
+  if (customRow) customRow.style.display = sel === 'custom' ? 'block' : 'none';
+  if (drawBtn)   drawBtn.style.display   = 'block';
+  const lm = FM_LANDMARKS[sel];
+  if (statusEl && lm?.mm) statusEl.textContent = `Reference: ${lm.name} = ${lm.mm}mm`;
+}
+
+// ── Method B: draw the landmark line (reuses calib line system) ──
+let _calibLandmarkMm   = null; // mm value for current landmark draw
+let _calibLandmarkName = null; // display name
+
+function startCalibLandmarkLine() {
+  const selDesk = document.getElementById('calib-landmark-sel')?.value;
+  const selMob  = document.getElementById('mob-calib-landmark-sel')?.value;
+  const sel = selDesk || selMob;
+  if (!sel) return;
+
+  let mm = null, name = '';
+  if (sel === 'custom') {
+    const vDesk = parseFloat(document.getElementById('calib-custom-mm')?.value);
+    const vMob  = parseFloat(document.getElementById('mob-calib-custom-mm')?.value);
+    mm = vDesk || vMob;
+    name = `Custom ${mm}mm`;
+    if (!mm || mm <= 0) { alert('Enter a valid mm value first.'); return; }
+  } else {
+    const lm = FM_LANDMARKS[sel];
+    mm   = lm?.mm;
+    name = lm?.name || sel;
+  }
+  if (!mm) return;
+
+  _calibLandmarkMm   = mm;
+  _calibLandmarkName = name;
+
+  // Activate the same calibration line draw mode
+  calibMode = true;
+  calib._isLandmark = true;     // flag so handleCalibFinish uses the landmark mm
+  calib._landmarkMm = mm;
+  calib._landmarkName = name;
+  setTool('line');
+  col = '#22c55e';
+  document.querySelectorAll('.sw').forEach(s => s.classList.remove('sel'));
+
+  // Show banners
+  fmShowDrawBanner('reference'); // green banner — reuse FM banner
+  const st = document.getElementById('calib-landmark-status');
+  if (st) { st.textContent = `Drag across: ${name}`; st.style.color='var(--green)'; }
+  const mst = document.getElementById('mob-calib-landmark-status');
+  if (mst) { mst.textContent = `Drag across: ${name}`; mst.style.color='var(--green)'; }
+
+  // Update draw button
+  ['calib-landmark-draw-btn','mob-calib-landmark-draw-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent='🟢 Drawing…'; el.style.borderColor='#22c55e'; el.style.color='#22c55e'; }
+  });
+}
+
+// ── Patch handleCalibFinish to auto-apply landmark mm ─────────
+// The landmark flag is checked at the top of handleCalibFinish above
 
 function applyCalibration() {
   const mm = parseFloat(document.getElementById('calib-real-mm')?.value);
   if (!mm || mm <= 0) { alert('Enter a valid size in mm.'); return; }
-  _applyCalib(mm, document.getElementById('calib-ref-name')?.textContent?.replace('📌 ','') || `${mm}mm`);
+  _applyCalib(mm, `${mm}mm`);
 }
 
 function mobApplyCustomCalib() {
@@ -6934,6 +7148,158 @@ function _getMmToCanvas() {
   const cW = (mobFmCvs ? mobFmCvs.width : 0) || (fmCvs ? fmCvs.width : 400);
   return Math.min(rawMTC, (cW * 0.8) / maxLen);
 }
+
+// ============================================================
+// HELP SYSTEM — GarageBand-style contextual tooltips
+// ============================================================
+
+const HELP_DATA = {
+  // Tools
+  'sw[data-tool="select"]':  { title:'Select / Pan', body:'Tap or click to select measurement points and labels. Drag points to adjust them. Drag labels to reposition. When zoomed in, drag the canvas to pan.', tip:'Keyboard: S' },
+  'sw[data-tool="angle3"]':  { title:'3-Point Angle', body:'Places 3 points to measure the angle at the middle point (vertex). Click: end point → vertex → end point. Used for neck-shaft angle, CE angle, and most hip measurements.', tip:'Keyboard: A' },
+  'sw[data-tool="angle4"]':  { title:'4-Point Angle', body:'Places 4 points defining two lines. Measures the angle where they intersect. Used for HKA, tibial slope, and angles where the vertex is not directly on the anatomy.', tip:'Keyboard: F' },
+  'sw[data-tool="cobb"]':    { title:'Cobb Angle', body:'Specialized 4-point tool for spinal curves. Draw lines along the superior endplates of the upper and lower end vertebrae. The angle between perpendiculars is the Cobb angle. Used for scoliosis, lordosis, kyphosis.', tip:'Normal: <10° (scoliosis defined at ≥10°) · Keyboard: C' },
+  'sw[data-tool="line"]':    { title:'Distance / Line', body:'Measures the straight-line distance between two points. If calibrated, shows result in mm. Used for Insall-Salvati ratio (measure patellar tendon then patellar length separately).', tip:'Keyboard: L' },
+  'sw[data-tool="annotate"]':{ title:'Annotate', body:'Places a text label anywhere on the X-ray. Click to place, then type your annotation. Useful for marking anatomical landmarks, fracture descriptions, or surgical notes.', tip:'Keyboard: N' },
+  'sw[data-tool="erase"]':   { title:'Erase', body:'Click any measurement object to delete it. Only deletes individual measurements — does not clear the X-ray image.', tip:'Keyboard: E' },
+
+  // Topbar buttons
+  '#lock-btn':           { title:'Lock Image', body:'Locks the X-ray image in place so it cannot be accidentally moved or deleted. Measurement points are unaffected. Unlock to re-enable panning. Image auto-locks on load.', tip:'Click to toggle' },
+  '#del-img-btn':        { title:'Delete Image', body:'Removes the loaded X-ray from the canvas. All measurements remain and can be re-used on a new image. This cannot be undone.', tip:'Measurements are preserved' },
+  '.upload-label':       { title:'Upload X-Ray', body:'Load a JPG, PNG, WebP or BMP image. Maximum recommended size is 25MB. DICOM files (.dcm) are not directly supported — convert to PNG/JPG first.', tip:'Or tap an X-Ray template below' },
+  'button[onclick*="undoLast"]': { title:'Undo', body:'Removes the last action — placed point, drawn line, or deleted measurement. Up to 50 steps of history are kept per session.', tip:'Keyboard: Ctrl+Z / Cmd+Z' },
+  'button[onclick*="clearAll"]': { title:'Clear All', body:'Removes all measurements, calibration, fracture lines, implants and reference lines. The X-ray image is preserved. This action saves to undo history.', tip:'Cannot be undone after navigating away' },
+  'button[onclick*="exportPNG"]': { title:'Export PNG', body:'Downloads the X-ray with all measurements drawn on top as a PNG image. On mobile, opens a full-screen view — long-press to save to photos.', tip:'For iOS: long-press the image to save' },
+  'button[onclick*="openPtEditor"]': { title:'Point Style', body:'Customise how measurement points appear — size (2–14px), style (filled circle, ring, cross, or diamond). Changes apply to all measurements immediately.', tip:'Useful for high-resolution X-rays' },
+
+  // Right sidebar tabs
+  '.tab[onclick*="measurements"]': { title:'Results Panel', body:'Shows all placed measurements with their values. If calibrated, distances show in mm. Click any row to highlight that measurement on the canvas. Use the 180° toggle to show supplementary angles.', tip:'' },
+  '.tab[onclick*="guide"]':        { title:'Guide', body:'Step-by-step instructions for each measurement type. Expand any tool to see which points to place and what the normal range is.', tip:'' },
+  '.tab[onclick*="implants"]':     { title:'Implants', body:'Implant overlays have moved to the Fracture tab. Open the fracture mapper to access plate placement on the fragment diagram.', tip:'' },
+  '.tab[onclick*="ao"]':           { title:'AO/OTA Classifier', body:'3-step fracture classification wizard. Select the bone, then the fracture type (A/B/C), then the group (1/2/3). The result can be tagged directly onto the X-ray as an annotation.', tip:'Covers all 12 long bones' },
+  '.tab[onclick*="calib"]':        { title:'Calibrate', body:'Place two points on a known reference object (coin, nail, implant) and enter its real-world size in mm. All subsequent distance measurements show in mm. Moving the calibration line updates all distances live.', tip:'Common references: 10mm nail diameter, 25mm coin' },
+  '.tab[onclick*="fracmap"]':      { title:'Fracture Mapper', body:'Three-step workflow: (1) Draw fracture lines on the X-ray, (2) Set an anatomical scale reference for accurate plate sizing, (3) Generate a fragment diagram. In the diagram, drag fragments to simulate reduction and add plates from the implant library.', tip:'Ghost lines show original vs reduced position' },
+
+  // Mobile bottom bar
+  '#mbb-xray':     { title:'X-Ray', body:'Open the X-ray loading sheet. Load one of the built-in templates (Hip/Pelvis, Knee) or upload your own image. Delete the current image from here.', tip:'' },
+  '#mbb-tools':    { title:'Tools', body:'Select a measurement tool: 3-pt Angle, 4-pt Angle, Cobb, Distance, Annotate, Erase, or Select. The selected tool is highlighted in red.', tip:'' },
+  '#mbb-presets':  { title:'Presets', body:'Quick-start measurement presets for 15 orthopaedic angles. Each preset shows a full info card with normal range, how it is measured, and a link to the original paper. Tap Start Measuring to activate the correct tool.', tip:'15 presets across hip, knee and spine' },
+  '#mbb-results':  { title:'Results', body:'View all measurements placed on the current X-ray. Tap any result to highlight it. Edit labels, toggle supplementary angles, and export from here.', tip:'' },
+  '#mbb-fracmap':  { title:'Fracture Mapper', body:'Access the fracture mapping workflow — draw fracture lines, set scale, generate the fragment diagram, and add implant plates.', tip:'' },
+  '#mbb-ao':       { title:'AO Classifier', body:'AO/OTA fracture classification. Select bone → type → group. Tags the classification code onto the X-ray.', tip:'' },
+  '#mbb-calib':    { title:'Calibrate', body:'Place a calibration line on a known reference and enter its size in mm. Enables mm readout on all distance measurements.', tip:'' },
+
+  // Canvas
+  '#cvs, #mob-cvs': { title:'X-Ray Canvas', body:'The main working area. Tap/click to place measurement points. Pinch to zoom (mobile) or scroll wheel (desktop). Swipe/drag to pan when zoomed. Double-tap a label to edit it. Long-press a point to see nearby point picker.', tip:'Image must be loaded before measuring' },
+};
+
+let helpModeActive = false;
+let _helpListeners = []; // store listeners for cleanup
+
+function toggleHelpMode() {
+  helpModeActive = !helpModeActive;
+  const overlay = document.getElementById('help-overlay');
+  const helpBtn  = document.getElementById('help-btn');
+  const mobHelpBtn = document.getElementById('mob-help-btn');
+
+  if (helpModeActive) {
+    overlay.style.display = 'block';
+    overlay.style.pointerEvents = 'all';
+    if (helpBtn) { helpBtn.style.background='#fbbf24'; helpBtn.style.color='#1a1f26'; helpBtn.style.borderColor='#fbbf24'; }
+    if (mobHelpBtn) { mobHelpBtn.style.background='#fbbf24'; mobHelpBtn.style.color='#1a1f26'; }
+    _attachHelpListeners();
+  } else {
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+    hideHelpTooltip();
+    if (helpBtn) { helpBtn.style.background=''; helpBtn.style.color=''; helpBtn.style.borderColor=''; }
+    if (mobHelpBtn) { mobHelpBtn.style.background=''; mobHelpBtn.style.color=''; }
+    _detachHelpListeners();
+  }
+}
+
+function _attachHelpListeners() {
+  _detachHelpListeners();
+  Object.keys(HELP_DATA).forEach(selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      const onEnter = (e) => { if (helpModeActive) showHelpTooltip(e, HELP_DATA[selector]); };
+      const onLeave = ()  => { if (helpModeActive) hideHelpTooltip(); };
+      const onTap   = (e) => {
+        if (!helpModeActive) return;
+        e.preventDefault(); e.stopPropagation();
+        showHelpTooltip(e, HELP_DATA[selector]);
+      };
+      el.addEventListener('mouseenter', onEnter);
+      el.addEventListener('mouseleave', onLeave);
+      el.addEventListener('touchstart', onTap, { passive:false });
+      _helpListeners.push({ el, onEnter, onLeave, onTap });
+    });
+  });
+  // Click anywhere on overlay (not on tooltip) exits help mode
+  const overlay = document.getElementById('help-overlay');
+  overlay._exitFn = (e) => {
+    if (e.target === overlay || e.target === document.getElementById('help-border')) toggleHelpMode();
+  };
+  overlay.addEventListener('click', overlay._exitFn);
+}
+
+function _detachHelpListeners() {
+  _helpListeners.forEach(({ el, onEnter, onLeave, onTap }) => {
+    el.removeEventListener('mouseenter', onEnter);
+    el.removeEventListener('mouseleave', onLeave);
+    el.removeEventListener('touchstart', onTap);
+  });
+  _helpListeners = [];
+}
+
+function showHelpTooltip(e, data) {
+  const tt = document.getElementById('help-tooltip');
+  const ttTitle = document.getElementById('help-tooltip-title');
+  const ttBody  = document.getElementById('help-tooltip-body');
+  const ttTip   = document.getElementById('help-tooltip-tip');
+  const arrow   = document.getElementById('help-arrow');
+  if (!tt) return;
+
+  ttTitle.textContent = data.title;
+  ttBody.innerHTML    = data.body;
+  ttTip.textContent   = data.tip || '';
+  ttTip.style.display = data.tip ? 'block' : 'none';
+  tt.style.display    = 'block';
+
+  // Position tooltip near the element
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ttW  = 280, ttH = tt.offsetHeight || 120;
+  const vw   = window.innerWidth, vh = window.innerHeight;
+  let left, top, arrowPos;
+
+  // Try to place below, then above, then right
+  if (rect.bottom + ttH + 20 < vh) {
+    top  = rect.bottom + 12;
+    left = Math.min(Math.max(8, rect.left + rect.width/2 - ttW/2), vw - ttW - 8);
+    arrow.style.top = '-6px'; arrow.style.bottom = '';
+    arrow.style.left = (rect.left + rect.width/2 - left - 5) + 'px';
+    arrow.style.transform = 'rotate(135deg)';
+  } else {
+    top  = rect.top - ttH - 12;
+    left = Math.min(Math.max(8, rect.left + rect.width/2 - ttW/2), vw - ttW - 8);
+    arrow.style.bottom = '-6px'; arrow.style.top = '';
+    arrow.style.left = (rect.left + rect.width/2 - left - 5) + 'px';
+    arrow.style.transform = 'rotate(-45deg)';
+  }
+  tt.style.left = left + 'px';
+  tt.style.top  = top  + 'px';
+  tt.style.display = 'block';
+}
+
+function hideHelpTooltip() {
+  const tt = document.getElementById('help-tooltip');
+  if (tt) tt.style.display = 'none';
+}
+
+// Close help mode on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && helpModeActive) toggleHelpMode();
+});
 
 // ── INIT ────────────────────────────────────────────────────
 // Desktop
