@@ -3369,10 +3369,11 @@ function initMobileEvents() {
       if (mobTouchDist && nd > 0) {
         const f = nd / mobTouchDist;
         // Zoom origin = midpoint between fingers (in canvas coords)
-        const mx = ((t0.clientX + t1.clientX) / 2);
-        const my = ((t0.clientY + t1.clientY) / 2) - 48;
-        const cx = mx * (mobW / window.innerWidth);
-        const cy = my * (mobH / (window.innerHeight - 48 - 96));
+        const _r = _mobCvsRect();
+        const mx = ((t0.clientX + t1.clientX) / 2) - _r.left;
+        const my = ((t0.clientY + t1.clientY) / 2) - _r.top;
+        const cx = mx * (mobW / _r.width);
+        const cy = my * (mobH / _r.height);
         mobOx = cx - (cx - mobOx) * f;
         mobOy = cy - (cy - mobOy) * f;
         mobZl *= f;
@@ -3488,22 +3489,27 @@ function mobDrawLens(cx, cy) {
   }
 }
 
+function _mobCvsRect() {
+  return mobCvs ? mobCvs.getBoundingClientRect() : { left:0, top:48, width:window.innerWidth, height:window.innerHeight-144 };
+}
+
 function mobGpt(touch) {
-  const x = touch.clientX;
-  const y = touch.clientY - 48;
-  const sx = x * (mobW / window.innerWidth);
-  const sy = y * (mobH / (window.innerHeight - 48 - 96));
-  // Return image coords when image loaded
+  const rect = _mobCvsRect();
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+  const sx = x * (mobW / rect.width);
+  const sy = y * (mobH / rect.height);
   if (bgImage) return mobToImage(sx, sy);
   return { x: sx, y: sy };
 }
 
 function mobGptScreen(touch) {
-  const x = touch.clientX;
-  const y = touch.clientY - 48;
+  const rect = _mobCvsRect();
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
   return {
-    x: x * (mobW / (mobCvs ? mobCvs.getBoundingClientRect().width  : window.innerWidth)),
-    y: y * (mobH / (mobCvs ? mobCvs.getBoundingClientRect().height : window.innerHeight - 144))
+    x: x * (mobW / rect.width),
+    y: y * (mobH / rect.height)
   };
 }
 
