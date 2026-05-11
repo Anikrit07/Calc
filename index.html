@@ -2148,8 +2148,119 @@ function finalise() {
   redraw();
 }
 
-// ── Mouse events ─────────────────────────────────────────────
-function initDesktopEvents() { /* desktop removed */ }
+// ── Mouse events on mob-cvs (desktop browser support) ────────
+function initDesktopEvents() { /* desktop canvas removed — mouse wired in initMobileEvents */ }
+
+function _initMouseEvents(canvas) {
+  // Convert a MouseEvent to a fake touch-like object
+  function mxy(e) { return { clientX: e.clientX, clientY: e.clientY }; }
+  let _mouseDown = false, _mouseMoved = false, _mouseDownPt = null;
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); _mouseDown = true; _mouseMoved = false;
+
+    // FM fracture drawing
+    if (fm.drawing) { const t=mobGpt(mxy(e)); fm.currentLine=[t]; return; }
+    if (fmRefDrawing) { fm._refStart=mobGpt(mxy(e)); return; }
+    if (mobDragPt) return;
+
+    mobPanning=false; mobPanStart=null; mobDragPt=null; mobDragLbl=null;
+
+    const t  = mobGpt(mxy(e));
+    const ts = mobGptScreen(mxy(e));
+    mobMpos = t;
+    _mouseDownPt = { t, ts };
+
+    if (tool === 'select') {
+      // Check label box
+      for (const o of objs) {
+        if (o._lblBox) {
+          const b=o._lblBox;
+          if (ts.x>=b.x && ts.x<=b.x+b.w && ts.y>=b.y && ts.y<=b.y+b.h) {
+            saveHistory(); mobDragLbl=o; mobDragLblStart={x:ts.x,y:ts.y}; return;
+          }
+        }
+      }
+      // Check nearby points
+      const nearby=[];
+      for (const o of objs) for (let i=0;i<o.points.length;i++) {
+        if (Math.hypot(o.points[i].x-t.x,o.points[i].y-t.y)<28) nearby.push({o,idx:i});
+      }
+      if (nearby.length===1) { saveHistory(); mobDragPt={obj:nearby[0].o,idx:nearby[0].idx}; mobShowLens=true; return; }
+      if (nearby.length>1)   { showPtPicker(nearby,e.clientX,e.clientY); return; }
+      // Pan
+      mobPanning=true; mobPanStart=ts;
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!_mouseDown) return;
+    e.preventDefault();
+    const t  = mobGpt(mxy(e));
+    const ts = mobGptScreen(mxy(e));
+    mobMpos = t; _mouseMoved = true;
+
+    if (fm.drawing && fm.currentLine.length>0) { fm.currentLine.push(t); mobRedraw(); return; }
+    if (mobDragLbl && mobDragLblStart) {
+      const dx=ts.x-mobDragLblStart.x, dy=ts.y-mobDragLblStart.y;
+      mobDragLblStart={x:ts.x,y:ts.y};
+      if (!mobDragLbl.labelPos) {
+        const b=mobDragLbl._lblBox;
+        mobDragLbl.labelPos={x:(b?b.x+b.w/2:ts.x-mobOx)/mobZl, y:(b?b.y+b.h/2:ts.y-mobOy)/mobZl};
+      }
+      mobDragLbl.labelPos.x+=dx/mobZl; mobDragLbl.labelPos.y+=dy/mobZl;
+      mobRedraw(); return;
+    }
+    if (mobDragPt) { mobDragPt.obj.points[mobDragPt.idx]=t; recalcObj(mobDragPt.obj); mobRedraw(); return; }
+    if (mobPanning && mobPanStart) { mobOx+=ts.x-mobPanStart.x; mobOy+=ts.y-mobPanStart.y; mobPanStart=ts; mobRedraw(); return; }
+    if (mobWip.length>0) mobRedraw();
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (!_mouseDown) return;
+    e.preventDefault(); _mouseDown=false;
+
+    if (fm.drawing && fm.currentLine.length>=2) {
+      const simp=fm.currentLine.filter((_,i)=>i%4===0||i===fm.currentLine.length-1);
+      fm.fracLines.push({points:simp}); fm.currentLine=[];
+      fmUpdateStatus(); mobRedraw(); return;
+    }
+    if (fmRefDrawing && fm._refStart) {
+      fmRefConfirm(fm._refStart,mobGpt(mxy(e)),'mobile'); fm._refStart=null; mobRedraw(); return;
+    }
+    const wasDragPt=!!mobDragPt;
+    mobPanning=false; mobPanStart=null;
+    if (mobDragLbl) { mobDragLbl=null; mobDragLblStart=null; mobRedraw(); return; }
+    if (wasDragPt) { recalcObj(mobDragPt.obj); mobDragPt=null; mobShowLens=false; updateList(); mobUpdateResults(); mobRedraw(); return; }
+
+    // Tap (no significant movement)
+    if (!_mouseMoved || (Math.abs((mobGptScreen(mxy(e)).x-(_mouseDownPt?.ts?.x||0)))<5 &&
+                         Math.abs((mobGptScreen(mxy(e)).y-(_mouseDownPt?.ts?.y||0)))<5)) {
+      const t=mobGpt(mxy(e));
+      if (tool==='select') return;
+      if (tool==='erase') {
+        const i=objs.findIndex(o=>isNear(o,t.x,t.y));
+        if (i>=0) { saveHistory(); objs.splice(i,1); updateList(); mobUpdateResults(); }
+        mobRedraw(); return;
+      }
+      if (tool==='annotate') { annPt=t; openAnnModal(); return; }
+      mobWip.push(t);
+      if (mobWip.length===REQ[tool]) { wip=[...mobWip]; mobWip=[]; finalise(); mobRedraw(); mobUpdateResults(); }
+      else mobRedraw();
+    }
+  });
+
+  // Mouse wheel = zoom
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const f = e.deltaY < 0 ? 1.1 : 0.9;
+    const r = _mobCvsRect();
+    const cx=(e.clientX-r.left)*(mobW/r.width), cy=(e.clientY-r.top)*(mobH/r.height);
+    mobOx=cx-(cx-mobOx)*f; mobOy=cy-(cy-mobOy)*f; mobZl*=f;
+    updateMobDpad(); mobRedraw();
+  }, { passive:false });
+}
 
 // ── Select / Erase ───────────────────────────────────────────
 // ============================================================
@@ -2987,6 +3098,7 @@ function initMobile() {
   mobCtx = mobCvs.getContext('2d');
   mobResize();
   initMobileEvents();
+  _initMouseEvents(mobCvs); // desktop browser mouse support
   mobSetActiveTool('select');
 
   // Pre-populate template thumbnails in mobile sheet
@@ -4996,32 +5108,9 @@ let mobFmCvs = null, mobFmCtx = null;
 
 // ── Core init ─────────────────────────────────────────────────
 function fmInit() {
-  fmCvs = document.getElementById('fm-cvs');
-  if (!fmCvs) return;
-  fmCtx = fmCvs.getContext('2d');
-  let _fmDragStartPos = null, _fmDragged = false;
-  fmCvs.addEventListener('mousedown', e => {
-    e.preventDefault();
-    _fmDragStartPos = fmEvtToXY(e, fmCvs); _fmDragged = false;
-    const pos = _fmDragStartPos;
-    if (implants.length && implPointerDown(pos)) { fmDrawFragments(fmCvs, fmCtx); return; }
-    fmPointerDown(pos);
-  });
-  fmCvs.addEventListener('mousemove', e => {
-    const pos = fmEvtToXY(e, fmCvs);
-    if (_fmDragStartPos && Math.hypot(pos.x-_fmDragStartPos.x, pos.y-_fmDragStartPos.y) > 4) _fmDragged = true;
-    if (implDrag) { implPointerMove(pos); fmDrawFragments(fmCvs, fmCtx); return; }
-    fmPointerMove(pos); fmDrawFragments(fmCvs, fmCtx);
-  });
-  fmCvs.addEventListener('mouseup', e => {
-    const pos = fmEvtToXY(e, fmCvs);
-    if (implDrag) { implPointerUp(); fmDrawFragments(fmCvs, fmCtx); return; }
-    if (!_fmDragged && implants.length && handleDiagramTap(pos)) return;
-    fmPointerUp(); fmDrawFragments(fmCvs, fmCtx);
-  });
-  fmCvs.addEventListener('touchstart', e => { e.preventDefault(); fmPointerDown(fmTouchToXY(e, fmCvs)); }, { passive:false });
-  fmCvs.addEventListener('touchmove',  e => { e.preventDefault(); fmPointerMove(fmTouchToXY(e, fmCvs)); fmDrawFragments(fmCvs, fmCtx); }, { passive:false });
-  fmCvs.addEventListener('touchend',   e => { e.preventDefault(); fmPointerUp(); fmDrawFragments(fmCvs, fmCtx); }, { passive:false });
+  // Desktop canvas removed — mobile only. fmCvs/fmCtx stay null.
+  // mob-fm-cvs is initialised lazily in fmShowMobSchema().
+  fmCvs = null; fmCtx = null;
 }
 
 function fmEvtToXY(e, canvas) {
@@ -5044,9 +5133,9 @@ function fmSelectBone(key, el) {
   fm.bone = key; fm.fracLines = []; fm.fragments = []; fm.generated = false; fm.currentLine = [];
   document.querySelectorAll('.fm-bone-btn').forEach(b => b.classList.remove('active'));
   el?.classList.add('active');
-  document.getElementById('fm-generate-row').style.display  = 'none';
-  document.getElementById('fm-fragment-list').style.display = 'none';
-  document.getElementById('fm-view-toggle').style.display   = 'none';
+  (function(){var _e=document.getElementById('fm-generate-row'); if(_e) _e.style.display='none';})();
+  (function(){var _e=document.getElementById('fm-fragment-list'); if(_e) _e.style.display='none';})();
+  (function(){var _e=document.getElementById('fm-view-toggle'); if(_e) _e.style.display='none';})();
   const panel = document.getElementById('fm-schema-panel');
   if (panel) panel.style.display = 'none';
   const st = document.getElementById('fm-trace-status');
@@ -5139,7 +5228,7 @@ function fmStopDraw() {
     if (b) { b.textContent=label; b.style.borderColor=''; b.style.color=''; b.onclick=fmActivateDraw; }
   });
   fmUpdateStatus();
-  document.getElementById('fm-generate-row').style.display = fm.fracLines.length ? 'block' : 'none';
+  (function(){var _e=document.getElementById('fm-generate-row'); if(_e) _e.style.display=fm.fracLines.length ? 'block' : 'none';})();
   document.getElementById('mob-fm-generate-row').style.display = fm.fracLines.length ? 'block' : 'none';
   redraw(); mobRedraw();
 }
@@ -5151,7 +5240,7 @@ function fmUpdateStatus() {
   // Desktop
   const st = document.getElementById('fm-trace-status');
   if (st) { st.textContent=label; st.style.color=color; }
-  document.getElementById('fm-generate-row').style.display = n ? 'block' : 'none';
+  (function(){var _e=document.getElementById('fm-generate-row'); if(_e) _e.style.display=n ? 'block' : 'none';})();
   // Mobile
   const mst = document.getElementById('mob-fm-trace-status');
   if (mst) { mst.textContent=label; mst.style.color=color; }
@@ -5682,12 +5771,14 @@ function fmGenerate() {
   if (btn) { btn.textContent='✏ Draw Another Line'; btn.style.borderColor=''; btn.style.color=''; btn.onclick=fmActivateDraw; }
   const mBtn = document.getElementById('mob-fm-draw-btn');
   if (mBtn) { mBtn.textContent='✏ Draw Another Line'; mBtn.style.borderColor=''; mBtn.style.color=''; }
-  // Show controls
-  document.getElementById('fm-view-toggle').style.display   = 'block';
-  document.getElementById('fm-fragment-list').style.display = 'block';
+  // Show mobile controls
+  const _fvt = document.getElementById('fm-view-toggle');
+  const _ffl = document.getElementById('fm-fragment-list');
+  if (_fvt) _fvt.style.display = 'block';
+  if (_ffl) _ffl.style.display = 'block';
   fmRenderFragList();
-  // Switch to fragment diagram view
-  fmToggleView('schema');
+  // Show mobile schema overlay (mobile-only app)
+  fmShowMobSchema();
 }
 
 
@@ -5957,17 +6048,17 @@ function fmRotFrag(i,deg) {
 
 // ── Toggle between X-ray and fragment diagram ─────────────────
 function fmToggleView(view) {
-  const panel = document.getElementById('fm-schema-panel');
+  // Desktop panels removed — delegate to mobile schema overlay
+  const _s = e => { const el=document.getElementById(e); if(el) el.classList.add('active'); };
+  const _r = e => { const el=document.getElementById(e); if(el) el.classList.remove('active'); };
   if (view==='schema') {
-    if (panel) panel.style.display='block';
-    document.getElementById('fmv-schema').classList.add('active');
-    document.getElementById('fmv-xray').classList.remove('active');
-    fmResizeCvs(fmCvs); fmDrawFragments(fmCvs,fmCtx);
+    _s('fmv-schema'); _r('fmv-xray');
+    fmShowMobSchema();
   } else {
-    if (panel) panel.style.display='none';
-    document.getElementById('fmv-xray').classList.add('active');
-    document.getElementById('fmv-schema').classList.remove('active');
-    redraw();
+    _s('fmv-xray'); _r('fmv-schema');
+    const mobSchema=document.getElementById('mob-fm-schema');
+    if(mobSchema) mobSchema.style.display='none';
+    mobRedraw();
   }
 }
 
