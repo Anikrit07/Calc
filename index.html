@@ -3366,6 +3366,8 @@ function mobRedraw() {
         mobCtx.setLineDash([]); mobCtx.globalAlpha=1; mobCtx.restore();
       }
     }
+    // X-ray implant overlay (image-space, inside transform)
+    xiDraw(mobCtx);
     mobCtx.restore();
     // Pass 2: labels in screen space
     objs.forEach(o => mobDrawLabel(o));
