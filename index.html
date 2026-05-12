@@ -417,6 +417,15 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .mob-zbtn:active { color: #fff; background: rgba(192,57,43,.2); }
 
 /* Mobile bottom bar — 2 rows */
+/* Constrain nav panels on wide screens */
+@media (min-width: 600px) {
+  #nv-panel-tools, #nv-panel-guide, #nv-panel-results, #nv-actions-tray {
+    left: calc(50% - 240px) !important;
+    right: calc(50% - 240px) !important;
+    width: 480px;
+    border-radius: 16px 16px 0 0;
+  }
+}
 .mob-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
@@ -485,14 +494,14 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .mob-sheet-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 0 16px 10px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
 
 /* Mobile tool grid */
-.mob-tool-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 10px 14px; }
+.mob-tool-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
 .mob-ti {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
-  padding: 10px 4px; font-size: 9px; font-weight: 700; color: var(--text);
-  letter-spacing: .3px; text-align: center; transition: all .15s;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 2px; font-size: 8.5px; font-weight: 700; color: var(--text);
+  letter-spacing: .2px; text-align: center; transition: all .15s; cursor: pointer;
 }
-.mob-ti .mi { font-size: 22px; display: block; }
+.mob-ti .mi { font-size: 19px; display: block; line-height: 1.2; }
 .mob-ti.active { background: rgba(192,57,43,.15); border-color: var(--red); color: #e88a84; }
 .mob-ti:active { transform: scale(.93); }
 
@@ -722,14 +731,14 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <div id="nv-panel-tools" style="
   display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
   background:var(--surface);border-top:2px solid var(--border);
-  max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
+  height:auto;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
 ">
   <div style="display:flex;justify-content:center;padding:10px 0 4px">
     <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
   </div>
-  <div style="padding:4px 14px 24px">
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 0 8px">Measure</div>
-    <div class="mob-tool-grid" style="margin-bottom:14px">
+  <div style="padding:2px 12px 16px">
+    <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:4px 0 6px">Measure</div>
+    <div class="mob-tool-grid" style="margin-bottom:10px">
       <div class="mob-ti active" id="mti-select"   onclick="nvSetTool('select')">  <span class="mi">✋</span>Select</div>
       <div class="mob-ti"        id="mti-angle3"   onclick="nvSetTool('angle3')">  <span class="mi">∠</span>3-Pt Angle</div>
       <div class="mob-ti"        id="mti-angle4"   onclick="nvSetTool('angle4')">  <span class="mi">⊾</span>4-Pt Angle</div>
@@ -738,8 +747,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div class="mob-ti"        id="mti-annotate" onclick="nvSetTool('annotate')"><span class="mi">✎</span>Annotate</div>
       <div class="mob-ti"        id="mti-erase"    onclick="nvSetTool('erase')">   <span class="mi">✕</span>Erase</div>
     </div>
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Colour</div>
-    <div style="display:flex;gap:9px;align-items:center;margin-bottom:16px">
+    <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 0 6px">Colour</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
       <div class="mob-sw sel" style="background:#3b82f6" onclick="mobPickCol('#3b82f6',this)"></div>
       <div class="mob-sw"     style="background:#ef4444" onclick="mobPickCol('#ef4444',this)"></div>
       <div class="mob-sw"     style="background:#22c55e" onclick="mobPickCol('#22c55e',this)"></div>
@@ -749,8 +758,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div class="mob-sw"     style="background:#06b6d4" onclick="mobPickCol('#06b6d4',this)"></div>
       <div class="mob-sw"     style="background:#f1f5f9;border:2px solid #334155" onclick="mobPickCol('#f1f5f9',this)"></div>
     </div>
-    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Advanced</div>
+    <div style="height:1px;background:var(--border);margin:0 0 10px"></div>
+    <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 6px">Advanced</div>
     <button onclick="nvClose();mobOpen('calib')" style="
       width:100%;padding:11px 14px;border-radius:10px;margin-bottom:8px;
       background:var(--panel);border:1px solid var(--border);
@@ -764,13 +773,13 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     </button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button onclick="nvClose();mobOpen('implants')" style="
-        padding:14px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
+        padding:10px 8px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
         color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
         font-family:'IBM Plex Sans',sans-serif;text-align:center;
         display:flex;flex-direction:column;align-items:center;gap:6px;">
         <span style="font-size:20px">🔩</span>Implants</button>
       <button onclick="nvClose();mobOpen('fracmap')" style="
-        padding:14px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
+        padding:10px 8px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
         color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
         font-family:'IBM Plex Sans',sans-serif;text-align:center;
         display:flex;flex-direction:column;align-items:center;gap:6px;">
@@ -782,7 +791,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <div id="nv-panel-guide" style="
   display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
   background:var(--surface);border-top:2px solid var(--border);
-  max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
+  height:auto;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
 ">
   <div style="display:flex;justify-content:center;padding:10px 0 6px">
     <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
