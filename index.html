@@ -2345,6 +2345,8 @@ function _initMouseEvents(canvas) {
     _mouseDownPt = { t, ts };
 
     if (tool === 'select') {
+      // XI xray implants — check first
+      if (xiPointerDown(t.x, t.y)) return;
       // Check label box
       for (const o of objs) {
         if (o._lblBox) {
@@ -2407,6 +2409,7 @@ function _initMouseEvents(canvas) {
     if (fmRefDrawing && fm._refStart) {
       fmRefConfirm(fm._refStart,mobGpt(mxy(e)),'mobile'); fm._refStart=null; mobRedraw(); return;
     }
+    xiPointerUp();
     const wasDragPt=!!mobDragPt;
     mobPanning=false; mobPanStart=null;
     if (mobDragLbl) { mobDragLbl=null; mobDragLblStart=null; mobRedraw(); return; }
@@ -3561,6 +3564,9 @@ function initMobileEvents() {
         }
         mobLastTap = now; mobLastTapPt = { x: ts.x, y: ts.y };
 
+        // XI: xray implant hit — takes priority over pan/label
+        if (xiPointerDown(t.x, t.y)) return;
+
         // 1. Label box hit (screen coords — _lblBox is in screen space)
         let hitLbl = false;
         for (const o of objs) {
@@ -3613,6 +3619,9 @@ function initMobileEvents() {
       if (fm.drawing && fm.currentLine.length > 0) {
         fm.currentLine.push(t); mobRedraw(); return;
       }
+
+      // XI: xray implant drag
+      if (xiDrag && xiPointerMove(t.x, t.y)) return;
 
       // Label drag (screen coords)
       if (mobDragLbl && mobDragLblStart) {
@@ -6752,24 +6761,59 @@ const _isMobile = () => window.innerWidth < 768 || 'ontouchstart' in window;
 
 // Flat list of help items for mobile card view
 const HELP_ITEMS = [
-  { icon:'✋', title:'Select / Pan',    body:'Tap to select points and labels. Drag points to adjust. Drag labels to reposition. Pan by dragging when in Select mode.' },
-  { icon:'∠',  title:'3-Point Angle',  body:'Places 3 points. The middle point is the vertex. Used for neck-shaft angle, CE angle, and most hip measurements.' },
-  { icon:'⊾',  title:'4-Point Angle',  body:'Two lines defined by 4 points. Angle at their intersection. Used for HKA, tibial slope, and Cobb-style angles.' },
-  { icon:'≋',  title:'Cobb Angle',     body:'Draw lines along the superior endplates of the upper and lower end vertebrae. Angle between perpendiculars = Cobb angle.' },
-  { icon:'↔',  title:'Distance',       body:'Straight-line distance between 2 points. Shows in mm when calibrated. Use for Insall-Salvati, limb-length discrepancy.' },
-  { icon:'✎',  title:'Annotate',       body:'Place a text label anywhere on the X-ray. Tap to place, then type. Double-tap any label to edit it later.' },
-  { icon:'✕',  title:'Erase',          body:'Tap any measurement to delete it. Only removes the tapped object — image and other measurements are unaffected.' },
-  { icon:'🦴',  title:'Load X-Ray',     body:'Load a built-in template (Hip/Knee) or upload a photo. JPEG, PNG, WebP supported. Avoid files over 25 MB.' },
-  { icon:'📏',  title:'Calibrate',      body:'Method A: place a line on a known object and enter its real size in mm. Method B: pick an anatomical landmark (e.g. femoral head 46mm) and draw across it.' },
-  { icon:'📋',  title:'Presets',        body:'15 pre-configured measurements across Hip, Knee and Spine. Each preset shows normal ranges, technique, and the source paper.' },
-  { icon:'📐',  title:'Results',        body:'All placed measurements with values. Tap any row to highlight it. Use the 180° toggle for supplementary angles. Edit labels here.' },
-  { icon:'🔩',  title:'Implants',       body:'Add plate overlays to the fracture fragment diagram. Choose from 6 plate types (DCP, LC-DCP, LCP, Recon) with calibrated hole spacing.' },
-  { icon:'🦴',  title:'AO Classifier',  body:'3-step classification wizard. Select bone → fracture type (A/B/C) → group (1/2/3). Tags the AO/OTA code onto the X-ray.' },
-  { icon:'🔀',  title:'Fracture Mapper',body:'3 steps: (1) Draw fracture lines on X-ray. (2) Set anatomical scale reference. (3) Generate fragment diagram. Drag fragments to reduce and add plates.' },
-  { icon:'↩',  title:'Undo',           body:'Removes the last action. Up to 50 steps of history per session. Keyboard: Ctrl+Z / Cmd+Z.' },
-  { icon:'↓',  title:'Export',         body:'Downloads the X-ray with all measurements as a PNG. On iOS, long-press the image to save to Photos.' },
-  { icon:'●',  title:'Point Style',    body:'Customise point appearance — choose from 8 styles (Target, Filled, Ring, Bullseye, Cross, Diamond, Square, Pin) and adjust size 2–14 px.' },
-  { icon:'🔍',  title:'Zoom',          body:'Pinch to zoom on mobile. Scroll wheel on desktop. Use +/- buttons. D-pad arrows appear when zoomed in.' },
+  // ── Measurement tools ──────────────────────────────────────
+  { icon:'✋', title:'Select / Pan',
+    body:'Tap a measurement point to drag it. Tap a label to drag it — the label follows your finger without jumping. Pan the X-ray by dragging on empty canvas in Select mode. Double-tap a label to edit its text.' },
+  { icon:'∠',  title:'3-Point Angle',
+    body:'Tap 3 points. The middle point is the vertex — angle is measured at that point. Used for neck-shaft angle, CE angle, and most hip/shoulder measurements.' },
+  { icon:'⊾',  title:'4-Point Angle',
+    body:'Tap 4 points defining two separate lines. Measures the angle at their intersection. Used for HKA, mLDFA, MPTA, tibial slope, and any angle where the vertex is not directly on bone.' },
+  { icon:'≋',  title:'Cobb Angle',
+    body:'Tap 4 points: 2 along the superior endplate of the top vertebra, 2 along the inferior endplate of the bottom vertebra. The angle between the perpendiculars gives the Cobb angle. Normal < 10°.' },
+  { icon:'↔',  title:'Distance',
+    body:'Tap 2 points. Shows distance in px, or in mm once calibrated. Use for Insall-Salvati ratio (measure patellar tendon and patella length separately), limb-length discrepancy, and bone dimensions.' },
+  { icon:'✎',  title:'Annotate',
+    body:'Tap anywhere to place a text label on the X-ray. Type your note and confirm. Double-tap any annotation later to edit it. Useful for marking fracture lines, labelling anatomy, or adding surgical notes.' },
+  { icon:'✕',  title:'Erase',
+    body:'Tap any measurement object to delete it. Only the tapped object is removed — the X-ray image and all other measurements are unaffected.' },
+
+  // ── Image ──────────────────────────────────────────────────
+  { icon:'🦴',  title:'Load X-Ray',
+    body:'Open the X-Ray sheet to load a built-in template (Hip/Pelvis or Knee AP) or upload your own image. JPEG, PNG, WebP supported on both desktop and mobile. Use the file picker or tap the upload row.' },
+  { icon:'🔍',  title:'Zoom & Pan',
+    body:'Pinch to zoom on mobile. Scroll wheel on desktop. Tap +/− buttons in the top-right for fine zoom. D-pad arrows appear when zoomed in to nudge the view. Pan by dragging in Select mode.' },
+
+  // ── Calibration ────────────────────────────────────────────
+  { icon:'📏',  title:'Calibrate',
+    body:'Method A — Known Object: draw a line on a coin, nail, or ruler and enter its real size in mm. Method B — Anatomical Reference: pick a landmark (e.g. femoral head ♂ 46mm) and draw across it — scale is applied automatically. Once calibrated, all distances show in mm.' },
+
+  // ── Measurement presets & results ─────────────────────────
+  { icon:'📋',  title:'Presets',
+    body:'15 ready-made measurement setups across Hip (CE, Tonnis, neck-shaft, Sharps...), Knee (HKA, mLDFA, MPTA, tibial slope, Insall-Salvati...) and Spine (Cobb, lordosis). Each shows normal range, technique, and source reference.' },
+  { icon:'📐',  title:'Results',
+    body:'View all measurements placed on the current X-ray. Tap any row to highlight it on the canvas. Use the 180° toggle for supplementary angles. Labels can be edited inline. Export from here.' },
+
+  // ── Implants ──────────────────────────────────────────────
+  { icon:'🔩',  title:'X-Ray Implants',
+    body:'Place real-size plate overlays directly on the X-ray. Step 1: calibrate (Method A or B) so the plate renders at its true anatomical size. Step 2: select a plate (DCP 3.5/4.5, LC-DCP, LCP 3.5/4.5, Recon). The plate appears on the X-ray at the correct mm size. Drag the body to move. Drag the ↻ handle (top-right) to rotate. Drag the end dots to change hole count. Use the Rotation, Holes, and Scale sliders in the sheet.' },
+
+  // ── AO / Fracture ──────────────────────────────────────────
+  { icon:'🦴',  title:'AO Classifier',
+    body:'3-step fracture classification wizard covering all 12 long bones. Select the bone → fracture type (A/B/C) → group (1/2/3). Tap "Tag on Image" to place the AO/OTA code directly on the X-ray as an annotation.' },
+  { icon:'🔀',  title:'Fracture Mapper',
+    body:'Step 1: draw fracture lines on the X-ray in red. Step 2: set an anatomical scale reference for accurate plate sizing. Step 3: tap Generate — a fragment diagram appears. Drag fragments to simulate reduction. Ghost lines show original vs reduced position. Add plates from the implant library and place screws into holes.' },
+
+  // ── Pointer style ──────────────────────────────────────────
+  { icon:'●',  title:'Point Style & Colour',
+    body:'Tap the ● button in the top bar to customise measurement points. Choose from 8 styles: Target (surgical crosshair), Filled, Ring (default — large hollow centre, thin outline), Bullseye, Cross, Diamond, Square, Pin. Adjust size 2–14 px. Pick from 9 colour presets or use the + custom colour picker.' },
+
+  // ── History ────────────────────────────────────────────────
+  { icon:'↩',  title:'Undo / Redo',
+    body:'↩ undoes the last action (point placed, measurement deleted, label moved). ↪ redoes it. Up to 50 undo steps per session. Any new action clears the redo stack. Keyboard: Ctrl+Z / Cmd+Z to undo, Ctrl+Y / Cmd+Shift+Z to redo.' },
+
+  // ── Export ─────────────────────────────────────────────────
+  { icon:'↓',  title:'Export',
+    body:'Downloads the X-ray with all measurements, labels, and implants drawn on top as a single PNG. On desktop, the file saves automatically. On iOS, long-press the full-screen image and choose Save to Photos.' },
 ];
 
 function toggleHelpMode() {
