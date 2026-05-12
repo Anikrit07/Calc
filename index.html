@@ -620,20 +620,31 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   </div>
 </div>
 
-<!-- Help overlay tooltip -->
+<!-- Help overlay — full-screen card list on mobile, hover tooltips on desktop -->
 <div id="help-overlay" style="display:none;position:fixed;inset:0;z-index:2000;pointer-events:none">
-  <!-- Pulsing border to show help mode is active -->
-  <div id="help-border" style="position:absolute;inset:0;border:3px solid rgba(251,191,36,.6);pointer-events:none;animation:helpPulse 2s ease-in-out infinite"></div>
-  <!-- Tooltip bubble -->
+  <!-- Pulsing border -->
+  <div id="help-border" style="position:absolute;inset:0;border:3px solid rgba(251,191,36,.6);pointer-events:none;animation:helpPulse 2s ease-in-out infinite;z-index:1"></div>
+
+  <!-- Desktop hover tooltip -->
   <div id="help-tooltip" style="display:none;position:absolute;max-width:280px;background:#1a1f26;border:1.5px solid #fbbf24;border-radius:12px;padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none;z-index:2001">
     <div id="help-tooltip-title" style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px;font-family:'IBM Plex Sans',sans-serif"></div>
     <div id="help-tooltip-body"  style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.7;font-family:'IBM Plex Sans',sans-serif"></div>
     <div id="help-tooltip-tip"   style="font-size:10px;color:rgba(251,191,36,.6);margin-top:8px;font-style:italic;font-family:'IBM Plex Sans',sans-serif"></div>
-    <!-- Arrow -->
     <div id="help-arrow" style="position:absolute;width:10px;height:10px;background:#1a1f26;border-left:1.5px solid #fbbf24;border-bottom:1.5px solid #fbbf24;transform:rotate(-45deg)"></div>
   </div>
-  <!-- Mode banner -->
-  <div style="position:fixed;top:0;left:50%;transform:translateX(-50%);background:#fbbf24;color:#1a1f26;padding:6px 20px;border-radius:0 0 10px 10px;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;pointer-events:all;cursor:pointer;z-index:2002" onclick="toggleHelpMode()">
+
+  <!-- Mobile help sheet — full scrollable list of help cards -->
+  <div id="help-sheet" style="display:none;position:absolute;inset:0;background:rgba(10,12,18,.97);overflow-y:auto;pointer-events:all;padding-bottom:80px">
+    <!-- Header -->
+    <div style="position:sticky;top:0;background:#1a1a24;border-bottom:2px solid #fbbf24;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:2">
+      <div style="font-size:16px;font-weight:800;color:#fbbf24;font-family:'IBM Plex Sans',sans-serif;flex:1">? Help</div>
+      <button onclick="toggleHelpMode()" style="background:#fbbf24;border:none;color:#1a1f26;font-weight:800;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">✕ Close</button>
+    </div>
+    <div id="help-cards" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
+  <!-- Desktop mode banner -->
+  <div id="help-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);background:#fbbf24;color:#1a1f26;padding:6px 20px;border-radius:0 0 10px 10px;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;pointer-events:all;cursor:pointer;z-index:2002" onclick="toggleHelpMode()">
     ? HELP MODE — Hover any tool to learn · Click here to exit
   </div>
 </div>
@@ -1233,17 +1244,29 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Style</div>
     <div id="pt-style-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
-      <div class="pt-style-opt active" id="pts-filled"  onclick="selectPtStyle('filled')"  title="Filled circle">
+      <div class="pt-style-opt" id="pts-target"     onclick="selectPtStyle('target')"     title="Target/Crosshair">
+        <canvas width="40" height="40" id="ptc-target"></canvas><div>Target</div>
+      </div>
+      <div class="pt-style-opt" id="pts-filled"     onclick="selectPtStyle('filled')"     title="Filled circle">
         <canvas width="40" height="40" id="ptc-filled"></canvas><div>Filled</div>
       </div>
-      <div class="pt-style-opt" id="pts-ring"   onclick="selectPtStyle('ring')"    title="Ring">
+      <div class="pt-style-opt active" id="pts-ring"       onclick="selectPtStyle('ring')"       title="Ring">
         <canvas width="40" height="40" id="ptc-ring"></canvas><div>Ring</div>
       </div>
-      <div class="pt-style-opt" id="pts-cross"  onclick="selectPtStyle('cross')"   title="Crosshair">
+      <div class="pt-style-opt" id="pts-doublering" onclick="selectPtStyle('doublering')" title="Double ring">
+        <canvas width="40" height="40" id="ptc-doublering"></canvas><div>Bullseye</div>
+      </div>
+      <div class="pt-style-opt" id="pts-cross"      onclick="selectPtStyle('cross')"      title="Crosshair">
         <canvas width="40" height="40" id="ptc-cross"></canvas><div>Cross</div>
       </div>
-      <div class="pt-style-opt" id="pts-diamond" onclick="selectPtStyle('diamond')" title="Diamond">
+      <div class="pt-style-opt" id="pts-diamond"    onclick="selectPtStyle('diamond')"    title="Diamond">
         <canvas width="40" height="40" id="ptc-diamond"></canvas><div>Diamond</div>
+      </div>
+      <div class="pt-style-opt" id="pts-square"     onclick="selectPtStyle('square')"     title="Square">
+        <canvas width="40" height="40" id="ptc-square"></canvas><div>Square</div>
+      </div>
+      <div class="pt-style-opt" id="pts-pin"        onclick="selectPtStyle('pin')"        title="Pin">
+        <canvas width="40" height="40" id="ptc-pin"></canvas><div>Pin</div>
       </div>
     </div>
 
@@ -1293,7 +1316,7 @@ let imageLocked = false;
 
 // Pointer appearance
 let ptRadius = 5;   // inner dot radius (2–10)
-let ptStyle  = 'filled'; // 'filled' | 'ring' | 'cross' | 'diamond'
+let ptStyle  = 'ring'; // 'filled'|'ring'|'cross'|'diamond'|'target'|'pin'|'doublering'|'square'
 
 // ── View state ───────────────────────────────────────────────
 let zl = 1, panX = 0, panY = 0;
@@ -1671,36 +1694,71 @@ function drawSeg(a, b, color, lw) {
   ctx.strokeStyle = color; ctx.lineWidth = (lw || 2) / zl; ctx.stroke();
 }
 
-function drawDot(x, y, color) {
-  const r = ptRadius;
-  ctx.save();
-  if (ptStyle === 'filled') {
-    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
-  } else if (ptStyle === 'ring') {
-    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI*2);
-    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
-    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
-  } else if (ptStyle === 'cross') {
-    const s = r + 3;
-    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x, y+s); ctx.stroke();
-    ctx.strokeStyle = color; ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(x-s, y); ctx.lineTo(x+s, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x, y+s); ctx.stroke();
-  } else if (ptStyle === 'diamond') {
-    const s = r + 3;
-    ctx.beginPath(); ctx.moveTo(x, y-s); ctx.lineTo(x+s, y); ctx.lineTo(x, y+s); ctx.lineTo(x-s, y); ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
-    const si = r;
-    ctx.beginPath(); ctx.moveTo(x, y-si); ctx.lineTo(x+si, y); ctx.lineTo(x, y+si); ctx.lineTo(x-si, y); ctx.closePath();
-    ctx.fillStyle = color; ctx.fill();
+function drawDot(x, y, color) { _renderDot(ctx, x, y, color, ptRadius, ptStyle); }
+function _renderDot(c, x, y, color, r, style) {
+  c.save(); c.lineCap = 'round';
+  const W = 'rgba(255,255,255,.9)';
+  if (style === 'filled') {
+    c.beginPath(); c.arc(x,y,r+2.5,0,Math.PI*2); c.fillStyle=W; c.fill();
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=color; c.fill();
+  } else if (style === 'ring') {
+    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=2.5; c.stroke();
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.strokeStyle=color; c.lineWidth=2; c.stroke();
+  } else if (style === 'cross') {
+    const s=r+4;
+    c.strokeStyle=W; c.lineWidth=3;
+    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
+    c.strokeStyle=color; c.lineWidth=1.8;
+    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
+  } else if (style === 'diamond') {
+    const s=r+3;
+    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x+s,y); c.lineTo(x,y+s); c.lineTo(x-s,y); c.closePath();
+    c.fillStyle=W; c.fill();
+    c.beginPath(); c.moveTo(x,y-r); c.lineTo(x+r,y); c.lineTo(x,y+r); c.lineTo(x-r,y); c.closePath();
+    c.fillStyle=color; c.fill();
+  } else if (style === 'target') {
+    // Outer ring + crosshair lines + inner dot
+    const ro=r+6, ri=r+1;
+    c.beginPath(); c.arc(x,y,ro,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=2; c.stroke();
+    c.beginPath(); c.arc(x,y,ri,0,Math.PI*2); c.strokeStyle=color; c.lineWidth=1.5; c.stroke();
+    const gap=ri+1, arm=ro+5;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy])=>{
+      c.beginPath(); c.moveTo(x+dx*gap,y+dy*gap); c.lineTo(x+dx*arm,y+dy*arm);
+      c.strokeStyle=color; c.lineWidth=1.5; c.stroke();
+      c.beginPath(); c.moveTo(x+dx*gap,y+dy*gap); c.lineTo(x+dx*arm,y+dy*arm);
+      c.strokeStyle=W; c.lineWidth=3; c.stroke();
+      c.beginPath(); c.moveTo(x+dx*gap,y+dy*gap); c.lineTo(x+dx*arm,y+dy*arm);
+      c.strokeStyle=color; c.lineWidth=1.5; c.stroke();
+    });
+    c.beginPath(); c.arc(x,y,2,0,Math.PI*2); c.fillStyle=color; c.fill();
+  } else if (style === 'pin') {
+    // Teardrop / pin shape pointing up
+    const rp=r+2;
+    c.beginPath();
+    c.arc(x, y-rp, rp, Math.PI*0.15, Math.PI*0.85, true);
+    c.lineTo(x, y+rp*1.4);
+    c.closePath();
+    c.fillStyle=W; c.fill();
+    c.beginPath();
+    c.arc(x, y-rp, rp-2, Math.PI*0.2, Math.PI*0.8, true);
+    c.lineTo(x, y+rp*1.1);
+    c.closePath();
+    c.fillStyle=color; c.fill();
+    c.beginPath(); c.arc(x,y-rp,rp*0.35,0,Math.PI*2); c.fillStyle=W; c.fill();
+  } else if (style === 'doublering') {
+    c.beginPath(); c.arc(x,y,r+5,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=1.5; c.stroke();
+    c.beginPath(); c.arc(x,y,r+2,0,Math.PI*2); c.strokeStyle=color; c.lineWidth=2; c.stroke();
+    c.beginPath(); c.arc(x,y,r-1,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=1; c.stroke();
+    c.beginPath(); c.arc(x,y,1.5,0,Math.PI*2); c.fillStyle=color; c.fill();
+  } else if (style === 'square') {
+    const s=r+3;
+    c.beginPath(); c.rect(x-s-1.5,y-s-1.5,s*2+3,s*2+3); c.fillStyle=W; c.fill();
+    c.beginPath(); c.rect(x-s,y-s,s*2,s*2); c.fillStyle=color; c.fill();
+    c.beginPath(); c.arc(x,y,2,0,Math.PI*2); c.fillStyle=W; c.fill();
   }
-  ctx.restore();
+  c.restore();
 }
 
 function drawExtLine(a, b, color) {
@@ -2770,7 +2828,7 @@ function selectPtStyle(style) {
 }
 
 function drawPtStyleThumbs() {
-  ['filled','ring','cross','diamond'].forEach(style => {
+  ['target','filled','ring','doublering','cross','diamond','square','pin'].forEach(style => {
     const canvas = document.getElementById('ptc-' + style);
     if (!canvas) return;
     const c = canvas.getContext('2d'); c.clearRect(0,0,40,40);
@@ -2788,32 +2846,7 @@ function drawPtPreview() {
   });
 }
 
-function drawPtOnCtx(c, x, y, r, style, col) {
-  c.save();
-  if (style === 'filled') {
-    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.fillStyle='rgba(255,255,255,.8)'; c.fill();
-    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=col; c.fill();
-  } else if (style === 'ring') {
-    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.strokeStyle='rgba(255,255,255,.8)'; c.lineWidth=2.5; c.stroke();
-    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.strokeStyle=col; c.lineWidth=2; c.stroke();
-  } else if (style === 'cross') {
-    const s=r+3; c.lineCap='round';
-    c.strokeStyle='rgba(255,255,255,.8)'; c.lineWidth=3;
-    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
-    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
-    c.strokeStyle=col; c.lineWidth=1.8;
-    c.beginPath(); c.moveTo(x-s,y); c.lineTo(x+s,y); c.stroke();
-    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x,y+s); c.stroke();
-  } else if (style === 'diamond') {
-    const s=r+3;
-    c.beginPath(); c.moveTo(x,y-s); c.lineTo(x+s,y); c.lineTo(x,y+s); c.lineTo(x-s,y); c.closePath();
-    c.fillStyle='rgba(255,255,255,.8)'; c.fill();
-    c.beginPath(); c.moveTo(x,y-r); c.lineTo(x+r,y); c.lineTo(x,y+r); c.lineTo(x-r,y); c.closePath();
-    c.fillStyle=col; c.fill();
-  }
-  c.restore();
-}
-
+function drawPtOnCtx(c, x, y, r, style, col) { _renderDot(c, x, y, col, r, style); }
 // ── Templates ────────────────────────────────────────────────
 function initTemplateSrcs() {
   // Images pre-embedded — no desktop sidebar needed
@@ -3294,32 +3327,7 @@ function mobDrawLabel(o) {
 function mobDrawObj(o) { mobDrawGeometry(o); mobDrawLabel(o); }
 
 function mobSeg(a,b,c) { mobCtx.beginPath(); mobCtx.moveTo(a.x,a.y); mobCtx.lineTo(b.x,b.y); mobCtx.strokeStyle=c; mobCtx.lineWidth=2.5/mobZl; mobCtx.stroke(); }
-function mobDot(x, y, c) {
-  const r = ptRadius;
-  mobCtx.save();
-  if (ptStyle === 'filled') {
-    mobCtx.beginPath(); mobCtx.arc(x,y,r+3,0,Math.PI*2); mobCtx.fillStyle='rgba(255,255,255,.9)'; mobCtx.fill();
-    mobCtx.beginPath(); mobCtx.arc(x,y,r,0,Math.PI*2); mobCtx.fillStyle=c; mobCtx.fill();
-  } else if (ptStyle === 'ring') {
-    mobCtx.beginPath(); mobCtx.arc(x,y,r+3,0,Math.PI*2); mobCtx.strokeStyle='rgba(255,255,255,.9)'; mobCtx.lineWidth=2.5; mobCtx.stroke();
-    mobCtx.beginPath(); mobCtx.arc(x,y,r,0,Math.PI*2); mobCtx.strokeStyle=c; mobCtx.lineWidth=2; mobCtx.stroke();
-  } else if (ptStyle === 'cross') {
-    const s=r+3; mobCtx.lineCap='round';
-    mobCtx.strokeStyle='rgba(255,255,255,.9)'; mobCtx.lineWidth=3;
-    mobCtx.beginPath(); mobCtx.moveTo(x-s,y); mobCtx.lineTo(x+s,y); mobCtx.stroke();
-    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x,y+s); mobCtx.stroke();
-    mobCtx.strokeStyle=c; mobCtx.lineWidth=1.8;
-    mobCtx.beginPath(); mobCtx.moveTo(x-s,y); mobCtx.lineTo(x+s,y); mobCtx.stroke();
-    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x,y+s); mobCtx.stroke();
-  } else if (ptStyle === 'diamond') {
-    const s=r+3;
-    mobCtx.beginPath(); mobCtx.moveTo(x,y-s); mobCtx.lineTo(x+s,y); mobCtx.lineTo(x,y+s); mobCtx.lineTo(x-s,y); mobCtx.closePath();
-    mobCtx.fillStyle='rgba(255,255,255,.9)'; mobCtx.fill();
-    mobCtx.beginPath(); mobCtx.moveTo(x,y-r); mobCtx.lineTo(x+r,y); mobCtx.lineTo(x,y+r); mobCtx.lineTo(x-r,y); mobCtx.closePath();
-    mobCtx.fillStyle=c; mobCtx.fill();
-  }
-  mobCtx.restore();
-}
+function mobDot(x, y, c) { _renderDot(mobCtx, x, y, c, ptRadius, ptStyle); }
 function mobExtLine(a,b,c) {
   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy); if(!len)return;
   const ux=dx/len,uy=dy/len,ext=60;
@@ -6575,28 +6583,79 @@ const HELP_DATA = {
 };
 
 let helpModeActive = false;
-let _helpListeners = []; // store listeners for cleanup
+let _helpListeners = [];
+const _isMobile = () => window.innerWidth < 768 || 'ontouchstart' in window;
+
+// Flat list of help items for mobile card view
+const HELP_ITEMS = [
+  { icon:'✋', title:'Select / Pan',    body:'Tap to select points and labels. Drag points to adjust. Drag labels to reposition. Pan by dragging when in Select mode.' },
+  { icon:'∠',  title:'3-Point Angle',  body:'Places 3 points. The middle point is the vertex. Used for neck-shaft angle, CE angle, and most hip measurements.' },
+  { icon:'⊾',  title:'4-Point Angle',  body:'Two lines defined by 4 points. Angle at their intersection. Used for HKA, tibial slope, and Cobb-style angles.' },
+  { icon:'≋',  title:'Cobb Angle',     body:'Draw lines along the superior endplates of the upper and lower end vertebrae. Angle between perpendiculars = Cobb angle.' },
+  { icon:'↔',  title:'Distance',       body:'Straight-line distance between 2 points. Shows in mm when calibrated. Use for Insall-Salvati, limb-length discrepancy.' },
+  { icon:'✎',  title:'Annotate',       body:'Place a text label anywhere on the X-ray. Tap to place, then type. Double-tap any label to edit it later.' },
+  { icon:'✕',  title:'Erase',          body:'Tap any measurement to delete it. Only removes the tapped object — image and other measurements are unaffected.' },
+  { icon:'🦴',  title:'Load X-Ray',     body:'Load a built-in template (Hip/Knee) or upload a photo. JPEG, PNG, WebP supported. Avoid files over 25 MB.' },
+  { icon:'📏',  title:'Calibrate',      body:'Method A: place a line on a known object and enter its real size in mm. Method B: pick an anatomical landmark (e.g. femoral head 46mm) and draw across it.' },
+  { icon:'📋',  title:'Presets',        body:'15 pre-configured measurements across Hip, Knee and Spine. Each preset shows normal ranges, technique, and the source paper.' },
+  { icon:'📐',  title:'Results',        body:'All placed measurements with values. Tap any row to highlight it. Use the 180° toggle for supplementary angles. Edit labels here.' },
+  { icon:'🔩',  title:'Implants',       body:'Add plate overlays to the fracture fragment diagram. Choose from 6 plate types (DCP, LC-DCP, LCP, Recon) with calibrated hole spacing.' },
+  { icon:'🦴',  title:'AO Classifier',  body:'3-step classification wizard. Select bone → fracture type (A/B/C) → group (1/2/3). Tags the AO/OTA code onto the X-ray.' },
+  { icon:'🔀',  title:'Fracture Mapper',body:'3 steps: (1) Draw fracture lines on X-ray. (2) Set anatomical scale reference. (3) Generate fragment diagram. Drag fragments to reduce and add plates.' },
+  { icon:'↩',  title:'Undo',           body:'Removes the last action. Up to 50 steps of history per session. Keyboard: Ctrl+Z / Cmd+Z.' },
+  { icon:'↓',  title:'Export',         body:'Downloads the X-ray with all measurements as a PNG. On iOS, long-press the image to save to Photos.' },
+  { icon:'●',  title:'Point Style',    body:'Customise point appearance — choose from 8 styles (Target, Filled, Ring, Bullseye, Cross, Diamond, Square, Pin) and adjust size 2–14 px.' },
+  { icon:'🔍',  title:'Zoom',          body:'Pinch to zoom on mobile. Scroll wheel on desktop. Use +/- buttons. D-pad arrows appear when zoomed in.' },
+];
 
 function toggleHelpMode() {
   helpModeActive = !helpModeActive;
-  const overlay = document.getElementById('help-overlay');
-  const helpBtn  = document.getElementById('help-btn');
+  const overlay    = document.getElementById('help-overlay');
   const mobHelpBtn = document.getElementById('mob-help-btn');
+  const helpBtn    = document.getElementById('help-btn');
 
   if (helpModeActive) {
     overlay.style.display = 'block';
     overlay.style.pointerEvents = 'all';
-    if (helpBtn) { helpBtn.style.background='#fbbf24'; helpBtn.style.color='#1a1f26'; helpBtn.style.borderColor='#fbbf24'; }
     if (mobHelpBtn) { mobHelpBtn.style.background='#fbbf24'; mobHelpBtn.style.color='#1a1f26'; }
-    _attachHelpListeners();
+    if (helpBtn)    { helpBtn.style.background='#fbbf24'; helpBtn.style.color='#1a1f26'; }
+
+    if (_isMobile()) {
+      // Mobile: show scrollable card list
+      _buildHelpCards();
+      document.getElementById('help-sheet').style.display  = 'block';
+      document.getElementById('help-banner').style.display = 'none';
+      _detachHelpListeners();
+    } else {
+      // Desktop: hover tooltips
+      document.getElementById('help-sheet').style.display  = 'none';
+      document.getElementById('help-banner').style.display = 'block';
+      _attachHelpListeners();
+    }
   } else {
     overlay.style.display = 'none';
     overlay.style.pointerEvents = 'none';
     hideHelpTooltip();
-    if (helpBtn) { helpBtn.style.background=''; helpBtn.style.color=''; helpBtn.style.borderColor=''; }
+    document.getElementById('help-sheet').style.display  = 'none';
+    document.getElementById('help-banner').style.display = 'none';
     if (mobHelpBtn) { mobHelpBtn.style.background=''; mobHelpBtn.style.color=''; }
+    if (helpBtn)    { helpBtn.style.background=''; helpBtn.style.color=''; }
     _detachHelpListeners();
   }
+}
+
+function _buildHelpCards() {
+  const container = document.getElementById('help-cards');
+  if (!container) return;
+  container.innerHTML = HELP_ITEMS.map(item => `
+    <div style="background:#151922;border:1px solid rgba(251,191,36,.25);border-radius:12px;padding:14px 15px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+        <span style="font-size:20px;width:28px;text-align:center">${item.icon}</span>
+        <span style="font-size:13px;font-weight:700;color:#fbbf24;font-family:'IBM Plex Sans',sans-serif">${item.title}</span>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.75;font-family:'IBM Plex Sans',sans-serif;white-space:pre-line;padding-left:38px">${item.body}</div>
+    </div>
+  `).join('');
 }
 
 function _attachHelpListeners() {
@@ -6605,71 +6664,41 @@ function _attachHelpListeners() {
     document.querySelectorAll(selector).forEach(el => {
       const onEnter = (e) => { if (helpModeActive) showHelpTooltip(e, HELP_DATA[selector]); };
       const onLeave = ()  => { if (helpModeActive) hideHelpTooltip(); };
-      const onTap   = (e) => {
-        if (!helpModeActive) return;
-        e.preventDefault(); e.stopPropagation();
-        showHelpTooltip(e, HELP_DATA[selector]);
-      };
       el.addEventListener('mouseenter', onEnter);
       el.addEventListener('mouseleave', onLeave);
-      el.addEventListener('touchstart', onTap, { passive:false });
-      _helpListeners.push({ el, onEnter, onLeave, onTap });
+      _helpListeners.push({ el, onEnter, onLeave, onTap: null });
     });
   });
-  // Click anywhere on overlay (not on tooltip) exits help mode
-  const overlay = document.getElementById('help-overlay');
-  overlay._exitFn = (e) => {
-    if (e.target === overlay || e.target === document.getElementById('help-border')) toggleHelpMode();
-  };
-  overlay.addEventListener('click', overlay._exitFn);
 }
 
 function _detachHelpListeners() {
-  _helpListeners.forEach(({ el, onEnter, onLeave, onTap }) => {
+  _helpListeners.forEach(({ el, onEnter, onLeave }) => {
     el.removeEventListener('mouseenter', onEnter);
     el.removeEventListener('mouseleave', onLeave);
-    el.removeEventListener('touchstart', onTap);
   });
   _helpListeners = [];
 }
 
 function showHelpTooltip(e, data) {
-  const tt = document.getElementById('help-tooltip');
-  const ttTitle = document.getElementById('help-tooltip-title');
-  const ttBody  = document.getElementById('help-tooltip-body');
-  const ttTip   = document.getElementById('help-tooltip-tip');
-  const arrow   = document.getElementById('help-arrow');
-  if (!tt) return;
+  const tt = document.getElementById('help-tooltip'); if (!tt) return;
+  document.getElementById('help-tooltip-title').textContent = data.title;
+  document.getElementById('help-tooltip-body').innerHTML    = data.body;
+  const tipEl = document.getElementById('help-tooltip-tip');
+  tipEl.textContent  = data.tip || '';
+  tipEl.style.display = data.tip ? 'block' : 'none';
 
-  ttTitle.textContent = data.title;
-  ttBody.innerHTML    = data.body;
-  ttTip.textContent   = data.tip || '';
-  ttTip.style.display = data.tip ? 'block' : 'none';
-  tt.style.display    = 'block';
-
-  // Position tooltip near the element
   const rect = e.currentTarget.getBoundingClientRect();
-  const ttW  = 280, ttH = tt.offsetHeight || 120;
-  const vw   = window.innerWidth, vh = window.innerHeight;
-  let left, top, arrowPos;
-
-  // Try to place below, then above, then right
+  const ttW=280, ttH=tt.offsetHeight||120, vw=window.innerWidth, vh=window.innerHeight;
+  const arrow = document.getElementById('help-arrow');
+  let left, top;
   if (rect.bottom + ttH + 20 < vh) {
-    top  = rect.bottom + 12;
-    left = Math.min(Math.max(8, rect.left + rect.width/2 - ttW/2), vw - ttW - 8);
-    arrow.style.top = '-6px'; arrow.style.bottom = '';
-    arrow.style.left = (rect.left + rect.width/2 - left - 5) + 'px';
-    arrow.style.transform = 'rotate(135deg)';
+    top=rect.bottom+12; left=Math.min(Math.max(8,rect.left+rect.width/2-ttW/2),vw-ttW-8);
+    if(arrow){arrow.style.top='-6px';arrow.style.bottom='';arrow.style.left=(rect.left+rect.width/2-left-5)+'px';arrow.style.transform='rotate(135deg)';}
   } else {
-    top  = rect.top - ttH - 12;
-    left = Math.min(Math.max(8, rect.left + rect.width/2 - ttW/2), vw - ttW - 8);
-    arrow.style.bottom = '-6px'; arrow.style.top = '';
-    arrow.style.left = (rect.left + rect.width/2 - left - 5) + 'px';
-    arrow.style.transform = 'rotate(-45deg)';
+    top=rect.top-ttH-12; left=Math.min(Math.max(8,rect.left+rect.width/2-ttW/2),vw-ttW-8);
+    if(arrow){arrow.style.bottom='-6px';arrow.style.top='';arrow.style.left=(rect.left+rect.width/2-left-5)+'px';arrow.style.transform='rotate(-45deg)';}
   }
-  tt.style.left = left + 'px';
-  tt.style.top  = top  + 'px';
-  tt.style.display = 'block';
+  tt.style.left=left+'px'; tt.style.top=top+'px'; tt.style.display='block';
 }
 
 function hideHelpTooltip() {
@@ -6677,7 +6706,6 @@ function hideHelpTooltip() {
   if (tt) tt.style.display = 'none';
 }
 
-// Close help mode on Escape
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && helpModeActive) toggleHelpMode();
 });
