@@ -724,14 +724,12 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   background:var(--surface);border-top:2px solid var(--border);
   max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
 ">
-  <div style="display:flex;justify-content:center;padding:10px 0 6px">
+  <div style="display:flex;justify-content:center;padding:10px 0 4px">
     <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
   </div>
-
-  <!-- Measure section -->
-  <div style="padding:0 14px 4px">
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 0 10px">Measure</div>
-    <div class="mob-tool-grid" style="margin-bottom:4px">
+  <div style="padding:4px 14px 24px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 0 8px">Measure</div>
+    <div class="mob-tool-grid" style="margin-bottom:14px">
       <div class="mob-ti active" id="mti-select"   onclick="nvSetTool('select')">  <span class="mi">✋</span>Select</div>
       <div class="mob-ti"        id="mti-angle3"   onclick="nvSetTool('angle3')">  <span class="mi">∠</span>3-Pt Angle</div>
       <div class="mob-ti"        id="mti-angle4"   onclick="nvSetTool('angle4')">  <span class="mi">⊾</span>4-Pt Angle</div>
@@ -740,8 +738,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div class="mob-ti"        id="mti-annotate" onclick="nvSetTool('annotate')"><span class="mi">✎</span>Annotate</div>
       <div class="mob-ti"        id="mti-erase"    onclick="nvSetTool('erase')">   <span class="mi">✕</span>Erase</div>
     </div>
-    <!-- Colour picker row -->
-    <div style="padding:8px 0 12px;display:flex;gap:9px;align-items:center">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Colour</div>
+    <div style="display:flex;gap:9px;align-items:center;margin-bottom:16px">
       <div class="mob-sw sel" style="background:#3b82f6" onclick="mobPickCol('#3b82f6',this)"></div>
       <div class="mob-sw"     style="background:#ef4444" onclick="mobPickCol('#ef4444',this)"></div>
       <div class="mob-sw"     style="background:#22c55e" onclick="mobPickCol('#22c55e',this)"></div>
@@ -751,52 +749,35 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div class="mob-sw"     style="background:#06b6d4" onclick="mobPickCol('#06b6d4',this)"></div>
       <div class="mob-sw"     style="background:#f1f5f9;border:2px solid #334155" onclick="mobPickCol('#f1f5f9',this)"></div>
     </div>
-  </div>
-
-  <div style="height:1px;background:var(--border);margin:0 14px"></div>
-
-  <!-- Calibrate section -->
-  <div style="padding:0 14px">
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 8px">Calibrate</div>
+    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Advanced</div>
     <button onclick="nvClose();mobOpen('calib')" style="
-      width:100%;padding:12px 14px;border-radius:10px;
+      width:100%;padding:11px 14px;border-radius:10px;margin-bottom:8px;
       background:var(--panel);border:1px solid var(--border);
       color:var(--text);font-size:13px;font-weight:600;text-align:left;cursor:pointer;
-      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;
-    ">
-      <span style="font-size:18px">📏</span>
-      <div>
-        <div>Calibrate X-Ray</div>
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:16px">📏</span>
+      <div style="flex:1"><div>Calibrate</div>
         <div id="nv-calib-status" style="font-size:10px;color:var(--muted);margin-top:1px">Not calibrated</div>
       </div>
-      <span style="margin-left:auto;color:var(--muted)">›</span>
+      <span style="color:var(--muted)">›</span>
     </button>
-  </div>
-
-  <div style="height:1px;background:var(--border);margin:10px 14px"></div>
-
-  <!-- Advanced section -->
-  <div style="padding:0 14px 20px">
-    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Advanced</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button onclick="nvClose();mobOpen('implants')" style="
-        padding:14px 10px;border-radius:10px;
-        background:var(--panel);border:1px solid var(--border);
+        padding:14px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
         color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
         font-family:'IBM Plex Sans',sans-serif;text-align:center;
-        display:flex;flex-direction:column;align-items:center;gap:6px;
-      "><span style="font-size:22px">🔩</span>X-Ray Implants</button>
+        display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <span style="font-size:20px">🔩</span>Implants</button>
       <button onclick="nvClose();mobOpen('fracmap')" style="
-        padding:14px 10px;border-radius:10px;
-        background:var(--panel);border:1px solid var(--border);
+        padding:14px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--border);
         color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
         font-family:'IBM Plex Sans',sans-serif;text-align:center;
-        display:flex;flex-direction:column;align-items:center;gap:6px;
-      "><span style="font-size:22px">🔀</span>Fracture Mapping</button>
+        display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <span style="font-size:20px">🔀</span>Fracture</button>
     </div>
   </div>
 </div>
-
 <!-- ── Guide panel ── -->
 <div id="nv-panel-guide" style="
   display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
@@ -899,10 +880,11 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 </div>
 
 <!-- Overlay backdrop for new panels -->
-<div id="nv-backdrop" onclick="nvClose()" style="
-  display:none;position:fixed;inset:0;z-index:125;
-  background:rgba(0,0,0,.45);
-"></div>
+<div id="nv-backdrop"
+  onclick="nvClose();nvCloseActions()"
+  ontouchstart="nvClose();nvCloseActions()"
+  style="display:none;position:fixed;inset:0;z-index:125;background:rgba(0,0,0,.45);"
+></div>
 
 <div class="mob-sheet" id="msheet-xray">
   <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
@@ -7500,12 +7482,12 @@ function nvOpen(name) {
   const panel = document.getElementById('nv-panel-' + name);
   const backdrop = document.getElementById('nv-backdrop');
   if (panel) {
-    panel.style.display = name === 'results' ? 'flex' : 'block';
+    panel.style.display = (name === 'results' || name === 'tools') ? 'flex' : 'block';
     panel.classList.remove('nv-panel-close');
     void panel.offsetWidth; // reflow
     panel.classList.add('nv-panel-open');
   }
-  if (backdrop) backdrop.style.display = 'block';
+  if (backdrop) { backdrop.style.display='block'; backdrop.style.pointerEvents='all'; }
   // Update active state on bar buttons
   document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('mbb-' + name);
@@ -7530,7 +7512,7 @@ function nvClose(silent) {
   }
   _nvOpen = null;
   const backdrop = document.getElementById('nv-backdrop');
-  if (backdrop) backdrop.style.display = 'none';
+  if (backdrop) { backdrop.style.display='none'; backdrop.style.pointerEvents='none'; }
   document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
   nvCloseActions();
 }
@@ -7545,6 +7527,10 @@ function nvToggleActions() {
   tray.classList.remove('nv-tray-open'); void tray.offsetWidth;
   tray.classList.add('nv-tray-open');
   document.getElementById('mbb-actions')?.classList.add('active');
+  const _bd=document.getElementById('nv-backdrop');
+  if(_bd){_bd.style.display='block';_bd.style.pointerEvents='all';}
+  const bd = document.getElementById('nv-backdrop');
+  if (bd) bd.style.display = 'block';
   // Reset clear arm
   _nvClearArmed = false;
   const cb = document.getElementById('nv-clear-btn');
@@ -7563,6 +7549,8 @@ function nvCloseActions() {
   const tray = document.getElementById('nv-actions-tray');
   if (tray) tray.style.display = 'none';
   document.getElementById('mbb-actions')?.classList.remove('active');
+  // Hide backdrop if no panel is open
+  if (!_nvOpen) { const bd=document.getElementById('nv-backdrop'); if(bd) bd.style.display='none'; }
 }
 
 function nvClearTap() {
@@ -7647,6 +7635,20 @@ function nvDeleteObj(i) {
   nvUpdateResults();
   mobRedraw(); redraw();
 }
+function nvToolsTab(tab) {
+  ['measure','setup'].forEach(t => {
+    const body = document.getElementById('nvt-body-' + t);
+    const btn  = document.getElementById('nvt-tab-' + t);
+    const active = t === tab;
+    if (body) body.style.display = active ? 'block' : 'none';
+    if (btn) {
+      btn.style.background  = active ? 'var(--red)' : 'var(--panel)';
+      btn.style.color       = active ? '#fff' : 'var(--muted)';
+      btn.style.border      = active ? 'none' : '1px solid var(--border)';
+    }
+  });
+}
+
 function nvTogglePresets() {
   const body = document.getElementById('nv-presets-body');
   const chev = document.getElementById('nv-presets-chev');
