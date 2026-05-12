@@ -1938,6 +1938,32 @@ function lineIntersect(a, b, c, d) {
 
 function mp(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
 
+function smartLblPt(pts, type, zl) {
+  const OFF = 36 / (zl || 1);
+  if (type === 'angle3' && pts.length === 3) {
+    const mid = mp(pts[0], pts[2]);
+    const dx = mid.x - pts[1].x, dy = mid.y - pts[1].y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: mid.x + dx/len*OFF, y: mid.y + dy/len*OFF };
+  }
+  if ((type === 'angle4' || type === 'cobb') && pts.length === 4) {
+    const mid = midAll(pts);
+    const dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy/len, py = dx/len;
+    const side = py <= 0 ? 1 : -1;
+    return { x: mid.x + px*side*OFF, y: mid.y + py*side*OFF };
+  }
+  if (type === 'line' && pts.length === 2) {
+    const dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy/len, py = dx/len;
+    const side = py <= 0 ? 1 : -1;
+    return { x: mp(pts[0],pts[1]).x + px*side*OFF, y: mp(pts[0],pts[1]).y + py*side*OFF };
+  }
+  return midAll(pts);
+}
+
 function midAll(p) {
   return mp(mp(p[0], p[1]), mp(p[2] || p[1], p[3] || p[2] || p[1]));
 }
@@ -2281,16 +2307,16 @@ function drawObjLabel(o) {
   // Convert image-space point to screen for label position
   const sc = pt => ({ x: panX + pt.x * zl, y: panY + pt.y * zl });
   if (o.type === 'angle3' && p.length === 3) {
-    const mid = mp(p[0],p[2]); drawLabel(sc(mid), o.label, o.value, c, o);
+    drawLabel(sc(smartLblPt(p,'angle3',zl)), o.label, o.value, c, o);
   }
   else if (o.type === 'angle4' && p.length === 4) {
-    const mid = midAll(p); drawLabel(sc(mid), o.label, o.value, c, o);
+    drawLabel(sc(smartLblPt(p,o.type,zl)), o.label, o.value, c, o);
   }
   else if (o.type === 'cobb' && p.length === 4) {
-    const mid = midAll(p); drawLabel(sc(mid), o.label, o.value, c, o);
+    drawLabel(sc(smartLblPt(p,o.type,zl)), o.label, o.value, c, o);
   }
   else if (o.type === 'line' && p.length === 2) {
-    const mid = mp(p[0],p[1]); drawLabel(sc(mid), o.label, o.value, c, o);
+    drawLabel(sc(smartLblPt(p,'line',zl)), o.label, o.value, c, o);
   }
   else if (o.type === 'annotate') {
     drawAnnotLabel(sc(p[0]), o.text||'', c);
@@ -2302,9 +2328,9 @@ function drawObj(o) {
   drawObjGeometry(o);
   // Label drawn in same space when no image transform
   const p = o.points, c = o.color;
-  if (o.type==='angle3'&&p.length===3) drawLabel(mp(p[0],p[2]),o.label,o.value,c,o);
-  else if ((o.type==='angle4'||o.type==='cobb')&&p.length===4) drawLabel(midAll(p),o.label,o.value,c,o);
-  else if (o.type==='line'&&p.length===2) drawLabel(mp(p[0],p[1]),o.label,o.value,c,o);
+  if (o.type==='angle3'&&p.length===3) drawLabel(smartLblPt(p,'angle3',zl),o.label,o.value,c,o);
+  else if ((o.type==='angle4'||o.type==='cobb')&&p.length===4) drawLabel(smartLblPt(p,o.type,zl),o.label,o.value,c,o);
+  else if (o.type==='line'&&p.length===2) drawLabel(smartLblPt(p,'line',zl),o.label,o.value,c,o);
   else if (o.type==='annotate') drawAnnotLabel(p[0],o.text||'',c);
 }
 
@@ -3722,11 +3748,11 @@ function mobDrawLabel(o) {
     return sc(defaultImgPt);
   };
   if (o.type==='angle3' && p.length===3) {
-    mobLbl(getLblSc(mp(p[0],p[2])), o.label, o.value, c, o);
+    mobLbl(getLblSc(smartLblPt(p,'angle3',mobZl)), o.label, o.value, c, o);
   } else if ((o.type==='angle4'||o.type==='cobb') && p.length===4) {
-    mobLbl(getLblSc(midAll(p)), o.label, o.value, c, o);
+    mobLbl(getLblSc(smartLblPt(p,o.type,mobZl)), o.label, o.value, c, o);
   } else if (o.type==='line' && p.length===2) {
-    mobLbl(getLblSc(mp(p[0],p[1])), o.label, o.value, c, o);
+    mobLbl(getLblSc(smartLblPt(p,'line',mobZl)), o.label, o.value, c, o);
   } else if (o.type==='annotate') {
     const sp = sc(p[0]);
     mobCtx.fillStyle=c; mobCtx.font='600 12px IBM Plex Sans,sans-serif';
@@ -5024,42 +5050,31 @@ function _drawCombiHole(c, hx, hy, ph, s, lockOnRight) {
 }
 
 // ── Reconstruction plate ──────────────────────────────────────
-// Deep scalloping between holes — plate can be bent in all planes
+// Scalloped profile between holes — can be bent in multiple planes
 function _drawRecon(c, p, w, ph, col, str, s) {
   const n   = p._holes || p.defHoles;
   const sp  = p.holeSpacing * s;
   const cap = 10*s;
-  const notchDepth = ph * 0.38; // how deep the scallop cuts in
+  const wr  = ph * 0.36; // waist half-width at narrowest
+  const er  = ph / 2;    // end cap radius
 
-  // Draw as series of oval bosses connected by narrow waists
   c.fillStyle = col; c.strokeStyle = str; c.lineWidth = 1.2;
 
-  // Build outline: top flat + bottom scalloped
-  c.beginPath();
-  // Left end cap
-  c.arc(-w/2 + cap/2, 0, ph/2, Math.PI, -Math.PI/2);
+  // Simple approach: draw the plate as a rounded rect, then add visible
+  // scallop notches cut into both top and bottom edges between holes
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, er); c.fill(); c.stroke();
 
-  // Top edge straight
-  c.lineTo(w/2 - cap/2, -ph/2);
-
-  // Right end cap
-  c.arc(w/2 - cap/2, 0, ph/2, -Math.PI/2, Math.PI/2);
-
-  // Bottom edge — scalloped
-  for (let i = n-1; i >= 0; i--) {
-    const hx = -w/2 + cap + i*sp;
-    const nextHx = hx - sp;
-    if (i < n-1) {
-      // Concave scallop between holes
-      const mx = hx - sp/2;
-      c.lineTo(hx - sp*0.3, ph/2);
-      c.quadraticCurveTo(mx, ph/2 - notchDepth, hx - sp*0.7, ph/2);
-    }
+  // Cut notches between holes on top and bottom
+  const notchD = ph * 0.28, notchW = sp * 0.4;
+  c.fillStyle = 'rgba(0,0,0,.35)';
+  for (let i = 0; i < n - 1; i++) {
+    const mx = -w/2 + cap + i*sp + sp/2;
+    // Top notch
+    c.beginPath(); c.ellipse(mx, -ph/2 + notchD*0.4, notchW/2, notchD, 0, 0, Math.PI*2); c.fill();
+    // Bottom notch
+    c.beginPath(); c.ellipse(mx,  ph/2 - notchD*0.4, notchW/2, notchD, 0, 0, Math.PI*2); c.fill();
   }
-  c.lineTo(-w/2 + cap/2, ph/2);
-  c.closePath(); c.fill(); c.stroke();
-
-  // Round hole in each boss
+  // Holes
   c.fillStyle = '#0d1117';
   for (let i = 0; i < n; i++) {
     const hx = -w/2 + cap + i*sp;
@@ -5118,6 +5133,22 @@ function plateSVGThumb(p) {
     pts.push(`A${h/2},${h/2} 0 0 1 ${w-cap/2},0 Z`);
     const holes = Array.from({length:n},(_,i)=>`<circle cx="${cap+i*sp}" cy="${h/2}" r="${h*0.2}" fill="#0d1117"/>`).join('');
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${pts.join(' ')}" fill="${col}" stroke="#455a64" stroke-width="0.8"/>${holes}</svg>`;
+  }
+
+  if (p.shape === 'dhs') {
+    // Fixed viewBox — fits within 48×28 px thumb area
+    const ang = p.screwAngleDeg || 135;
+    const angR = -(90 - ang) * Math.PI / 180;
+    const W2=48, H2=28, cx=30, cy=18;
+    const blen=16, slen=blen+14;
+    const bex=cx+Math.cos(angR)*blen, bey=cy+Math.sin(angR)*blen;
+    const sex=cx+Math.cos(angR)*slen, sey=cy+Math.sin(angR)*slen;
+    return `<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}">
+      <rect x="${cx}" y="${cy-5}" width="${W2-cx}" height="10" rx="3" fill="${col}" stroke="#546e7a" stroke-width="0.8"/>
+      <line x1="${cx}" y1="${cy}" x2="${bex}" y2="${bey}" stroke="${col}" stroke-width="7" stroke-linecap="round"/>
+      <line x1="${cx}" y1="${cy}" x2="${sex}" y2="${sey}" stroke="${_svgLighten(col)}" stroke-width="3.5" stroke-linecap="round"/>
+      <text x="${(cx+W2)/2}" y="${cy+4}" text-anchor="middle" font-size="5.5" fill="#eceff1" font-family="sans-serif" font-weight="700">${ang}°</text>
+    </svg>`;
   }
 
   // DCP default
@@ -5959,8 +5990,8 @@ function implHitTest(pos) {
     const lx = cos*dx - sin*dy, ly = sin*dx + cos*dy;
     const rhx = w/2+22, rhy = -ph/2-22;
     if (Math.hypot(lx-rhx, ly-rhy) < 16) return { impl, mode:'rotate' };
-    if (Math.hypot(lx+w/2, ly) < 14) return { impl, mode:'resizeL' };
-    if (Math.hypot(lx-w/2, ly) < 14) return { impl, mode:'resizeR' };
+    if (Math.hypot(lx+w/2+11, ly) < 16) return { impl, mode:'resizeL' };
+    if (Math.hypot(lx-w/2-11, ly) < 16) return { impl, mode:'resizeR' };
     if (Math.abs(lx) <= w/2+4 && Math.abs(ly) <= ph/2+4) return { impl, mode:'move' };
   }
   return null;
@@ -7280,7 +7311,7 @@ function xiInitPlateGrid() {
   grid.innerHTML = PLATES.map(p => `
     <div class="plate-card" id="xip-${p.id}" onclick="xiPlaceImplant('${p.id}')"
          style="background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px 4px;cursor:pointer;text-align:center;transition:all .15s">
-      <div style="height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:2px">${plateSVGThumb(p)}</div>
+      <div style="height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;overflow:hidden">${plateSVGThumb(p)}</div>
       <div style="font-size:9px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
       <div style="font-size:8px;color:var(--muted)">${p.sub}</div>
     </div>`).join('');
@@ -7325,10 +7356,20 @@ function xiUpdateControls() {
     const _deg = (s.angle||0) * 180 / Math.PI;
     const rv = document.getElementById('xi-rot-val');  if(rv) rv.textContent = Math.round(_deg) + '°';
     const rs = document.getElementById('xi-rot-slider'); if(rs) rs.value = _deg;
-    const nh = s.plate._holes || s.plate.defHoles;
-    const hv = document.getElementById('xi-holes-val'); if(hv) hv.textContent = nh + 'h · ' + plateLength(s.plate) + 'mm';
-    const hs = document.getElementById('xi-holes-slider');
-    if(hs){ hs.min=s.plate.minHoles; hs.max=s.plate.maxHoles; hs.value=nh; }
+    const isDHS = s.plate.shape === 'dhs';
+    const holesRow = document.getElementById('xi-holes-row');
+    const screwRow = document.getElementById('xi-screw-row');
+    if (holesRow) holesRow.style.display = isDHS ? 'none' : 'block';
+    if (screwRow) screwRow.style.display = isDHS ? 'block' : 'none';
+    if (isDHS) {
+      const sl = s.plate._screwLength || 100;
+      const sv2 = document.getElementById('xi-screw-val'); if(sv2) sv2.textContent = sl + 'mm';
+      const ss2 = document.getElementById('xi-screw-slider'); if(ss2){ ss2.min=s.plate.minScrew||75; ss2.max=s.plate.maxScrew||130; ss2.value=sl; }
+    } else {
+      const nh = s.plate._holes || s.plate.defHoles;
+      const hv = document.getElementById('xi-holes-val'); if(hv) hv.textContent = nh + 'h · ' + plateLength(s.plate) + 'mm';
+      const hs = document.getElementById('xi-holes-slider'); if(hs){ hs.min=s.plate.minHoles; hs.max=s.plate.maxHoles; hs.value=nh; }
+    }
     const sv = document.getElementById('xi-scale-val'); if(sv) sv.textContent = (s.manualScale||1).toFixed(1) + '×';
     const ss = document.getElementById('xi-scale-slider'); if(ss) ss.value = Math.round((s.manualScale||1)*100);
   }
@@ -7342,6 +7383,7 @@ function xiUpdateControls() {
 
 function xiRotate(val)  { if(!xraySelImpl)return; xraySelImpl.angle=parseFloat(val)*Math.PI/180; document.getElementById('xi-rot-val').textContent=Math.round(val)+'°'; mobRedraw(); }
 function xiHoles(val)   { if(!xraySelImpl)return; const n=parseInt(val); xraySelImpl.plate._holes=n; document.getElementById('xi-holes-val').textContent=n+'h · '+plateLength(xraySelImpl.plate)+'mm'; mobRedraw(); }
+function xiScrew(val)   { if(!xraySelImpl)return; xraySelImpl.plate._screwLength=parseInt(val); const sv=document.getElementById('xi-screw-val'); if(sv) sv.textContent=val+'mm'; mobRedraw(); }
 function xiScale(val)   { if(!xraySelImpl)return; xraySelImpl.manualScale=val/100; document.getElementById('xi-scale-val').textContent=(val/100).toFixed(1)+'×'; mobRedraw(); }
 function xiDeleteSel()  { if(!xraySelImpl)return; xiDeleteUid(xraySelImpl.uid); }
 function xiDeleteUid(uid){ xrayImplants=xrayImplants.filter(i=>i.uid!==uid); if(xraySelImpl?.uid===uid) xraySelImpl=xrayImplants[0]||null; xiUpdateControls(); mobRedraw(); }
@@ -7374,11 +7416,18 @@ function xiDraw(ctx2) {
       ctx2.strokeStyle='#e88a84'; ctx2.lineWidth=2/mobZl; ctx2.stroke();
       ctx2.fillStyle='#e88a84'; ctx2.font=`bold ${14/mobZl}px sans-serif`;
       ctx2.textAlign='center'; ctx2.fillText('↻', rhx, rhy+5/mobZl); ctx2.textAlign='left';
-      // Resize handles
-      [-w/2, w/2].forEach(hx => {
-        ctx2.beginPath(); ctx2.arc(hx, 0, 8/mobZl, 0, Math.PI*2);
-        ctx2.fillStyle='#fff'; ctx2.fill();
+      // Resize handles — placed outside plate ends so they don't cover the plate
+      const hR = 8/mobZl;
+      [-(w/2 + hR + 2/mobZl), (w/2 + hR + 2/mobZl)].forEach(hx => {
+        ctx2.beginPath(); ctx2.arc(hx, 0, hR, 0, Math.PI*2);
+        ctx2.fillStyle='#1e2226'; ctx2.fill();
         ctx2.strokeStyle='#3b82f6'; ctx2.lineWidth=2/mobZl; ctx2.stroke();
+        // Arrow indicators
+        const dir = hx > 0 ? 1 : -1;
+        ctx2.fillStyle='#60a5fa'; ctx2.font=`bold ${10/mobZl}px sans-serif`;
+        ctx2.textAlign='center'; ctx2.textBaseline='middle';
+        ctx2.fillText(dir > 0 ? '›' : '‹', hx, 0);
+        ctx2.textBaseline='alphabetic';
       });
       // Label
       const nh = p._holes || p.defHoles;
@@ -7410,8 +7459,9 @@ function xiHitTest(imgX, imgY) {
     const rhx = w/2 + 22/mobZl, rhy = -ph/2 - 22/mobZl;
     if (Math.hypot(lx-rhx, ly-rhy) < 16/mobZl) return { impl, mode:'rotate' };
     // Resize handles
-    if (Math.hypot(lx+w/2, ly) < 12/mobZl) return { impl, mode:'resizeL' };
-    if (Math.hypot(lx-w/2, ly) < 12/mobZl) return { impl, mode:'resizeR' };
+    const _hR = 10/mobZl;
+    if (Math.hypot(lx + w/2 + _hR + 2/mobZl, ly) < 14/mobZl) return { impl, mode:'resizeL' };
+    if (Math.hypot(lx - w/2 - _hR - 2/mobZl, ly) < 14/mobZl) return { impl, mode:'resizeR' };
     // Body
     if (Math.abs(lx) <= w/2+6 && Math.abs(ly) <= ph/2+6) return { impl, mode:'move' };
   }
