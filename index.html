@@ -1725,8 +1725,9 @@ function _renderDot(c, x, y, color, r, style) {
     c.beginPath(); c.arc(x,y,r+2.5,0,Math.PI*2); c.fillStyle=W; c.fill();
     c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle=color; c.fill();
   } else if (style === 'ring') {
-    c.beginPath(); c.arc(x,y,r+3,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=2.5; c.stroke();
-    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.strokeStyle=color; c.lineWidth=2; c.stroke();
+    // Thin outer white halo, then thinner colored ring with big hollow
+    c.beginPath(); c.arc(x,y,r+6,0,Math.PI*2); c.strokeStyle=W; c.lineWidth=1.2; c.stroke();
+    c.beginPath(); c.arc(x,y,r+4,0,Math.PI*2); c.strokeStyle=color; c.lineWidth=1.5; c.stroke();
   } else if (style === 'cross') {
     const s=r+4;
     c.strokeStyle=W; c.lineWidth=3;
@@ -3504,6 +3505,11 @@ function initMobileEvents() {
         const dx = ts.x - mobDragLblStart.x, dy = ts.y - mobDragLblStart.y;
         mobDragLblStart = { x: ts.x, y: ts.y };
         const dix = dx / mobZl, diy = dy / mobZl;
+        if (!mobDragLbl.labelPos) {
+          const b = mobDragLbl._lblBox;
+          saveHistory();
+          mobDragLbl.labelPos = { x: (b ? b.x+b.w/2-mobOx : 0)/mobZl, y: (b ? b.y+b.h/2-mobOy : 0)/mobZl };
+        }
         mobDragLbl.labelPos.x += dix;
         mobDragLbl.labelPos.y += diy;
         mobRedraw(); return;
