@@ -2290,6 +2290,14 @@ function _initMouseEvents(canvas) {
     if (mobDragLbl && mobDragLblStart) {
       const dx=ts.x-mobDragLblStart.x, dy=ts.y-mobDragLblStart.y;
       mobDragLblStart={x:ts.x,y:ts.y};
+      if (!mobDragLbl.labelPos) {
+        const b=mobDragLbl._lblBox;
+        saveHistory();
+        const _sx = b ? b.x+b.w/2  : ts.x;
+        const _sy = b ? b.y+b.h+10 : ts.y;
+        mobDragLbl.labelPos={x:(_sx-mobOx)/mobZl, y:(_sy-mobOy)/mobZl};
+        mobRedraw(); return;
+      }
       mobDragLbl.labelPos.x+=dx/mobZl; mobDragLbl.labelPos.y+=dy/mobZl;
       mobRedraw(); return;
     }
@@ -3507,8 +3515,9 @@ function initMobileEvents() {
           // First move — anchor labelPos to current screen position, apply zero delta
           const b = mobDragLbl._lblBox;
           saveHistory();
-          mobDragLbl.labelPos = { x: (b ? b.x+b.w/2-mobOx : ts.x-mobOx)/mobZl,
-                                   y: (b ? b.y+b.h/2-mobOy : ts.y-mobOy)/mobZl };
+          const _scrX = b ? b.x+b.w/2    : ts.x;
+          const _scrY = b ? b.y+b.h+10   : ts.y;
+          mobDragLbl.labelPos = { x: (_scrX-mobOx)/mobZl, y: (_scrY-mobOy)/mobZl };
           mobRedraw(); return; // skip applying dx/dy on anchor frame
         }
         mobDragLbl.labelPos.x += dx / mobZl;
