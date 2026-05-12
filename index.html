@@ -6970,8 +6970,8 @@ function xiPlaceImplant(plateId) {
     uid: ++xiIdCounter, plateId,
     plate: p,
     x: cx, y: cy,
-    angleDeg: 0,
-    manualScale: 1.0,  // user fine-tune multiplier
+    angle: 0,          // radians (matches fracture system)
+    manualScale: 1.0,
   };
   xrayImplants.push(impl);
   xraySelImpl = impl;
@@ -6992,8 +6992,9 @@ function xiUpdateControls() {
   const s = xraySelImpl;
   if (s) {
     const nm = document.getElementById('xi-sel-name'); if(nm) nm.textContent = s.plate.name;
-    const rv = document.getElementById('xi-rot-val');  if(rv) rv.textContent = Math.round(s.angleDeg) + '°';
-    const rs = document.getElementById('xi-rot-slider'); if(rs) rs.value = s.angleDeg;
+    const _deg = (s.angle||0) * 180 / Math.PI;
+    const rv = document.getElementById('xi-rot-val');  if(rv) rv.textContent = Math.round(_deg) + '°';
+    const rs = document.getElementById('xi-rot-slider'); if(rs) rs.value = _deg;
     const nh = s.plate._holes || s.plate.defHoles;
     const hv = document.getElementById('xi-holes-val'); if(hv) hv.textContent = nh + 'h · ' + plateLength(s.plate) + 'mm';
     const hs = document.getElementById('xi-holes-slider');
@@ -7009,7 +7010,7 @@ function xiUpdateControls() {
   ).join('');
 }
 
-function xiRotate(val)  { if(!xraySelImpl)return; xraySelImpl.angleDeg=parseFloat(val); document.getElementById('xi-rot-val').textContent=Math.round(val)+'°'; mobRedraw(); }
+function xiRotate(val)  { if(!xraySelImpl)return; xraySelImpl.angle=parseFloat(val)*Math.PI/180; document.getElementById('xi-rot-val').textContent=Math.round(val)+'°'; mobRedraw(); }
 function xiHoles(val)   { if(!xraySelImpl)return; const n=parseInt(val); xraySelImpl.plate._holes=n; document.getElementById('xi-holes-val').textContent=n+'h · '+plateLength(xraySelImpl.plate)+'mm'; mobRedraw(); }
 function xiScale(val)   { if(!xraySelImpl)return; xraySelImpl.manualScale=val/100; document.getElementById('xi-scale-val').textContent=(val/100).toFixed(1)+'×'; mobRedraw(); }
 function xiDeleteSel()  { if(!xraySelImpl)return; xiDeleteUid(xraySelImpl.uid); }
@@ -7018,86 +7019,121 @@ function xiClearAll()   { xrayImplants=[]; xraySelImpl=null; xiUpdateControls();
 
 // ── Draw xray implants inside mobRedraw ───────────────────────
 // Called inside the image-space transform (mobCtx.translate(mobOx,mobOy); mobCtx.scale(mobZl,mobZl))
+// ── Xi draw (image-space, called inside mobCtx save/translate/scale block) ──
 function xiDraw(ctx2) {
   if (!xrayImplants.length) return;
-  const pxPerMm = calib.pxPerMm || 1; // fallback: 1px per mm (arbitrary size)
+  const pxPerMm = calib.pxPerMm || 1;
   xrayImplants.forEach(impl => {
-    const p  = impl.plate;
-    const w  = plateLength(p);      // mm
-    const ph = p.plateH;            // mm
-    const sc = pxPerMm * (impl.manualScale || 1); // canvas px per drawing unit (mm)
+    const p   = impl.plate;
+    // Convert mm → image-space pixels
+    const mmToPx = pxPerMm * (impl.manualScale || 1);
+    const w   = plateLength(p) * mmToPx;
+    const ph  = p.plateH      * mmToPx;
+    const isSel = impl === xraySelImpl;
     ctx2.save();
     ctx2.translate(impl.x, impl.y);
-    ctx2.rotate(impl.angleDeg * Math.PI / 180);
-    ctx2.scale(sc, sc);
-    const isSel = impl === xraySelImpl;
-    ctx2.globalAlpha = isSel ? 0.92 : 0.72;
-    drawImplantBody(ctx2, p, w, ph, isSel);
+    ctx2.rotate(impl.angle);          // angle in radians
+    ctx2.globalAlpha = isSel ? 0.95 : 0.75;
+    drawImplantBody(ctx2, p, w, ph, isSel, mmToPx);
+    ctx2.globalAlpha = 1;
     if (isSel) {
-      ctx2.globalAlpha = 1;
-      // Selection handles at corners
-      const hw = w/2, hh = ph/2;
-      [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].forEach(([hx,hy]) => {
-        ctx2.beginPath(); ctx2.arc(hx,hy,5/sc,0,Math.PI*2);
+      // Rotation handle (top-right of plate, same style as fracture diagram)
+      const rhx = w/2 + 22/mobZl, rhy = -ph/2 - 22/mobZl;
+      ctx2.beginPath(); ctx2.arc(rhx, rhy, 12/mobZl, 0, Math.PI*2);
+      ctx2.fillStyle='#1e2226'; ctx2.fill();
+      ctx2.strokeStyle='#e88a84'; ctx2.lineWidth=2/mobZl; ctx2.stroke();
+      ctx2.fillStyle='#e88a84'; ctx2.font=`bold ${14/mobZl}px sans-serif`;
+      ctx2.textAlign='center'; ctx2.fillText('↻', rhx, rhy+5/mobZl); ctx2.textAlign='left';
+      // Resize handles
+      [-w/2, w/2].forEach(hx => {
+        ctx2.beginPath(); ctx2.arc(hx, 0, 8/mobZl, 0, Math.PI*2);
         ctx2.fillStyle='#fff'; ctx2.fill();
-        ctx2.strokeStyle='rgba(0,0,0,.4)'; ctx2.lineWidth=1/sc; ctx2.stroke();
+        ctx2.strokeStyle='#3b82f6'; ctx2.lineWidth=2/mobZl; ctx2.stroke();
       });
-      // Rotation handle above centre
-      ctx2.beginPath(); ctx2.arc(0,-hh-12/sc,5/sc,0,Math.PI*2);
-      ctx2.fillStyle='#fbbf24'; ctx2.fill();
+      // Label
+      const nh = p._holes || p.defHoles;
+      ctx2.fillStyle='rgba(255,255,255,.85)'; ctx2.font=`bold ${10/mobZl}px IBM Plex Sans,sans-serif`;
+      ctx2.textAlign='center'; ctx2.fillText(`${nh} holes · ${plateLength(p)}mm`, 0, ph/2+14/mobZl);
+      if (calib.pxPerMm) {
+        ctx2.fillStyle='rgba(34,197,94,.7)'; ctx2.font=`${9/mobZl}px IBM Plex Mono,monospace`;
+        ctx2.fillText('(calibrated)', 0, ph/2+25/mobZl);
+      }
+      ctx2.textAlign='left';
     }
     ctx2.restore();
   });
 }
 
-// ── Hit test ─────────────────────────────────────────────────
+// ── Xi hit test (image-space coords) ─────────────────────────
 function xiHitTest(imgX, imgY) {
   const pxPerMm = calib.pxPerMm || 1;
-  // Iterate in reverse (top-most first)
   for (let i = xrayImplants.length-1; i >= 0; i--) {
     const impl = xrayImplants[i];
-    const p = impl.plate;
-    const sc = pxPerMm * (impl.manualScale || 1);
-    const w = plateLength(p) * sc, ph = p.plateH * sc;
-    const rad = impl.angleDeg * Math.PI / 180;
-    // Transform point to implant local space
+    const p    = impl.plate;
+    const mmToPx = pxPerMm * (impl.manualScale || 1);
+    const w  = plateLength(p) * mmToPx;
+    const ph = p.plateH      * mmToPx;
     const dx = imgX - impl.x, dy = imgY - impl.y;
-    const lx =  dx * Math.cos(rad) + dy * Math.sin(rad);
-    const ly = -dx * Math.sin(rad) + dy * Math.cos(rad);
+    const cos = Math.cos(-impl.angle), sin = Math.sin(-impl.angle);
+    const lx = cos*dx - sin*dy, ly = sin*dx + cos*dy;
     // Rotation handle
-    const rhY = -(ph/2 + 12);
-    if (Math.hypot(lx, ly - rhY) < 10) return { impl, mode:'rotate' };
+    const rhx = w/2 + 22/mobZl, rhy = -ph/2 - 22/mobZl;
+    if (Math.hypot(lx-rhx, ly-rhy) < 16/mobZl) return { impl, mode:'rotate' };
+    // Resize handles
+    if (Math.hypot(lx+w/2, ly) < 12/mobZl) return { impl, mode:'resizeL' };
+    if (Math.hypot(lx-w/2, ly) < 12/mobZl) return { impl, mode:'resizeR' };
     // Body
-    if (Math.abs(lx) <= w/2 + 6 && Math.abs(ly) <= ph/2 + 6) return { impl, mode:'move' };
+    if (Math.abs(lx) <= w/2+6 && Math.abs(ly) <= ph/2+6) return { impl, mode:'move' };
   }
   return null;
 }
 
-// ── Pointer interaction (called from _initMouseEvents + initMobileEvents) ──
-function xiPointerDown(imgX, imgY, scrX, scrY) {
+// ── Xi pointer handlers (image-space coords) ─────────────────
+function xiPointerDown(imgX, imgY) {
   const hit = xiHitTest(imgX, imgY);
   if (!hit) { xraySelImpl=null; xiUpdateControls(); mobRedraw(); return false; }
   xraySelImpl = hit.impl;
-  xiDrag = { uid: hit.impl.uid, mode: hit.mode,
-    startImgX:imgX, startImgY:imgY,
-    origX:hit.impl.x, origY:hit.impl.y,
-    origAngle:hit.impl.angleDeg };
+  const impl = hit.impl;
+  xiDrag = {
+    mode: hit.mode,
+    startX: imgX, startY: imgY,
+    origX: impl.x, origY: impl.y,
+    origAngle: impl.angle,
+    origHoles: impl.plate._holes || impl.plate.defHoles,
+    startAngle: Math.atan2(imgY - impl.y, imgX - impl.x),
+  };
   xiUpdateControls(); mobRedraw();
   return true;
 }
 
 function xiPointerMove(imgX, imgY) {
   if (!xiDrag) return false;
-  const impl = xrayImplants.find(i=>i.uid===xiDrag.uid); if(!impl) return false;
-  if (xiDrag.mode === 'move') {
-    impl.x = xiDrag.origX + (imgX - xiDrag.startImgX);
-    impl.y = xiDrag.origY + (imgY - xiDrag.startImgY);
-  } else if (xiDrag.mode === 'rotate') {
-    const da = Math.atan2(imgY - impl.y, imgX - impl.x) -
-               Math.atan2(xiDrag.startImgY - impl.y, xiDrag.startImgX - impl.x);
-    impl.angleDeg = xiDrag.origAngle + da * 180 / Math.PI;
-    const rv=document.getElementById('xi-rot-val'); if(rv) rv.textContent=Math.round(impl.angleDeg)+'°';
-    const rs=document.getElementById('xi-rot-slider'); if(rs) rs.value=impl.angleDeg;
+  const impl = xraySelImpl; if (!impl) return false;
+  const { mode, startX, startY, origX, origY, origAngle, origHoles, startAngle } = xiDrag;
+  const p = impl.plate;
+  const pxPerMm = calib.pxPerMm || 1;
+  const mmToPx  = pxPerMm * (impl.manualScale || 1);
+
+  if (mode === 'move') {
+    impl.x = origX + (imgX - startX);
+    impl.y = origY + (imgY - startY);
+  } else if (mode === 'rotate') {
+    const a2 = Math.atan2(imgY - impl.y, imgX - impl.x);
+    impl.angle = origAngle + (a2 - startAngle);
+    const deg = impl.angle * 180 / Math.PI;
+    const rv=document.getElementById('xi-rot-val'); if(rv) rv.textContent=Math.round(deg)+'°';
+    const rs=document.getElementById('xi-rot-slider'); if(rs) rs.value=deg;
+  } else if (mode === 'resizeR' || mode === 'resizeL') {
+    const dx = imgX - startX, dy = imgY - startY;
+    const cos = Math.cos(impl.angle), sin = Math.sin(impl.angle);
+    const localDx = cos*dx + sin*dy;
+    const sign = mode === 'resizeR' ? 1 : -1;
+    const origLen = p.holeSpacing * (origHoles-1) + 20;
+    const newLen  = Math.max(p.holeSpacing * p.minHoles, origLen + sign*localDx*2/mmToPx);
+    p._holes = Math.max(p.minHoles, Math.min(p.maxHoles, Math.round((newLen-20)/p.holeSpacing)+1));
+    const nh = p._holes;
+    const hv=document.getElementById('xi-holes-val'); if(hv) hv.textContent=nh+'h · '+plateLength(p)+'mm';
+    const hs=document.getElementById('xi-holes-slider'); if(hs) hs.value=nh;
   }
   mobRedraw(); return true;
 }
