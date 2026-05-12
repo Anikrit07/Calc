@@ -242,6 +242,9 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .impl-del { background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px; }
 .impl-del:hover { color:var(--red); }
 .pt-style-opt { background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 4px;cursor:pointer;text-align:center;transition:all .15s;font-size:9px;font-weight:700;color:var(--muted); }
+.pt-color-swatch { width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .1s;flex-shrink:0; }
+.pt-color-swatch:hover { transform:scale(1.15); }
+.pt-color-swatch.active { border-color:#fff;transform:scale(1.1); }
 .pt-style-opt:hover { border-color:var(--red);color:var(--text); }
 .pt-style-opt.active { border-color:var(--red);background:rgba(192,57,43,.12);color:#e88a84; }
 .pt-style-opt canvas { display:block;margin:0 auto 3px; }
@@ -1270,6 +1273,25 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       </div>
     </div>
 
+    <!-- Color picker -->
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Colour</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px" id="pt-color-swatches">
+      <div class="pt-color-swatch active" data-color="#3b82f6" style="background:#3b82f6" onclick="selectPtColor('#3b82f6',this)" title="Blue"></div>
+      <div class="pt-color-swatch" data-color="#ef4444" style="background:#ef4444" onclick="selectPtColor('#ef4444',this)" title="Red"></div>
+      <div class="pt-color-swatch" data-color="#22c55e" style="background:#22c55e" onclick="selectPtColor('#22c55e',this)" title="Green"></div>
+      <div class="pt-color-swatch" data-color="#f97316" style="background:#f97316" onclick="selectPtColor('#f97316',this)" title="Orange"></div>
+      <div class="pt-color-swatch" data-color="#a855f7" style="background:#a855f7" onclick="selectPtColor('#a855f7',this)" title="Purple"></div>
+      <div class="pt-color-swatch" data-color="#fbbf24" style="background:#fbbf24" onclick="selectPtColor('#fbbf24',this)" title="Yellow"></div>
+      <div class="pt-color-swatch" data-color="#06b6d4" style="background:#06b6d4" onclick="selectPtColor('#06b6d4',this)" title="Cyan"></div>
+      <div class="pt-color-swatch" data-color="#ec4899" style="background:#ec4899" onclick="selectPtColor('#ec4899',this)" title="Pink"></div>
+      <div class="pt-color-swatch" data-color="#ffffff" style="background:#ffffff" onclick="selectPtColor('#ffffff',this)" title="White"></div>
+      <!-- Custom colour input -->
+      <label style="width:28px;height:28px;border-radius:6px;border:2px solid var(--border);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Custom colour">
+        <input type="color" id="pt-color-custom" value="#3b82f6" style="width:36px;height:36px;border:none;background:none;cursor:pointer;opacity:0;position:absolute" oninput="selectPtColor(this.value,null)">
+        <span style="font-size:14px;pointer-events:none">+</span>
+      </label>
+    </div>
+
     <!-- Live preview -->
     <div style="text-align:center;margin-bottom:16px">
       <canvas id="pt-preview" width="120" height="60" style="background:var(--bg);border-radius:8px;border:1px solid var(--border)"></canvas>
@@ -1317,6 +1339,7 @@ let imageLocked = false;
 // Pointer appearance
 let ptRadius = 5;   // inner dot radius (2–10)
 let ptStyle  = 'ring'; // 'filled'|'ring'|'cross'|'diamond'|'target'|'pin'|'doublering'|'square'
+let ptColor  = '#3b82f6'; // default pointer color
 
 // ── View state ───────────────────────────────────────────────
 let zl = 1, panX = 0, panY = 0;
@@ -2236,7 +2259,10 @@ function _initMouseEvents(canvas) {
         if (o._lblBox) {
           const b=o._lblBox;
           if (ts.x>=b.x && ts.x<=b.x+b.w && ts.y>=b.y && ts.y<=b.y+b.h) {
-            saveHistory(); mobDragLbl=o; mobDragLblStart={x:ts.x,y:ts.y}; return;
+            saveHistory(); mobDragLbl=o; mobDragLblStart={x:ts.x,y:ts.y};
+            // Pre-init labelPos so first mousemove delta is 0 (no jump)
+            if (!o.labelPos) { const b=o._lblBox; o.labelPos={x:(b?b.x+b.w/2:ts.x-mobOx)/mobZl,y:(b?b.y+b.h/2:ts.y-mobOy)/mobZl}; }
+            return;
           }
         }
       }
@@ -2263,10 +2289,6 @@ function _initMouseEvents(canvas) {
     if (mobDragLbl && mobDragLblStart) {
       const dx=ts.x-mobDragLblStart.x, dy=ts.y-mobDragLblStart.y;
       mobDragLblStart={x:ts.x,y:ts.y};
-      if (!mobDragLbl.labelPos) {
-        const b=mobDragLbl._lblBox;
-        mobDragLbl.labelPos={x:(b?b.x+b.w/2:ts.x-mobOx)/mobZl, y:(b?b.y+b.h/2:ts.y-mobOy)/mobZl};
-      }
       mobDragLbl.labelPos.x+=dx/mobZl; mobDragLbl.labelPos.y+=dy/mobZl;
       mobRedraw(); return;
     }
@@ -2792,14 +2814,22 @@ function toggleImageLock() {
 // ── Pointer editor ────────────────────────────────────────────
 let _pendingPtRadius = ptRadius;
 let _pendingPtStyle  = ptStyle;
+let _pendingPtColor  = ptColor;
 
 function openPtEditor() {
   _pendingPtRadius = ptRadius;
   _pendingPtStyle  = ptStyle;
+  _pendingPtColor  = ptColor;
   document.getElementById('pt-size-slider').value = ptRadius;
   document.getElementById('pt-size-val').textContent = ptRadius + 'px';
   document.querySelectorAll('.pt-style-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('pts-' + ptStyle)?.classList.add('active');
+  // Sync color swatches
+  document.querySelectorAll('.pt-color-swatch').forEach(el => {
+    el.classList.toggle('active', el.dataset.color === ptColor);
+  });
+  const cc = document.getElementById('pt-color-custom');
+  if(cc) cc.value = ptColor;
   drawPtStyleThumbs();
   drawPtPreview();
   document.getElementById('pt-modal').classList.add('on');
@@ -2810,6 +2840,8 @@ function closePtEditor() { document.getElementById('pt-modal').classList.remove(
 function applyPtEditor() {
   ptRadius = _pendingPtRadius;
   ptStyle  = _pendingPtStyle;
+  ptColor  = _pendingPtColor;
+  col      = ptColor; // also set active drawing color
   closePtEditor();
   redraw(); if (typeof mobRedraw === 'function') mobRedraw();
 }
@@ -2824,6 +2856,17 @@ function selectPtStyle(style) {
   _pendingPtStyle = style;
   document.querySelectorAll('.pt-style-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('pts-' + style)?.classList.add('active');
+  drawPtStyleThumbs();
+  drawPtPreview();
+}
+
+function selectPtColor(color, el) {
+  _pendingPtColor = color;
+  document.querySelectorAll('.pt-color-swatch').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const cc = document.getElementById('pt-color-custom');
+  if(cc) cc.value = color;
+  drawPtStyleThumbs();
   drawPtPreview();
 }
 
@@ -2832,7 +2875,7 @@ function drawPtStyleThumbs() {
     const canvas = document.getElementById('ptc-' + style);
     if (!canvas) return;
     const c = canvas.getContext('2d'); c.clearRect(0,0,40,40);
-    drawPtOnCtx(c, 20, 20, 6, style, '#3b82f6');
+    drawPtOnCtx(c, 20, 20, 6, style, _pendingPtColor || ptColor);
   });
 }
 
@@ -2841,7 +2884,7 @@ function drawPtPreview() {
   const c = canvas.getContext('2d'); c.clearRect(0,0,120,60);
   c.fillStyle = '#050608'; c.fillRect(0,0,120,60);
   // Draw three dots in different colours
-  [['#3b82f6',25],['#ef4444',60],['#22c55e',95]].forEach(([col,x]) => {
+  [[_pendingPtColor,60]].forEach(([col,x]) => {
     drawPtOnCtx(c, x, 30, _pendingPtRadius, _pendingPtStyle, col);
   });
 }
@@ -3408,7 +3451,9 @@ function initMobileEvents() {
           if (o._lblBox) {
             const b = o._lblBox;
             if (ts.x >= b.x && ts.x <= b.x + b.w && ts.y >= b.y && ts.y <= b.y + b.h) {
-              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: ts.x, y: ts.y }; hitLbl = true; break;
+              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: ts.x, y: ts.y };
+              if (!o.labelPos) { const b=o._lblBox; o.labelPos={x:(b?b.x+b.w/2:ts.x-mobOx)/mobZl,y:(b?b.y+b.h/2:ts.y-mobOy)/mobZl}; }
+              hitLbl = true; break;
             }
           }
         }
@@ -3459,11 +3504,6 @@ function initMobileEvents() {
         const dx = ts.x - mobDragLblStart.x, dy = ts.y - mobDragLblStart.y;
         mobDragLblStart = { x: ts.x, y: ts.y };
         const dix = dx / mobZl, diy = dy / mobZl;
-        if (!mobDragLbl.labelPos) {
-          const b = mobDragLbl._lblBox;
-          const ssx = b ? b.x + b.w/2 : ts.x, ssy = b ? b.y + b.h/2 : ts.y;
-          mobDragLbl.labelPos = { x: (ssx - mobOx) / mobZl, y: (ssy - mobOy) / mobZl };
-        }
         mobDragLbl.labelPos.x += dix;
         mobDragLbl.labelPos.y += diy;
         mobRedraw(); return;
