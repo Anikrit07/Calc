@@ -1807,7 +1807,7 @@ function drawSeg(a, b, color, lw) {
   ctx.strokeStyle = color; ctx.lineWidth = (lw || 2) / zl; ctx.stroke();
 }
 
-function drawDot(x, y, color) { _renderDot(ctx, x, y, color, ptRadius, ptStyle); }
+function drawDot(x, y, color) { _renderDot(ctx, x, y, color, Math.max(2, ptRadius-2), 'filled'); }
 function _renderDot(c, x, y, color, r, style) {
   c.save(); c.lineCap = 'round';
   const W = 'rgba(255,255,255,.9)';
@@ -1910,21 +1910,29 @@ function drawAngleArc(a, b, c, color, supp) {
 }
 
 function drawAngleArc4(a, b, c, d, ix, color, supp) {
-  // For each line, pick the endpoint that is on the SAME side of the
-  // intersection as the drawn segment — i.e. the nearer endpoint.
-  // This ensures the arc is drawn in the correct anatomical quadrant.
-  const near1 = Math.hypot(a.x-ix.x,a.y-ix.y) < Math.hypot(b.x-ix.x,b.y-ix.y) ? a : b;
-  const near2 = Math.hypot(c.x-ix.x,c.y-ix.y) < Math.hypot(d.x-ix.x,d.y-ix.y) ? c : d;
-  const a1 = Math.atan2(near1.y - ix.y, near1.x - ix.x);
-  const a2 = Math.atan2(near2.y - ix.y, near2.x - ix.x);
-  let cwSpan = a1 - a2; while (cwSpan < 0) cwSpan += 2*Math.PI;
-  const smallIsCW = cwSpan <= Math.PI;
-  const acw = supp ? !smallIsCW : smallIsCW;
+  const dx1=b.x-a.x, dy1=b.y-a.y;
+  const dx2=d.x-c.x, dy2=d.y-c.y;
+  // ang4 measured value (degrees) — find the direction pair whose span matches
+  const dot=dx1*dx2+dy1*dy2;
+  const mag=Math.hypot(dx1,dy1)*Math.hypot(dx2,dy2);
+  const measured=Math.acos(Math.max(-1,Math.min(1,dot/mag)));
+  const dirs1=[{x:dx1,y:dy1},{x:-dx1,y:-dy1}];
+  const dirs2=[{x:dx2,y:dy2},{x:-dx2,y:-dy2}];
+  let best=null, bestDiff=999;
+  for(const r1 of dirs1) for(const r2 of dirs2){
+    const _a1=Math.atan2(r1.y,r1.x), _a2=Math.atan2(r2.y,r2.x);
+    let cw=_a1-_a2; while(cw<0)cw+=2*Math.PI;
+    const span=Math.min(cw,2*Math.PI-cw);
+    const diff=Math.abs(span-measured);
+    if(diff<bestDiff){bestDiff=diff;best={a1:_a1,a2:_a2,cw};}
+  }
+  if(!best)return;
+  const smallIsCW=best.cw<=Math.PI;
+  const acw=supp?!smallIsCW:smallIsCW;
   ctx.save();
-  ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .65;
-  ctx.beginPath();
-  ctx.arc(ix.x, ix.y, 24/zl, a1, a2, acw);
-  ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+  ctx.strokeStyle=color; ctx.lineWidth=1.5/zl; ctx.globalAlpha=.65;
+  ctx.beginPath(); ctx.arc(ix.x,ix.y,24/zl,best.a1,best.a2,acw);
+  ctx.stroke(); ctx.globalAlpha=1; ctx.restore();
 }
 
 function drawTickLine(a, b, color) {
@@ -2376,7 +2384,7 @@ function _initMouseEvents(canvas) {
   });
 
   canvas.addEventListener('mousemove', e => {
-    if (!_mouseDown) return;
+    if (!_mouseDown && !_desktopPickerDrag) return;
     e.preventDefault();
     const t  = mobGpt(mxy(e));
     const ts = mobGptScreen(mxy(e));
@@ -2403,7 +2411,7 @@ function _initMouseEvents(canvas) {
   });
 
   canvas.addEventListener('mouseup', e => {
-    if (!_mouseDown) return;
+    if (!_mouseDown && !_desktopPickerDrag) return;
     e.preventDefault(); _mouseDown=false;
 
     if (fm.drawing && fm.currentLine.length>=2) {
@@ -2415,6 +2423,7 @@ function _initMouseEvents(canvas) {
       fmRefConfirm(fm._refStart,mobGpt(mxy(e)),'mobile'); fm._refStart=null; mobRedraw(); return;
     }
     xiPointerUp();
+    _desktopPickerDrag = false;
     const wasDragPt=!!mobDragPt;
     mobPanning=false; mobPanStart=null;
     if (mobDragLbl) { mobDragLbl=null; mobDragLblStart=null; mobRedraw(); return; }
@@ -3448,14 +3457,24 @@ function mobDrawGeometry(o) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     const ix = lineIntersect(p[0],p[1],p[2],p[3]);
     if (ix) {
-      // Use nearest endpoint to intersection so arc is in correct anatomical quadrant
-      const mn1 = Math.hypot(p[0].x-ix.x,p[0].y-ix.y)<Math.hypot(p[1].x-ix.x,p[1].y-ix.y)?p[0]:p[1];
-      const mn2 = Math.hypot(p[2].x-ix.x,p[2].y-ix.y)<Math.hypot(p[3].x-ix.x,p[3].y-ix.y)?p[2]:p[3];
-      const a1=Math.atan2(mn1.y-ix.y,mn1.x-ix.x);
-      const a2=Math.atan2(mn2.y-ix.y,mn2.x-ix.x);
-      let cwSpan=a1-a2; while(cwSpan<0)cwSpan+=2*Math.PI;
-      const smallIsCW4 = cwSpan<=Math.PI;
-      const acw4 = o.showSupp ? !smallIsCW4 : smallIsCW4;
+      const _d1x=p[1].x-p[0].x,_d1y=p[1].y-p[0].y;
+      const _d2x=p[3].x-p[2].x,_d2y=p[3].y-p[2].y;
+      const _dot=_d1x*_d2x+_d1y*_d2y;
+      const _mag=Math.hypot(_d1x,_d1y)*Math.hypot(_d2x,_d2y);
+      const _meas=Math.acos(Math.max(-1,Math.min(1,_dot/_mag)));
+      const _dirs1=[{x:_d1x,y:_d1y},{x:-_d1x,y:-_d1y}];
+      const _dirs2=[{x:_d2x,y:_d2y},{x:-_d2x,y:-_d2y}];
+      let _best=null,_bestD=999;
+      for(const _r1 of _dirs1)for(const _r2 of _dirs2){
+        const _a1=Math.atan2(_r1.y,_r1.x),_a2=Math.atan2(_r2.y,_r2.x);
+        let _cw=_a1-_a2;while(_cw<0)_cw+=2*Math.PI;
+        const _sp=Math.min(_cw,2*Math.PI-_cw);
+        const _df=Math.abs(_sp-_meas);
+        if(_df<_bestD){_bestD=_df;_best={a1:_a1,a2:_a2,cw:_cw};}
+      }
+      const smallIsCW4=_best&&_best.cw<=Math.PI;
+      const acw4=o.showSupp?!smallIsCW4:smallIsCW4;
+      const a1=_best?_best.a1:0,a2=_best?_best.a2:0;
       mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.65;
       mobCtx.beginPath(); mobCtx.arc(ix.x,ix.y,arcR,a1,a2,acw4);
       mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
@@ -3499,7 +3518,7 @@ function mobDrawLabel(o) {
 function mobDrawObj(o) { mobDrawGeometry(o); mobDrawLabel(o); }
 
 function mobSeg(a,b,c) { mobCtx.beginPath(); mobCtx.moveTo(a.x,a.y); mobCtx.lineTo(b.x,b.y); mobCtx.strokeStyle=c; mobCtx.lineWidth=2.5/mobZl; mobCtx.stroke(); }
-function mobDot(x, y, c) { _renderDot(mobCtx, x, y, c, ptRadius, ptStyle); }
+function mobDot(x, y, c) { _renderDot(mobCtx, x, y, c, ptRadius, 'filled'); }
 function mobExtLine(a,b,c) {
   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy); if(!len)return;
   const ux=dx/len,uy=dy/len,ext=60;
@@ -3830,7 +3849,7 @@ function showPtPicker(nearby, screenX, screenY) {
     const name = item.o.label || item.o.type;
     const ptLabel = ['P1','P2','P3','P4'][item.idx] || `P${item.idx+1}`;
     const c = item.o.color;
-    return `<div ontouchstart="selectPt(${i},event)" style="
+    return `<div ontouchstart="selectPt(${i},event)" onclick="selectPt(${i},event);event.stopPropagation()" style="
       display:flex;align-items:center;gap:10px;padding:9px 10px;
       border-radius:7px;cursor:pointer;margin-bottom:4px;
       background:var(--panel);border:1px solid var(--border);
@@ -3856,7 +3875,13 @@ function showPtPicker(nearby, screenX, screenY) {
   picker.style.display = 'block';
 
   // Dismiss on outside tap
-  setTimeout(() => document.addEventListener('touchstart', dismissPtPicker, { once: true }), 100);
+  setTimeout(() => {
+    document.addEventListener('touchstart', dismissPtPicker, { once: true });
+  }, 100);
+  // For mouse: dismiss on next click OUTSIDE the picker
+  setTimeout(() => {
+    document.addEventListener('click', dismissPtPicker, { once: true });
+  }, 300);
 }
 
 function selectPt(i, e) {
@@ -3866,13 +3891,16 @@ function selectPt(i, e) {
   saveHistory();
   mobDragPt = { obj: item.o, idx: item.idx };
   mobShowLens = true;
-  // Set mpos to current touch position so lens appears immediately
-  if (e && e.touches && e.touches[0]) {
+  const isTouch = e && e.touches && e.touches[0];
+  if (isTouch) {
     mobMpos = mobGpt(e.touches[0]);
     mobPanning = false; mobPanStart = null;
+  } else {
+    // Desktop: flag allows mousemove/mouseup to process without _mouseDown
+    _desktopPickerDrag = true;
+    mobShowLens = true;
   }
   mobRedraw();
-  // Hint
   const badge = document.getElementById('mob-tool-badge');
   const prev = badge ? badge.textContent : '';
   if (badge) badge.textContent = 'DRAG TO MOVE POINT';
@@ -6928,6 +6956,7 @@ document.addEventListener('keydown', e => {
 let xrayImplants   = [];   // [{uid, plateId, plate, x, y, angleDeg, scale, manualScale}]
 let xraySelImpl    = null;
 let xiIdCounter    = 0;
+let _desktopPickerDrag = false; // set after picker selection on desktop
 let xiDrag         = null; // {uid, mode:'move'|'rotate', startX,startY, origX,origY,origAngle}
 let xiCalibOpen    = true;
 
