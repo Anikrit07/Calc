@@ -420,7 +420,7 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .mob-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 96px; /* 2 rows × 48px */
+  height: 48px; /* 1 row */
   background: var(--surface); border-top: 2px solid var(--border);
   display: flex; flex-direction: column;
   z-index: 110;
@@ -443,6 +443,27 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   background: rgba(0,0,0,.5);
 }
 .mob-backdrop.on { display: block; }
+
+/* Panel slide-up animation */
+@keyframes nvSlideUp   { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
+@keyframes nvSlideDown { from { transform:translateY(0);    opacity:1; } to { transform:translateY(100%); opacity:0; } }
+@keyframes nvTrayUp    { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.nv-panel-open  { animation: nvSlideUp   .22s cubic-bezier(.22,.68,0,1.2) forwards; }
+.nv-panel-close { animation: nvSlideDown .18s ease-in forwards; }
+.nv-tray-open   { animation: nvTrayUp    .18s cubic-bezier(.22,.68,0,1.1) forwards; }
+
+/* ── 3. Active bar indicator ── */
+.mob-bar-btn { position: relative; }
+.mob-bar-btn::after {
+  content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:0; height:2px; background:var(--red); border-radius:2px;
+  transition: width .2s ease;
+}
+.mob-bar-btn.active::after { width:24px; }
+
+/* ── 2. Tool tile tap flash ── */
+@keyframes tilePop { 0%{background:rgba(192,57,43,.35)} 100%{background:var(--panel)} }
+.mob-ti.pop { animation: tilePop .35s ease forwards; }
 .mob-sheet {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 130;
   background: var(--surface); border-top: 2px solid var(--red);
@@ -583,24 +604,42 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     </div>
   </div>
 
-  <!-- Mobile bottom bar — 2 rows -->
+  <!-- Mobile bottom bar — 1 row, 5 buttons -->
   <div class="mob-bar" id="mob-bar">
-    <!-- Row 1 -->
     <div class="mob-bar-row">
-      <button class="mob-bar-btn" id="mbb-xray"     onclick="mobOpen('xray')">    <span class="mi">🦴</span>X-Ray</button>
-      <button class="mob-bar-btn" id="mbb-tools"    onclick="mobOpen('tools')">   <span class="mi">⚙</span>Tools</button>
-      <button class="mob-bar-btn" id="mbb-presets"  onclick="mobOpen('presets')"> <span class="mi">📋</span>Presets</button>
-      <button class="mob-bar-btn" id="mbb-results"  onclick="mobOpen('results')"> <span class="mi">📐</span>Results</button>
-      <button class="mob-bar-btn"                   onclick="exportPNG()">        <span class="mi">↓</span>Export</button>
+      <button class="mob-bar-btn" id="mbb-xray"    onclick="mobOpen('xray')">
+        <span class="mi" style="font-size:18px;line-height:1.3">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="6" y1="7" x2="6" y2="7" stroke-width="0"/><line x1="18" y1="7" x2="18" y2="7" stroke-width="0"/>
+            <path d="M7 6 Q7 4 9 4 L15 4 Q17 4 17 6" fill="none"/>
+          </svg>
+        </span>Upload</button>
+      <button class="mob-bar-btn" id="mbb-tools"   onclick="nvOpen('tools')">       <span class="mi">⚙</span>Tools</button>
+      <button class="mob-bar-btn" id="mbb-guide"   onclick="nvOpen('guide')">       <span class="mi">📋</span>Guide</button>
+      <button class="mob-bar-btn" id="mbb-results" onclick="nvOpen('results')">     <span class="mi">📐</span>Results</button>
+      <button class="mob-bar-btn" id="mbb-actions" onclick="nvToggleActions()">     <span class="mi">⋯</span>Actions</button>
     </div>
-    <!-- Row 2 -->
-    <div class="mob-bar-row" style="border-top:1px solid var(--border)">
-      <button class="mob-bar-btn" id="mbb-implants" onclick="mobOpen('implants')"><span class="mi">🔩</span>Implants</button>
-      <button class="mob-bar-btn" id="mbb-ao"       onclick="mobOpen('ao')">      <span class="mi">🦴</span>AO Class.</button>
-      <button class="mob-bar-btn" id="mbb-calib"    onclick="mobOpen('calib')">   <span class="mi">📏</span>Calibrate</button>
-      <button class="mob-bar-btn" id="mbb-fracmap"  onclick="mobOpen('fracmap')"> <span class="mi">🔀</span>Fracture</button>
-      <button class="mob-bar-btn"                   onclick="clearAll()">         <span class="mi">🗑</span>Clear</button>
-    </div>
+  </div>
+
+  <!-- Actions tray (above bottom bar) -->
+  <div id="nv-actions-tray" style="
+    display:none;position:fixed;bottom:48px;right:0;left:0;z-index:115;
+    background:var(--surface);border-top:1px solid var(--border);
+    padding:10px 14px;gap:10px;
+  ">
+    <button onclick="exportPNG();nvCloseActions()" style="
+      flex:1;padding:12px;border-radius:10px;border:none;cursor:pointer;
+      background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.4);
+      color:#60a5fa;font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    ">↓ Export PNG</button>
+    <button id="nv-clear-btn" onclick="nvClearTap()" style="
+      flex:1;padding:12px;border-radius:10px;cursor:pointer;
+      background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);
+      color:#e88a84;font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    ">🗑 Clear All</button>
   </div>
 
 </div><!-- end #mob-ui -->
@@ -675,6 +714,196 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 </div>
 
 <!-- X-Ray sheet -->
+<!-- ════════════════════════════════════════════
+     NEW NAVIGATION PANELS
+════════════════════════════════════════════ -->
+
+<!-- ── Tools panel ── -->
+<div id="nv-panel-tools" style="
+  display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
+  background:var(--surface);border-top:2px solid var(--border);
+  max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
+">
+  <div style="display:flex;justify-content:center;padding:10px 0 6px">
+    <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+  </div>
+
+  <!-- Measure section -->
+  <div style="padding:0 14px 4px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 0 10px">Measure</div>
+    <div class="mob-tool-grid" style="margin-bottom:4px">
+      <div class="mob-ti active" id="mti-select"   onclick="nvSetTool('select')">  <span class="mi">✋</span>Select</div>
+      <div class="mob-ti"        id="mti-angle3"   onclick="nvSetTool('angle3')">  <span class="mi">∠</span>3-Pt Angle</div>
+      <div class="mob-ti"        id="mti-angle4"   onclick="nvSetTool('angle4')">  <span class="mi">⊾</span>4-Pt Angle</div>
+      <div class="mob-ti"        id="mti-cobb"     onclick="nvSetTool('cobb')">    <span class="mi">≋</span>Cobb</div>
+      <div class="mob-ti"        id="mti-line"     onclick="nvSetTool('line')">    <span class="mi">↔</span>Distance</div>
+      <div class="mob-ti"        id="mti-annotate" onclick="nvSetTool('annotate')"><span class="mi">✎</span>Annotate</div>
+      <div class="mob-ti"        id="mti-erase"    onclick="nvSetTool('erase')">   <span class="mi">✕</span>Erase</div>
+    </div>
+    <!-- Colour picker row -->
+    <div style="padding:8px 0 12px;display:flex;gap:9px;align-items:center">
+      <div class="mob-sw sel" style="background:#3b82f6" onclick="mobPickCol('#3b82f6',this)"></div>
+      <div class="mob-sw"     style="background:#ef4444" onclick="mobPickCol('#ef4444',this)"></div>
+      <div class="mob-sw"     style="background:#22c55e" onclick="mobPickCol('#22c55e',this)"></div>
+      <div class="mob-sw"     style="background:#eab308" onclick="mobPickCol('#eab308',this)"></div>
+      <div class="mob-sw"     style="background:#a855f7" onclick="mobPickCol('#a855f7',this)"></div>
+      <div class="mob-sw"     style="background:#f97316" onclick="mobPickCol('#f97316',this)"></div>
+      <div class="mob-sw"     style="background:#06b6d4" onclick="mobPickCol('#06b6d4',this)"></div>
+      <div class="mob-sw"     style="background:#f1f5f9;border:2px solid #334155" onclick="mobPickCol('#f1f5f9',this)"></div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:0 14px"></div>
+
+  <!-- Calibrate section -->
+  <div style="padding:0 14px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 8px">Calibrate</div>
+    <button onclick="nvClose();mobOpen('calib')" style="
+      width:100%;padding:12px 14px;border-radius:10px;
+      background:var(--panel);border:1px solid var(--border);
+      color:var(--text);font-size:13px;font-weight:600;text-align:left;cursor:pointer;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;
+    ">
+      <span style="font-size:18px">📏</span>
+      <div>
+        <div>Calibrate X-Ray</div>
+        <div id="nv-calib-status" style="font-size:10px;color:var(--muted);margin-top:1px">Not calibrated</div>
+      </div>
+      <span style="margin-left:auto;color:var(--muted)">›</span>
+    </button>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:10px 14px"></div>
+
+  <!-- Advanced section -->
+  <div style="padding:0 14px 20px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 0 8px">Advanced</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="nvClose();mobOpen('implants')" style="
+        padding:14px 10px;border-radius:10px;
+        background:var(--panel);border:1px solid var(--border);
+        color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
+        font-family:'IBM Plex Sans',sans-serif;text-align:center;
+        display:flex;flex-direction:column;align-items:center;gap:6px;
+      "><span style="font-size:22px">🔩</span>X-Ray Implants</button>
+      <button onclick="nvClose();mobOpen('fracmap')" style="
+        padding:14px 10px;border-radius:10px;
+        background:var(--panel);border:1px solid var(--border);
+        color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
+        font-family:'IBM Plex Sans',sans-serif;text-align:center;
+        display:flex;flex-direction:column;align-items:center;gap:6px;
+      "><span style="font-size:22px">🔀</span>Fracture Mapping</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Guide panel ── -->
+<div id="nv-panel-guide" style="
+  display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
+  background:var(--surface);border-top:2px solid var(--border);
+  max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;
+">
+  <div style="display:flex;justify-content:center;padding:10px 0 6px">
+    <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+  </div>
+
+  <!-- Presets section — collapsible like AO -->
+  <div style="padding:0 14px 4px">
+    <!-- Presets header — tap to expand/collapse -->
+    <button onclick="nvTogglePresets()" style="
+      width:100%;padding:12px 14px;border-radius:10px;margin-bottom:8px;
+      background:var(--panel);border:1px solid var(--border);
+      color:var(--text);font-size:13px;font-weight:600;text-align:left;cursor:pointer;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;
+    ">
+      <span style="font-size:18px">📋</span>
+      <div><div>Measurement Presets</div><div style="font-size:10px;color:var(--muted);margin-top:1px">15 measurements · Hip · Knee · Spine</div></div>
+      <span id="nv-presets-chev" style="margin-left:auto;color:var(--muted);transition:transform .2s">›</span>
+    </button>
+    <!-- Collapsible preset list -->
+    <div id="nv-presets-body" style="display:none">
+      <div class="mob-pcat" style="margin:0 -14px;padding-left:14px">Hip / Pelvis</div>
+      <div class="mob-pr" onclick="showPresetInfo('nsa')" >  <div class="mob-pd" style="background:#3b82f6"></div>Neck-Shaft Angle  <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('ce')">    <div class="mob-pd" style="background:#ef4444"></div>Center-Edge Angle <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('tonnis')"><div class="mob-pd" style="background:#eab308"></div>Tönnis Angle      <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('sharp')"> <div class="mob-pd" style="background:#a855f7"></div>Sharp's Angle     <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('acetab')"><div class="mob-pd" style="background:#22c55e"></div>Acetabular Index  <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('wiberg')"><div class="mob-pd" style="background:#f97316"></div>Wiberg / VCA      <span class="badge">3-pt</span></div>
+      <div class="mob-pcat" style="margin:0 -14px;padding-left:14px">Knee / Alignment</div>
+      <div class="mob-pr" onclick="showPresetInfo('hka')">     <div class="mob-pd" style="background:#3b82f6"></div>HKA Angle         <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('ldfa')">    <div class="mob-pd" style="background:#ef4444"></div>mLDFA             <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('mpta')">    <div class="mob-pd" style="background:#22c55e"></div>MPTA              <span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('tfa')">     <div class="mob-pd" style="background:#eab308"></div>Tibiofemoral Angle<span class="badge">3-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('tibslope')"><div class="mob-pd" style="background:#a855f7"></div>Tibial Slope      <span class="badge">4-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('insall')">  <div class="mob-pd" style="background:#f97316"></div>Insall-Salvati    <span class="badge">line</span></div>
+      <div class="mob-pcat" style="margin:0 -14px;padding-left:14px">Spine</div>
+      <div class="mob-pr" onclick="showPresetInfo('cobbs')">   <div class="mob-pd" style="background:#3b82f6"></div>Cobb Angle        <span class="badge">4-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('lordosis')"><div class="mob-pd" style="background:#ef4444"></div>Lumbar Lordosis   <span class="badge">4-pt</span></div>
+      <div class="mob-pr" onclick="showPresetInfo('cervical')"><div class="mob-pd" style="background:#22c55e"></div>Cervical Lordosis <span class="badge">4-pt</span></div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:8px 14px"></div>
+
+  <!-- AO Classifier -->
+  <div style="padding:0 14px 20px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 0 8px">Classification</div>
+    <button onclick="nvClose();mobOpen('ao')" style="
+      width:100%;padding:12px 14px;border-radius:10px;
+      background:var(--panel);border:1px solid var(--border);
+      color:var(--text);font-size:13px;font-weight:600;text-align:left;cursor:pointer;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;
+    ">
+      <span style="font-size:18px">🦴</span>
+      <div><div>AO/OTA Fracture Classifier</div><div style="font-size:10px;color:var(--muted);margin-top:1px">3-step wizard · 12 long bones</div></div>
+      <span style="margin-left:auto;color:var(--muted)">›</span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Results panel (full revamp) ── -->
+<div id="nv-panel-results" style="
+  display:none;position:fixed;left:0;right:0;bottom:48px;z-index:130;
+  background:var(--surface);border-top:2px solid var(--border);
+  max-height:85vh;display:none;flex-direction:column;border-radius:16px 16px 0 0;
+">
+  <div style="display:flex;justify-content:center;padding:10px 0 4px;flex-shrink:0">
+    <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+  </div>
+  <!-- Header row -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px 10px;flex-shrink:0;border-bottom:1px solid var(--border)">
+    <div style="font-size:14px;font-weight:700;color:var(--text)">Results</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div id="nv-supp-toggle" onclick="nvToggleSupp()" style="
+        font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;
+        background:var(--panel);border:1px solid var(--border);
+        border-radius:6px;padding:4px 8px;white-space:nowrap;
+      ">180° off</div>
+      <button onclick="nvClose()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+  </div>
+  <!-- Measurement cards list -->
+  <div id="nv-res-list" style="overflow-y:auto;flex:1;padding:10px 12px 8px">
+    <div style="padding:24px 0;text-align:center;color:var(--muted);font-size:12px">No measurements yet.</div>
+  </div>
+  <!-- Export button pinned at bottom -->
+  <div style="padding:10px 12px 12px;flex-shrink:0;border-top:1px solid var(--border)">
+    <button onclick="exportPNG();nvClose()" style="
+      width:100%;padding:14px;border-radius:10px;border:none;cursor:pointer;
+      background:linear-gradient(135deg,#1d4ed8,#2563eb);
+      color:#fff;font-size:14px;font-weight:700;
+      font-family:'IBM Plex Sans',sans-serif;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    ">↓ Export PNG</button>
+  </div>
+</div>
+
+<!-- Overlay backdrop for new panels -->
+<div id="nv-backdrop" onclick="nvClose()" style="
+  display:none;position:fixed;inset:0;z-index:125;
+  background:rgba(0,0,0,.45);
+"></div>
+
 <div class="mob-sheet" id="msheet-xray">
   <div class="mob-sheet-close-area" onclick="mobClose()" ontouchstart="mobClose()"><div class="mob-sheet-handle"></div></div>
   <div class="mob-sheet-title">Load X-Ray</div>
@@ -3334,7 +3563,7 @@ function mobResize() {
   // Size canvas to its actual rendered dimensions
   const canvasArea = document.getElementById('mob-canvas-area');
   mobW = mobCvs.width  = canvasArea ? canvasArea.clientWidth  : window.innerWidth;
-  mobH = mobCvs.height = canvasArea ? canvasArea.clientHeight : window.innerHeight - 48 - 96;
+  mobH = mobCvs.height = canvasArea ? canvasArea.clientHeight : window.innerHeight - 48 - 48;
 }
 
 function mobFitBg() {
@@ -3763,21 +3992,46 @@ function mobDrawLens(cx, cy) {
   if (ly < 0) ly = cy + LO;
   const half = LS / 2;
 
-  // Capture current scene into offscreen canvas
+  // Capture current scene into offscreen canvas (all coords in canvas pixel space)
   const off = document.createElement('canvas');
   off.width = mobW; off.height = mobH;
   const oc = off.getContext('2d');
   if (bgImage) oc.drawImage(bgImage, mobOx, mobOy, bgImage.width * mobZl, bgImage.height * mobZl);
-  // Draw objects onto offscreen
-  const prevCtx = mobCtx;
+
+  // Convert image-space point → canvas pixel space
+  const toScr = p => ({ x: mobOx + p.x * mobZl, y: mobOy + p.y * mobZl });
+
+  const dragObj = mobDragPt.obj, dragIdx = mobDragPt.idx;
+
   objs.forEach(o => {
-    const p = o.points, c = o.color;
-    oc.strokeStyle = c; oc.lineWidth = 2.5;
+    const pts = o.points.map(toScr);
+    const c = o.color;
+    oc.strokeStyle = c; oc.lineWidth = 2.5 * mobZl;
+
+    // Draw lines
     const s = (a,b) => { oc.beginPath(); oc.moveTo(a.x,a.y); oc.lineTo(b.x,b.y); oc.stroke(); };
-    const d = (x,y) => { oc.beginPath(); oc.arc(x,y,6,0,Math.PI*2); oc.fillStyle='rgba(255,255,255,.9)'; oc.fill(); oc.beginPath(); oc.arc(x,y,4,0,Math.PI*2); oc.fillStyle=c; oc.fill(); };
-    if (o.type==='angle3'&&p.length===3){ s(p[0],p[1]); s(p[1],p[2]); p.forEach(q=>d(q.x,q.y)); }
-    else if ((o.type==='angle4'||o.type==='cobb')&&p.length===4){ s(p[0],p[1]); s(p[2],p[3]); p.forEach(q=>d(q.x,q.y)); }
-    else if (o.type==='line'&&p.length===2){ s(p[0],p[1]); p.forEach(q=>d(q.x,q.y)); }
+    if (o.type==='angle3'  && pts.length===3){ s(pts[0],pts[1]); s(pts[1],pts[2]); }
+    else if ((o.type==='angle4'||o.type==='cobb') && pts.length===4){ s(pts[0],pts[1]); s(pts[2],pts[3]); }
+    else if (o.type==='line' && pts.length===2){ s(pts[0],pts[1]); }
+
+    // Draw points — highlight the one being dragged differently
+    pts.forEach((q, i) => {
+      const isDragPt = (o === dragObj && i === dragIdx);
+      const r = 5 * mobZl;
+      if (isDragPt) {
+        // Dragged point: bright white ring with red centre — shows at crosshair
+        oc.beginPath(); oc.arc(q.x,q.y,r+2,0,Math.PI*2);
+        oc.fillStyle='rgba(255,255,255,.95)'; oc.fill();
+        oc.beginPath(); oc.arc(q.x,q.y,r-1,0,Math.PI*2);
+        oc.fillStyle='#c0392b'; oc.fill();
+      } else {
+        // Other points: filled dot in measurement colour with white outline
+        oc.beginPath(); oc.arc(q.x,q.y,r+1,0,Math.PI*2);
+        oc.fillStyle='rgba(255,255,255,.85)'; oc.fill();
+        oc.beginPath(); oc.arc(q.x,q.y,r-1,0,Math.PI*2);
+        oc.fillStyle=c; oc.fill();
+      }
+    });
   });
 
   const srcSize = LS / LZ;
@@ -4363,6 +4617,7 @@ function mobLoadTpl(name) {
 
 // ── Sheets ───────────────────────────────────────────────────
 function mobOpen(name) {
+  if(name==='results'){nvOpen('results');return;}
   if (mobActiveSheet) { document.getElementById('msheet-'+mobActiveSheet)?.classList.remove('open'); }
   if (mobActiveSheet === name) { document.getElementById('mob-backdrop').classList.remove('on'); mobActiveSheet=null; return; }
   if (name === 'results')  mobUpdateResults();
@@ -4408,6 +4663,7 @@ function mobUpdateResults() {
       </div>
     </div>`).join('');
 }
+  if(typeof nvUpdateResults==='function') nvUpdateResults();
 
 function mobPickCol(c, el) {
   col = c;
@@ -7226,6 +7482,181 @@ function xiPointerUp() {
 }
 // ════════════════════════════════════════════════════════════
 // END X-RAY IMPLANT SYSTEM
+// ════════════════════════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════════
+// NEW NAVIGATION SYSTEM
+// ════════════════════════════════════════════════════════════
+let _nvOpen = null;      // currently open panel id
+let _nvSupp  = false;    // supplementary angle toggle
+let _nvClearArmed = false; // confirm-before-clear
+
+function nvOpen(name) {
+  // Toggle: tap same button twice to close
+  if (_nvOpen === name) { nvClose(); return; }
+  nvClose(true); // silent close
+  _nvOpen = name;
+  const panel = document.getElementById('nv-panel-' + name);
+  const backdrop = document.getElementById('nv-backdrop');
+  if (panel) {
+    panel.style.display = name === 'results' ? 'flex' : 'block';
+    panel.classList.remove('nv-panel-close');
+    void panel.offsetWidth; // reflow
+    panel.classList.add('nv-panel-open');
+  }
+  if (backdrop) backdrop.style.display = 'block';
+  // Update active state on bar buttons
+  document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mbb-' + name);
+  if (btn) btn.classList.add('active');
+  // Refresh results if opening results panel
+  if (name === 'results') nvUpdateResults();
+  // Update calib status in tools panel
+  if (name === 'tools') {
+    const s = document.getElementById('nv-calib-status');
+    if (s) s.textContent = calib.pxPerMm ? '✅ ' + calib.refName : 'Not calibrated';
+  }
+}
+
+function nvClose(silent) {
+  if (_nvOpen) {
+    const panel = document.getElementById('nv-panel-' + _nvOpen);
+    if (panel) {
+      panel.classList.remove('nv-panel-open');
+      panel.classList.add('nv-panel-close');
+      setTimeout(() => { panel.style.display='none'; panel.classList.remove('nv-panel-close'); }, 180);
+    }
+  }
+  _nvOpen = null;
+  const backdrop = document.getElementById('nv-backdrop');
+  if (backdrop) backdrop.style.display = 'none';
+  document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
+  nvCloseActions();
+}
+
+function nvToggleActions() {
+  const tray = document.getElementById('nv-actions-tray');
+  if (!tray) return;
+  const isOpen = tray.style.display === 'flex';
+  if (isOpen) { nvCloseActions(); return; }
+  nvClose(true);
+  tray.style.display = 'flex';
+  tray.classList.remove('nv-tray-open'); void tray.offsetWidth;
+  tray.classList.add('nv-tray-open');
+  document.getElementById('mbb-actions')?.classList.add('active');
+  // Reset clear arm
+  _nvClearArmed = false;
+  const cb = document.getElementById('nv-clear-btn');
+  if (cb) { cb.textContent = '🗑 Clear All'; cb.style.borderColor = 'rgba(192,57,43,.3)'; cb.style.color = '#e88a84'; }
+  // Close on outside tap after delay
+  setTimeout(() => document.addEventListener('touchstart', nvCloseActionsOutside, { once:true }), 100);
+  setTimeout(() => document.addEventListener('mousedown',  nvCloseActionsOutside, { once:true }), 100);
+}
+
+function nvCloseActionsOutside(e) {
+  const tray = document.getElementById('nv-actions-tray');
+  if (tray && !tray.contains(e.target)) nvCloseActions();
+}
+
+function nvCloseActions() {
+  const tray = document.getElementById('nv-actions-tray');
+  if (tray) tray.style.display = 'none';
+  document.getElementById('mbb-actions')?.classList.remove('active');
+}
+
+function nvClearTap() {
+  const btn = document.getElementById('nv-clear-btn');
+  if (!_nvClearArmed) {
+    _nvClearArmed = true;
+    if (btn) { btn.textContent = '⚠ Confirm Clear'; btn.style.borderColor = '#c0392b'; btn.style.color = '#fff'; btn.style.background = 'rgba(192,57,43,.4)'; }
+    setTimeout(() => {
+      _nvClearArmed = false;
+      if (btn) { btn.textContent = '🗑 Clear All'; btn.style.borderColor = 'rgba(192,57,43,.3)'; btn.style.color = '#e88a84'; btn.style.background = 'rgba(192,57,43,.1)'; }
+    }, 2500);
+  } else {
+    clearAll(); nvCloseActions();
+  }
+}
+
+function nvSetTool(t) {
+  mobSetTool(t);
+  document.querySelectorAll('.mob-ti').forEach(el => { el.classList.remove('active'); el.classList.remove('pop'); });
+  const tile = document.getElementById('mti-' + t);
+  if (tile) {
+    tile.classList.add('active');
+    tile.classList.add('pop');
+    setTimeout(() => tile.classList.remove('pop'), 360);
+  }
+  setTimeout(() => nvClose(), 120); // slight delay so flash is visible
+}
+
+function nvToggleSupp() {
+  _nvSupp = !_nvSupp;
+  // Apply to all objects
+  objs.forEach(o => { if(o.type==='angle3'||o.type==='angle4'||o.type==='cobb') o.showSupp = _nvSupp; });
+  redraw(); mobRedraw();
+  const btn = document.getElementById('nv-supp-toggle');
+  if (btn) btn.textContent = _nvSupp ? '180° on' : '180° off';
+  nvUpdateResults();
+}
+
+// ── Results cards ──────────────────────────────────────────
+function nvUpdateResults() {
+  const list = document.getElementById('nv-res-list');
+  if (!list) return;
+  if (!objs.length) {
+    list.innerHTML = '<div style="padding:28px 0;text-align:center;color:var(--muted);font-size:12px">No measurements yet.</div>';
+    return;
+  }
+  const typeIcon = {angle3:'∠',angle4:'⊾',cobb:'≋',line:'↔',annotate:'✎'};
+  list.innerHTML = objs.map((o, i) => {
+    const icon = typeIcon[o.type] || '●';
+    const label = o.label || (o.type === 'annotate' ? o.text || 'Note' : o.type);
+    const val   = o.value || '—';
+    const c     = o.color || '#3b82f6';
+    return `<div onclick="nvHighlight(${i})" style="
+      display:flex;align-items:center;gap:10px;
+      padding:11px 10px;margin-bottom:6px;border-radius:10px;
+      background:var(--panel);border:1px solid var(--border);
+      border-left:3px solid ${c};cursor:pointer;position:relative;
+    ">
+      <div style="font-size:18px;color:${c};width:22px;text-align:center;flex-shrink:0">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;color:${c};font-weight:700;margin-top:1px">${val}</div>
+      </div>
+      <button onclick="event.stopPropagation();nvDeleteObj(${i})" style="
+        background:none;border:none;color:rgba(255,255,255,.2);
+        font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;
+        transition:color .15s;
+      " onmouseenter="this.style.color='#e88a84'" onmouseleave="this.style.color='rgba(255,255,255,.2)'">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function nvHighlight(i) {
+  selObj = objs[i] || null;
+  mobRedraw(); redraw();
+}
+
+function nvDeleteObj(i) {
+  saveHistory();
+  objs.splice(i, 1);
+  selObj = null;
+  nvUpdateResults();
+  mobRedraw(); redraw();
+}
+function nvTogglePresets() {
+  const body = document.getElementById('nv-presets-body');
+  const chev = document.getElementById('nv-presets-chev');
+  if (!body) return;
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(90deg)';
+}
+// ════════════════════════════════════════════════════════════
+// END NEW NAVIGATION SYSTEM
 // ════════════════════════════════════════════════════════════
 
 // ── INIT ────────────────────────────────────────────────────
