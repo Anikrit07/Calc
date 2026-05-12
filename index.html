@@ -670,6 +670,36 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   </div>
 </div>
 
+<!-- DHS config bubble (floating over canvas) -->
+<div id="dhs-bubble" style="
+  display:none;position:fixed;z-index:200;
+  background:#13171e;border:1.5px solid rgba(201,168,76,.4);
+  border-radius:12px;padding:12px 14px;min-width:220px;
+  box-shadow:0 8px 32px rgba(0,0,0,.7);
+">
+  <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(201,168,76,.8);margin-bottom:8px">DHS Configuration</div>
+  <div style="font-size:9px;color:var(--muted);margin-bottom:4px">Angle</div>
+  <div style="display:flex;gap:4px;margin-bottom:10px">
+    <button onclick="dhsBubbleSetAngle(125)" id="dhsb-125" style="flex:1;padding:5px 2px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">125°</button>
+    <button onclick="dhsBubbleSetAngle(130)" id="dhsb-130" style="flex:1;padding:5px 2px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">130°</button>
+    <button onclick="dhsBubbleSetAngle(135)" id="dhsb-135" style="flex:1;padding:5px 2px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--red);color:#fff;border:1px solid var(--red)">135°</button>
+    <button onclick="dhsBubbleSetAngle(140)" id="dhsb-140" style="flex:1;padding:5px 2px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">140°</button>
+    <button onclick="dhsBubbleSetAngle(145)" id="dhsb-145" style="flex:1;padding:5px 2px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">145°</button>
+  </div>
+  <div style="font-size:9px;color:var(--muted);margin-bottom:4px">Side Plate Holes</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px">
+    <button onclick="dhsBubbleSetHoles(2)" id="dhsb-h2" style="flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--red);color:#fff;border:1px solid var(--red)">2h</button>
+    <button onclick="dhsBubbleSetHoles(3)" id="dhsb-h3" style="flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">3h</button>
+    <button onclick="dhsBubbleSetHoles(4)" id="dhsb-h4" style="flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;background:var(--panel);color:var(--muted);border:1px solid var(--border)">4h</button>
+  </div>
+  <div style="font-size:9px;color:var(--muted);margin-bottom:4px">Lag Screw Length</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <input type="range" id="dhsb-screw-slider" min="75" max="130" value="100" step="5"
+      style="flex:1;accent-color:var(--red)" oninput="dhsBubbleSetScrew(this.value)">
+    <span id="dhsb-screw-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);width:38px;text-align:right">100mm</span>
+  </div>
+</div>
+
 <!-- Help overlay — full-screen card list on mobile, hover tooltips on desktop -->
 <div id="help-overlay" style="display:none;position:fixed;inset:0;z-index:2000;pointer-events:none">
   <!-- Pulsing border -->
@@ -1140,7 +1170,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <div id="xi-no-calib-warn" style="display:none;font-size:11px;color:#f97316;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:7px;padding:8px 10px;margin-bottom:8px">
         ⚠ No calibration set — plate will be placed at arbitrary size. Calibrate first for accurate sizing.
       </div>
-      <div id="xi-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px"></div>
+      <div id="xi-plate-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px"></div>
+      <div id="xi-dhs-panel" style="display:none"></div>
     </div>
 
     <!-- ── STEP 3: CONTROLS (shown after plate placed) ── -->
@@ -1812,6 +1843,7 @@ const PLATES = [
   { id:'lcp-35',  name:'LCP 3.5mm',  sub:'Locking Compression', holeSpacing:13, plateH:11, color:'#607d8b', minHoles:4, maxHoles:14, defHoles:8, shape:'lcp'   },
   { id:'lcp-45',  name:'LCP 4.5mm',  sub:'Locking Compression', holeSpacing:16, plateH:16, color:'#455a64', minHoles:4, maxHoles:16, defHoles:8, shape:'lcp'   },
   { id:'recon',   name:'Recon Plate', sub:'Reconstruction',      holeSpacing:13, plateH:11, color:'#9e9e9e', minHoles:4, maxHoles:14, defHoles:8, shape:'recon' },
+  { id:'dhs', name:'DHS', sub:'Dynamic Hip Screw', holeSpacing:16, plateH:16, color:'#c9a96e', minHoles:2, maxHoles:4, defHoles:2, shape:'dhs', screwAngleDeg:135, _screwLength:100, minScrew:75, maxScrew:130 },
 ];
 
 // Compute plate total length from holes: end-caps 8mm each side
@@ -4446,12 +4478,12 @@ function mobZoomReset() { if(bgImage){mobFitBg();} updateMobDpad(); mobRedraw();
 
 // ── Mobile implant controls ───────────────────────────────────
 function mobInitPlateGrid() {
-  const html = PLATES.map(p => `
+  // Fracture diagram: standard plates only (DHS not relevant for fragment fixation planning)
+  const html = PLATES.filter(p => p.shape !== 'dhs').map(p => `
     <div onclick="mobPlaceImplant('${p.id}')" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 4px;cursor:pointer;text-align:center;transition:all .15s">
       <div style="height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:3px">${plateSVGThumb(p)}</div>
       <div style="font-size:8px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
     </div>`).join('');
-  // Populate all mob-plate-grid elements (old sheet + fracture sheet)
   document.querySelectorAll('#mob-plate-grid').forEach(g => g.innerHTML = html);
 }
 
@@ -4887,8 +4919,105 @@ function drawImplantBody(c, p, w, ph, isSel, s=1) {
     case 'lcdcp': _drawLCDCP(c, p, w, ph, col, str, s); break;
     case 'lcp':   _drawLCP(c, p, w, ph, col, str, s);   break;
     case 'recon': _drawRecon(c, p, w, ph, col, str, s); break;
+    case 'dhs':   _drawDHS(c, p, w, ph, col, str, s);   break;
     default:      _drawDCP(c, p, w, ph, col, str, s);   break; // dcp-35, dcp-45
   }
+}
+
+// ── DHS ───────────────────────────────────────────────────────
+// On hip AP X-ray: side plate runs vertically along lateral femoral shaft,
+// barrel projects medially/superiorly at plate angle into femoral neck,
+// lag screw slides through barrel into femoral head.
+//
+// In our coordinate system: plate long-axis = horizontal (x).
+// The lag screw runs from the plate's proximal end (left of plate) at angle
+// (screwAngleDeg) measured from the plate shaft — so 135° means the screw
+// goes up-left at 45° above the plate axis (as seen on hip AP).
+function _drawDHS(c, p, w, ph, col, str, s) {
+  const plateAngle = (p.screwAngleDeg || 135); // degrees from shaft
+  // Angle of screw relative to plate long-axis (pointing left = proximal)
+  const screwA = (180 - plateAngle) * Math.PI / 180; // screw goes up-left from plate end
+  const n    = Math.max(2, p._holes || p.defHoles);
+  const sp   = p.holeSpacing * s;
+  const cap  = 8 * s;
+  const barD = ph * 1.1;   // barrel outer diameter (wider than plate)
+  const barL = ph * 1.6;   // barrel length
+  const screwL = (p._screwLength || 100) * s;
+  const screwR = barD * 0.38; // screw radius
+
+  c.save();
+
+  // ── Lag screw (drawn first — behind barrel & plate) ──
+  c.save();
+  c.translate(-w/2, 0); // proximal plate end
+  c.rotate(-screwA);
+  // Screw shaft — smooth metallic cylinder
+  const grad = c.createLinearGradient(0, -screwR, 0, screwR);
+  grad.addColorStop(0, _lighten(col, 30));
+  grad.addColorStop(0.4, _lighten(col, 15));
+  grad.addColorStop(1, _darken(col, 10));
+  c.fillStyle = grad; c.strokeStyle = _darken(col, 20); c.lineWidth = 0.8*s;
+  c.beginPath(); c.roundRect(0, -screwR, screwL, screwR*2, screwR*0.4); c.fill(); c.stroke();
+  // Thread lines on distal 40%
+  const threadStart = screwL * 0.60;
+  c.strokeStyle = _darken(col, 35); c.lineWidth = 0.6*s;
+  const tStep = screwR * 1.6;
+  for (let tx = threadStart; tx < screwL - screwR*1.5; tx += tStep) {
+    c.beginPath(); c.moveTo(tx, -screwR-s); c.lineTo(tx+tStep*0.55, screwR+s); c.stroke();
+  }
+  // Helical thread tip — 4 lines at end
+  for (let i=0; i<4; i++) {
+    const tx = screwL - screwR*1.5 + i*(screwR*0.45);
+    c.beginPath(); c.moveTo(tx, -screwR-(s*1.5)); c.lineTo(tx+screwR*0.5, screwR+(s*1.5)); c.stroke();
+  }
+  // Trocar tip
+  c.fillStyle = _darken(col, 30);
+  c.beginPath(); c.moveTo(screwL, 0); c.lineTo(screwL - screwR*1.5, -screwR); c.lineTo(screwL - screwR*1.5, screwR); c.closePath(); c.fill();
+  c.restore();
+
+  // ── Side plate ──
+  const plateLighten = c.createLinearGradient(0, -ph/2, 0, ph/2);
+  plateLighten.addColorStop(0, _lighten(col, 18));
+  plateLighten.addColorStop(1, col);
+  c.fillStyle = plateLighten; c.strokeStyle = str; c.lineWidth = 1.5*s;
+  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, Math.min(ph*0.25, 4*s)); c.fill(); c.stroke();
+  // Longitudinal ridge
+  c.strokeStyle = _lighten(col, 20); c.lineWidth = 0.6*s;
+  c.beginPath(); c.moveTo(-w/2+cap*1.5, -ph*0.12); c.lineTo(w/2-cap, -ph*0.12); c.stroke();
+  c.beginPath(); c.moveTo(-w/2+cap*1.5,  ph*0.12); c.lineTo(w/2-cap,  ph*0.12); c.stroke();
+  // Cortical screws (oval holes from distal end)
+  c.fillStyle = '#0d1117';
+  for (let i = 0; i < n; i++) {
+    const hx = w/2 - cap - i*sp;
+    c.beginPath(); c.ellipse(hx, 0, ph*0.21, ph*0.15, 0, 0, Math.PI*2); c.fill();
+    // Boss ring
+    c.strokeStyle = _lighten(col, 15); c.lineWidth = 0.7*s;
+    c.beginPath(); c.ellipse(hx, 0, ph*0.31, ph*0.24, 0, 0, Math.PI*2); c.stroke();
+  }
+
+  // ── Barrel housing (proximal, covers screw entry) ──
+  c.save();
+  c.translate(-w/2, 0);
+  c.rotate(-screwA);
+  // Barrel tube
+  const barGrad = c.createLinearGradient(0, -barD/2, 0, barD/2);
+  barGrad.addColorStop(0, _lighten(col, 22));
+  barGrad.addColorStop(0.5, col);
+  barGrad.addColorStop(1, _darken(col, 12));
+  c.fillStyle = barGrad; c.strokeStyle = str; c.lineWidth = 1.3*s;
+  c.beginPath(); c.roundRect(0, -barD/2, barL, barD, barD*0.2); c.fill(); c.stroke();
+  // Barrel bore (dark oval at tip)
+  c.fillStyle = 'rgba(0,0,0,.5)';
+  c.beginPath(); c.ellipse(barL*0.85, 0, barD*0.22, barD*0.38, 0, 0, Math.PI*2); c.fill();
+  // Set screw on top of barrel
+  c.fillStyle = _darken(col, 15); c.strokeStyle = _darken(col, 25); c.lineWidth = 0.6*s;
+  c.beginPath(); c.rect(barL*0.3 - barD*0.18, -barD/2 - barD*0.25, barD*0.36, barD*0.28); c.fill(); c.stroke();
+  // Phillips slot
+  c.strokeStyle = '#0d1117'; c.lineWidth = 0.8*s;
+  c.beginPath(); c.moveTo(barL*0.3 - barD*0.06, -barD/2 - barD*0.25); c.lineTo(barL*0.3 - barD*0.06, -barD/2); c.stroke();
+  c.restore();
+
+  c.restore();
 }
 
 // ── DCP ───────────────────────────────────────────────────────
@@ -5136,18 +5265,17 @@ function plateSVGThumb(p) {
   }
 
   if (p.shape === 'dhs') {
-    // Fixed viewBox — fits within 48×28 px thumb area
     const ang = p.screwAngleDeg || 135;
-    const angR = -(90 - ang) * Math.PI / 180;
-    const W2=48, H2=28, cx=30, cy=18;
-    const blen=16, slen=blen+14;
-    const bex=cx+Math.cos(angR)*blen, bey=cy+Math.sin(angR)*blen;
-    const sex=cx+Math.cos(angR)*slen, sey=cy+Math.sin(angR)*slen;
+    const W2=48, H2=32, px=20, py=22, pw=26, ph2=8;
+    const sDir = Math.PI + (180-ang)*Math.PI/180;
+    const bLen=12, sLen=22;
+    const bex=(px+Math.cos(sDir)*bLen).toFixed(1), bey=(py+Math.sin(sDir)*bLen).toFixed(1);
+    const sex=(px+Math.cos(sDir)*sLen).toFixed(1), sey=(py+Math.sin(sDir)*sLen).toFixed(1);
     return `<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}">
-      <rect x="${cx}" y="${cy-5}" width="${W2-cx}" height="10" rx="3" fill="${col}" stroke="#546e7a" stroke-width="0.8"/>
-      <line x1="${cx}" y1="${cy}" x2="${bex}" y2="${bey}" stroke="${col}" stroke-width="7" stroke-linecap="round"/>
-      <line x1="${cx}" y1="${cy}" x2="${sex}" y2="${sey}" stroke="${_svgLighten(col)}" stroke-width="3.5" stroke-linecap="round"/>
-      <text x="${(cx+W2)/2}" y="${cy+4}" text-anchor="middle" font-size="5.5" fill="#eceff1" font-family="sans-serif" font-weight="700">${ang}°</text>
+      <line x1="${px}" y1="${py}" x2="${sex}" y2="${sey}" stroke="${_svgLighten(col)}" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="${px}" y1="${py}" x2="${bex}" y2="${bey}" stroke="${col}" stroke-width="7" stroke-linecap="round"/>
+      <rect x="${px}" y="${py-ph2/2}" width="${pw}" height="${ph2}" rx="2.5" fill="${col}" stroke="#546e7a" stroke-width="0.8"/>
+      <text x="${px+pw/2}" y="${py+3}" text-anchor="middle" font-size="5" fill="#eceff1" font-family="sans-serif" font-weight="700">${ang}°</text>
     </svg>`;
   }
 
@@ -7309,16 +7437,70 @@ function xiUpdateCalibStatus() {
 function xiInitPlateGrid() {
   const grid = document.getElementById('xi-plate-grid'); if (!grid) return;
   grid.innerHTML = PLATES.map(p => `
-    <div class="plate-card" id="xip-${p.id}" onclick="xiPlaceImplant('${p.id}')"
-         style="background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px 4px;cursor:pointer;text-align:center;transition:all .15s">
-      <div style="height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;overflow:hidden">${plateSVGThumb(p)}</div>
-      <div style="font-size:9px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
-      <div style="font-size:8px;color:var(--muted)">${p.sub}</div>
+    <div id="xip-${p.id}" onclick="${p.shape==='dhs' ? 'xiOpenDHSPanel()' : `xiPlaceImplant('${p.id}')`}"
+         style="background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:7px 5px;cursor:pointer;text-align:center;transition:border-color .15s,transform .1s;active:transform:scale(.95)">
+      <div style="height:26px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;overflow:hidden">${plateSVGThumb(p)}</div>
+      <div style="font-size:8.5px;font-weight:700;color:var(--text);line-height:1.2">${p.name}</div>
+      <div style="font-size:7.5px;color:var(--muted);margin-top:1px">${p.sub}</div>
     </div>`).join('');
   xiUpdateCalibStatus();
 }
 
-// ── Place implant ─────────────────────────────────────────────
+// ── DHS config sub-panel ──────────────────────────────────────
+let _xiDHSAngle = 135;
+let _xiDHSHoles = 2;
+
+function xiOpenDHSPanel() {
+  const panel = document.getElementById('xi-dhs-panel');
+  if (panel) { panel.style.display = 'block'; _xiRenderDHSPanel(); }
+}
+
+function _xiRenderDHSPanel() {
+  const p = document.getElementById('xi-dhs-panel'); if (!p) return;
+  p.innerHTML = `
+    <div style="background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px;margin-top:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">DHS Configuration</div>
+        <button onclick="document.getElementById('xi-dhs-panel').style.display='none'"
+          style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+      </div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Angle</div>
+      <div style="display:flex;gap:5px;margin-bottom:12px">
+        ${[125,130,135,140,145].map(a=>`<button onclick="_xiDHSAngle=${a};_xiRenderDHSPanel()" style="
+          flex:1;padding:6px 2px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;
+          font-family:'IBM Plex Sans',sans-serif;transition:all .15s;
+          background:${a===_xiDHSAngle?'var(--red)':'var(--panel)'};
+          color:${a===_xiDHSAngle?'#fff':'var(--muted)'};
+          border:1px solid ${a===_xiDHSAngle?'var(--red)':'var(--border)'}">${a}°</button>`).join('')}
+      </div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Side Plate Holes</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        ${[2,3,4].map(n=>`<button onclick="_xiDHSHoles=${n};_xiRenderDHSPanel()" style="
+          flex:1;padding:8px 2px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;
+          font-family:'IBM Plex Sans',sans-serif;transition:all .15s;
+          background:${n===_xiDHSHoles?'var(--red)':'var(--panel)'};
+          color:${n===_xiDHSHoles?'#fff':'var(--muted)'};
+          border:1px solid ${n===_xiDHSHoles?'var(--red)':'var(--border)'}">${n} hole${n>1?'s':''}</button>`).join('')}
+      </div>
+      <button onclick="xiPlaceDHS()" style="
+        width:100%;padding:11px;border-radius:9px;border:none;cursor:pointer;
+        background:linear-gradient(135deg,var(--red),#8b1a14);
+        color:#fff;font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;">
+        + Place DHS ${_xiDHSAngle}° · ${_xiDHSHoles}h</button>
+    </div>`;
+}
+
+function xiPlaceDHS() {
+  const plate = PLATES.find(p => p.shape === 'dhs');
+  if (!plate) return;
+  plate.screwAngleDeg = _xiDHSAngle;
+  plate.defHoles = _xiDHSHoles;
+  xiPlaceImplant('dhs');
+  document.getElementById('xi-dhs-panel').style.display = 'none';
+}
+
+
+
 function xiPlaceImplant(plateId) {
   const plate = PLATES.find(p => p.id === plateId); if (!plate) return;
   const p = { ...plate, _holes: plate.defHoles };
@@ -7470,6 +7652,7 @@ function xiHitTest(imgX, imgY) {
 
 // ── Xi pointer handlers (image-space coords) ─────────────────
 function xiPointerDown(imgX, imgY) {
+  dhsBubbleHide();
   const hit = xiHitTest(imgX, imgY);
   if (!hit) { xraySelImpl=null; xiUpdateControls(); mobRedraw(); return false; }
   xraySelImpl = hit.impl;
@@ -7518,8 +7701,18 @@ function xiPointerMove(imgX, imgY) {
   mobRedraw(); return true;
 }
 
-function xiPointerUp() {
-  if (xiDrag) { xiDrag=null; xiUpdateControls(); }
+function xiPointerUp(screenX, screenY) {
+  if (xiDrag) {
+    const wasDrag = Math.hypot(
+      (xiDrag.startX||0) - (xraySelImpl?.x||0),
+      (xiDrag.startY||0) - (xraySelImpl?.y||0)
+    ) > 3;
+    xiDrag=null; xiUpdateControls();
+    // Show DHS bubble on tap (not drag)
+    if (!wasDrag && xraySelImpl?.plate?.shape === 'dhs' && screenX !== undefined) {
+      dhsBubbleShow(screenX, screenY);
+    }
+  }
 }
 // ════════════════════════════════════════════════════════════
 // END X-RAY IMPLANT SYSTEM
@@ -7716,6 +7909,76 @@ function nvTogglePresets() {
   body.style.display = open ? 'none' : 'block';
   if (chev) chev.style.transform = open ? '' : 'rotate(90deg)';
 }
+// ── DHS on-canvas bubble ─────────────────────────────────────
+function dhsBubbleShow(screenX, screenY) {
+  const bubble = document.getElementById('dhs-bubble');
+  if (!bubble || !xraySelImpl || xraySelImpl.plate.shape !== 'dhs') return;
+  const p = xraySelImpl.plate;
+  // Position bubble near implant but keep on screen
+  const bw = 235, bh = 170;
+  let left = screenX + 20, top = screenY - bh/2;
+  if (left + bw > window.innerWidth - 10) left = screenX - bw - 20;
+  if (top < 10) top = 10;
+  if (top + bh > window.innerHeight - 60) top = window.innerHeight - 60 - bh;
+  bubble.style.left = left + 'px';
+  bubble.style.top  = top  + 'px';
+  bubble.style.display = 'block';
+  // Sync state
+  dhsBubbleSyncUI();
+}
+
+function dhsBubbleHide() {
+  const b = document.getElementById('dhs-bubble');
+  if (b) b.style.display = 'none';
+}
+
+function dhsBubbleSyncUI() {
+  if (!xraySelImpl) return;
+  const p = xraySelImpl.plate;
+  const ang = p.screwAngleDeg || 135;
+  const holes = p._holes || p.defHoles || 2;
+  const screw = p._screwLength || 100;
+  [125,130,135,140,145].forEach(a => {
+    const btn = document.getElementById('dhsb-'+a);
+    if (!btn) return;
+    const active = a === ang;
+    btn.style.background = active ? 'var(--red)' : 'var(--panel)';
+    btn.style.color      = active ? '#fff'       : 'var(--muted)';
+    btn.style.borderColor= active ? 'var(--red)' : 'var(--border)';
+  });
+  [2,3,4].forEach(n => {
+    const btn = document.getElementById('dhsb-h'+n);
+    if (!btn) return;
+    const active = n === holes;
+    btn.style.background = active ? 'var(--red)' : 'var(--panel)';
+    btn.style.color      = active ? '#fff'       : 'var(--muted)';
+    btn.style.borderColor= active ? 'var(--red)' : 'var(--border)';
+  });
+  const sl = document.getElementById('dhsb-screw-slider');
+  const sv = document.getElementById('dhsb-screw-val');
+  if (sl) sl.value = screw;
+  if (sv) sv.textContent = screw + 'mm';
+}
+
+function dhsBubbleSetAngle(ang) {
+  if (!xraySelImpl || xraySelImpl.plate.shape !== 'dhs') return;
+  xraySelImpl.plate.screwAngleDeg = ang;
+  dhsBubbleSyncUI(); mobRedraw();
+  // Refresh xi controls if open
+  if (typeof xiUpdateControls === 'function') xiUpdateControls();
+}
+function dhsBubbleSetHoles(n) {
+  if (!xraySelImpl || xraySelImpl.plate.shape !== 'dhs') return;
+  xraySelImpl.plate._holes = n;
+  dhsBubbleSyncUI(); mobRedraw();
+}
+function dhsBubbleSetScrew(val) {
+  if (!xraySelImpl || xraySelImpl.plate.shape !== 'dhs') return;
+  xraySelImpl.plate._screwLength = parseInt(val);
+  document.getElementById('dhsb-screw-val').textContent = val + 'mm';
+  mobRedraw();
+}
+
 // ════════════════════════════════════════════════════════════
 // END NEW NAVIGATION SYSTEM
 // ════════════════════════════════════════════════════════════
