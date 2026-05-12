@@ -3452,8 +3452,7 @@ function initMobileEvents() {
           if (o._lblBox) {
             const b = o._lblBox;
             if (ts.x >= b.x && ts.x <= b.x + b.w && ts.y >= b.y && ts.y <= b.y + b.h) {
-              saveHistory(); mobDragLbl = o; mobDragLblStart = { x: ts.x, y: ts.y };
-              if (!o.labelPos) { const b=o._lblBox; o.labelPos={x:(b?b.x+b.w/2:ts.x-mobOx)/mobZl,y:(b?b.y+b.h/2:ts.y-mobOy)/mobZl}; }
+              mobDragLbl = o; mobDragLblStart = { x: ts.x, y: ts.y };
               hitLbl = true; break;
             }
           }
@@ -3504,14 +3503,16 @@ function initMobileEvents() {
       if (mobDragLbl && mobDragLblStart) {
         const dx = ts.x - mobDragLblStart.x, dy = ts.y - mobDragLblStart.y;
         mobDragLblStart = { x: ts.x, y: ts.y };
-        const dix = dx / mobZl, diy = dy / mobZl;
         if (!mobDragLbl.labelPos) {
+          // First move — anchor labelPos to current screen position, apply zero delta
           const b = mobDragLbl._lblBox;
           saveHistory();
-          mobDragLbl.labelPos = { x: (b ? b.x+b.w/2-mobOx : 0)/mobZl, y: (b ? b.y+b.h/2-mobOy : 0)/mobZl };
+          mobDragLbl.labelPos = { x: (b ? b.x+b.w/2-mobOx : ts.x-mobOx)/mobZl,
+                                   y: (b ? b.y+b.h/2-mobOy : ts.y-mobOy)/mobZl };
+          mobRedraw(); return; // skip applying dx/dy on anchor frame
         }
-        mobDragLbl.labelPos.x += dix;
-        mobDragLbl.labelPos.y += diy;
+        mobDragLbl.labelPos.x += dx / mobZl;
+        mobDragLbl.labelPos.y += dy / mobZl;
         mobRedraw(); return;
       }
 
@@ -6666,18 +6667,11 @@ function toggleHelpMode() {
     if (mobHelpBtn) { mobHelpBtn.style.background='#fbbf24'; mobHelpBtn.style.color='#1a1f26'; }
     if (helpBtn)    { helpBtn.style.background='#fbbf24'; helpBtn.style.color='#1a1f26'; }
 
-    if (_isMobile()) {
-      // Mobile: show scrollable card list
-      _buildHelpCards();
-      document.getElementById('help-sheet').style.display  = 'block';
-      document.getElementById('help-banner').style.display = 'none';
-      _detachHelpListeners();
-    } else {
-      // Desktop: hover tooltips
-      document.getElementById('help-sheet').style.display  = 'none';
-      document.getElementById('help-banner').style.display = 'block';
-      _attachHelpListeners();
-    }
+    // Always show scrollable card list (same on mobile and desktop)
+    _buildHelpCards();
+    document.getElementById('help-sheet').style.display  = 'block';
+    document.getElementById('help-banner').style.display = 'none';
+    _detachHelpListeners();
   } else {
     overlay.style.display = 'none';
     overlay.style.pointerEvents = 'none';
