@@ -1312,7 +1312,6 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       <button class="btn-cx" onclick="cancelCalibModal()">Cancel</button>
       <button class="btn-ok" onclick="confirmCalibModal()">✓ Apply &amp; Measure</button>
     </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:10px;text-align:center">After applying, the line tool will activate so you can draw your measurement immediately.</div>
   </div>
 </div>
 
@@ -2492,9 +2491,7 @@ function handleCalibFinish(lineObj) {
       const el = document.getElementById(id);
       if (el) { el.textContent = `✅ 1mm = ${(calib.refPx/mm).toFixed(1)}px`; el.style.color='var(--green)'; }
     });
-    col = '#ef4444'; setTool('line');
-    const badge = document.getElementById('mob-tool-badge');
-    if (badge) badge.textContent = 'DRAW DISTANCE LINE';
+    setTool('select');
     return;
   }
 
@@ -2515,12 +2512,7 @@ function confirmCalibModal() {
   const name = `${mm} mm`;
   closeCalibModal();
   _applyCalib(mm, name);
-  // Auto-switch to line tool so user can immediately measure
-  col = '#ef4444';
-  setTool('line');
-  // Hint
-  const badge = document.getElementById('mob-tool-badge');
-  if (badge) badge.textContent = 'DRAW DISTANCE LINE';
+  setTool('select');
 }
 
 function quickCalibPreset(mm) {
