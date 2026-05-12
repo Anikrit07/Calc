@@ -1894,14 +1894,14 @@ function drawExtLine(a, b, color) {
 function drawAngleArc(a, b, c, color, supp) {
   const a1 = Math.atan2(a.y - b.y, a.x - b.x);
   const a2 = Math.atan2(c.y - b.y, c.x - b.x);
-  // Clockwise span (a1→a2 CW)
+  // CW span from a1 to a2
   let cwSpan = a1 - a2; while (cwSpan < 0) cwSpan += 2*Math.PI;
-  // Counterclockwise span
-  let ccwSpan = 2*Math.PI - cwSpan;
-  // The measured angle (from ang3) is the smaller of the two spans
-  // acw=false means CW (smaller span if cwSpan < PI)
-  const useCW = cwSpan <= Math.PI; // CW gives the acute/measured angle
-  const acw = supp ? useCW : !useCW; // flip direction for supplement
+  // Draw the SMALLER arc for the measured angle, larger for supplement
+  // acw=true means counter-clockwise in canvas coords (y-down)
+  // CW span <= PI means going CW (acw=false) gives the small arc
+  const smallIsCW = cwSpan <= Math.PI;
+  // y-down canvas: CCW (acw=true) covers the small CW-span arc
+  const acw = supp ? !smallIsCW : smallIsCW;
   ctx.save();
   ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .65;
   ctx.beginPath();
@@ -1910,11 +1910,16 @@ function drawAngleArc(a, b, c, color, supp) {
 }
 
 function drawAngleArc4(a, b, c, d, ix, color, supp) {
-  const a1 = Math.atan2(a.y - ix.y, a.x - ix.x);
-  const a2 = Math.atan2(c.y - ix.y, c.x - ix.x);
+  // For each line, pick the endpoint that is on the SAME side of the
+  // intersection as the drawn segment — i.e. the nearer endpoint.
+  // This ensures the arc is drawn in the correct anatomical quadrant.
+  const near1 = Math.hypot(a.x-ix.x,a.y-ix.y) < Math.hypot(b.x-ix.x,b.y-ix.y) ? a : b;
+  const near2 = Math.hypot(c.x-ix.x,c.y-ix.y) < Math.hypot(d.x-ix.x,d.y-ix.y) ? c : d;
+  const a1 = Math.atan2(near1.y - ix.y, near1.x - ix.x);
+  const a2 = Math.atan2(near2.y - ix.y, near2.x - ix.x);
   let cwSpan = a1 - a2; while (cwSpan < 0) cwSpan += 2*Math.PI;
-  const useCW = cwSpan <= Math.PI;
-  const acw = supp ? useCW : !useCW;
+  const smallIsCW = cwSpan <= Math.PI;
+  const acw = supp ? !smallIsCW : smallIsCW;
   ctx.save();
   ctx.strokeStyle = color; ctx.lineWidth = 1.5/zl; ctx.globalAlpha = .65;
   ctx.beginPath();
@@ -3433,21 +3438,26 @@ function mobDrawGeometry(o) {
     const a1=Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x);
     const a2=Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x);
     let cwSpan=a1-a2; while(cwSpan<0)cwSpan+=2*Math.PI;
-    const acw = o.showSupp ? cwSpan<=Math.PI : cwSpan>Math.PI;
+    const smallIsCW3 = cwSpan<=Math.PI;
+    const acw3 = o.showSupp ? !smallIsCW3 : smallIsCW3;
     mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.65;
-    mobCtx.beginPath(); mobCtx.arc(p[1].x,p[1].y,arcR,a1,a2,acw);
+    mobCtx.beginPath(); mobCtx.arc(p[1].x,p[1].y,arcR,a1,a2,acw3);
     mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     p.forEach(q=>mobDot(q.x,q.y,c));
   } else if (o.type==='angle4' && p.length===4) {
     mobSeg(p[0],p[1],c); mobSeg(p[2],p[3],c);
     const ix = lineIntersect(p[0],p[1],p[2],p[3]);
     if (ix) {
-      const a1=Math.atan2(p[0].y-ix.y,p[0].x-ix.x);
-      const a2=Math.atan2(p[2].y-ix.y,p[2].x-ix.x);
+      // Use nearest endpoint to intersection so arc is in correct anatomical quadrant
+      const mn1 = Math.hypot(p[0].x-ix.x,p[0].y-ix.y)<Math.hypot(p[1].x-ix.x,p[1].y-ix.y)?p[0]:p[1];
+      const mn2 = Math.hypot(p[2].x-ix.x,p[2].y-ix.y)<Math.hypot(p[3].x-ix.x,p[3].y-ix.y)?p[2]:p[3];
+      const a1=Math.atan2(mn1.y-ix.y,mn1.x-ix.x);
+      const a2=Math.atan2(mn2.y-ix.y,mn2.x-ix.x);
       let cwSpan=a1-a2; while(cwSpan<0)cwSpan+=2*Math.PI;
-      const acw = o.showSupp ? cwSpan<=Math.PI : cwSpan>Math.PI;
+      const smallIsCW4 = cwSpan<=Math.PI;
+      const acw4 = o.showSupp ? !smallIsCW4 : smallIsCW4;
       mobCtx.save(); mobCtx.strokeStyle=c; mobCtx.lineWidth=1.5/mobZl; mobCtx.globalAlpha=.65;
-      mobCtx.beginPath(); mobCtx.arc(ix.x,ix.y,arcR,a1,a2,acw);
+      mobCtx.beginPath(); mobCtx.arc(ix.x,ix.y,arcR,a1,a2,acw4);
       mobCtx.stroke(); mobCtx.globalAlpha=1; mobCtx.restore();
     }
     p.forEach(q=>mobDot(q.x,q.y,c));
