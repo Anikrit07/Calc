@@ -670,6 +670,17 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   </div>
 </div>
 
+<!-- Fragment picker (for overlapping fragments in diagram) -->
+<div id="fm-frag-picker" style="
+  display:none;position:fixed;z-index:300;
+  background:#13171e;border:1.5px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:6px;min-width:140px;
+  box-shadow:0 8px 24px rgba(0,0,0,.7);
+">
+  <div style="font-size:9px;color:var(--muted);padding:4px 6px 6px;letter-spacing:1px;text-transform:uppercase">Select fragment</div>
+  <div id="fm-frag-picker-list"></div>
+</div>
+
 <!-- DHS config bubble (floating over canvas) -->
 <div id="dhs-bubble" style="
   display:none;position:fixed;z-index:200;
@@ -698,6 +709,45 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
       style="flex:1;accent-color:var(--red)" oninput="dhsBubbleSetScrew(this.value)">
     <span id="dhsb-screw-val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);width:38px;text-align:right">100mm</span>
   </div>
+</div>
+
+<!-- ── Persistent Canvas FABs ── -->
+<div id="fab-fracture" style="
+  display:none;position:fixed;bottom:62px;right:12px;z-index:200;
+  align-items:center;gap:8px;
+">
+  <div style="
+    background:rgba(10,12,18,.9);border:1px solid rgba(255,255,255,.15);
+    border-radius:20px;padding:5px 11px;font-size:10px;font-weight:700;
+    color:rgba(255,255,255,.65);white-space:nowrap;
+    backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,.4);
+  ">Fracture Mapper</div>
+  <button onclick="mobOpen('fracmap')" style="
+    background:linear-gradient(135deg,#c0392b,#8b1a14);
+    border:none;color:#fff;width:48px;height:48px;border-radius:50%;
+    font-size:20px;cursor:pointer;flex-shrink:0;
+    box-shadow:0 4px 18px rgba(192,57,43,.55);
+    display:flex;align-items:center;justify-content:center;
+  ">🔀</button>
+</div>
+
+<div id="fab-implants" style="
+  display:none;position:fixed;bottom:118px;right:12px;z-index:200;
+  align-items:center;gap:8px;
+">
+  <div style="
+    background:rgba(10,12,18,.9);border:1px solid rgba(255,255,255,.15);
+    border-radius:20px;padding:5px 11px;font-size:10px;font-weight:700;
+    color:rgba(255,255,255,.65);white-space:nowrap;
+    backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,.4);
+  ">X-Ray Implants</div>
+  <button onclick="mobOpen('implants')" style="
+    background:linear-gradient(135deg,#1d4ed8,#1e3a8a);
+    border:none;color:#fff;width:48px;height:48px;border-radius:50%;
+    font-size:20px;cursor:pointer;flex-shrink:0;
+    box-shadow:0 4px 18px rgba(37,99,235,.45);
+    display:flex;align-items:center;justify-content:center;
+  ">🔩</button>
 </div>
 
 <!-- Help overlay — full-screen card list on mobile, hover tooltips on desktop -->
@@ -4670,10 +4720,10 @@ function mobOpen(name) {
   if (mobActiveSheet) { document.getElementById('msheet-'+mobActiveSheet)?.classList.remove('open'); }
   if (mobActiveSheet === name) { document.getElementById('mob-backdrop').classList.remove('on'); mobActiveSheet=null; return; }
   if (name === 'results')  mobUpdateResults();
-  if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); xiInitPlateGrid(); xiUpdateCalibStatus(); }
+  if (name === 'implants') { mobInitPlateGrid(); mobUpdateImplantControls(); xiInitPlateGrid(); xiUpdateCalibStatus(); fabShow('implants'); }
   if (name === 'ao')       mobInitAO();
   if (name === 'calib')    updateMobCalib();
-  if (name === 'fracmap')  { fmSyncMobUI(); }
+  if (name === 'fracmap')  { fmSyncMobUI(); fabShow('fracture'); }
   if (name === 'xray') {
     ['hip','knee'].forEach(t => {
       const src=TEMPLATE_SRCS[t], img=document.getElementById('mbt-'+t);
@@ -4925,101 +4975,81 @@ function drawImplantBody(c, p, w, ph, isSel, s=1) {
 }
 
 // ── DHS ───────────────────────────────────────────────────────
-// On hip AP X-ray: side plate runs vertically along lateral femoral shaft,
-// barrel projects medially/superiorly at plate angle into femoral neck,
-// lag screw slides through barrel into femoral head.
-//
-// In our coordinate system: plate long-axis = horizontal (x).
-// The lag screw runs from the plate's proximal end (left of plate) at angle
-// (screwAngleDeg) measured from the plate shaft — so 135° means the screw
-// goes up-left at 45° above the plate axis (as seen on hip AP).
+// Hip AP appearance: plate VERTICAL along femoral shaft,
+// barrel+screw project from proximal end going medially (right on screen)
+// and slightly upward. Angle from horizontal = plateAngle - 90°.
 function _drawDHS(c, p, w, ph, col, str, s) {
-  const plateAngle = (p.screwAngleDeg || 135); // degrees from shaft
-  // Angle of screw relative to plate long-axis (pointing left = proximal)
-  const screwA = (180 - plateAngle) * Math.PI / 180; // screw goes up-left from plate end
-  const n    = Math.max(2, p._holes || p.defHoles);
-  const sp   = p.holeSpacing * s;
-  const cap  = 8 * s;
-  const barD = ph * 1.1;   // barrel outer diameter (wider than plate)
-  const barL = ph * 1.6;   // barrel length
+  const plateAngle  = p.screwAngleDeg || 135;
+  const screwAboveH = -(plateAngle - 90) * Math.PI / 180; // obtuse angle → screw goes below horizontal
+
+  const n      = Math.max(2, p._holes || p.defHoles);
+  const sp     = p.holeSpacing * s;
+  const cap    = 8 * s;
+  const barD   = ph * 1.1;
+  const barL   = ph * 2.2;
+  const screwR = barD * 0.36;
   const screwL = (p._screwLength || 100) * s;
-  const screwR = barD * 0.38; // screw radius
 
   c.save();
+  // Rotate 90° so plate long-axis becomes vertical on screen
+  c.rotate(Math.PI / 2);
 
-  // ── Lag screw (drawn first — behind barrel & plate) ──
+  // ── Lag screw (behind) ──
   c.save();
-  c.translate(-w/2, 0); // proximal plate end
-  c.rotate(-screwA);
-  // Screw shaft — smooth metallic cylinder
-  const grad = c.createLinearGradient(0, -screwR, 0, screwR);
-  grad.addColorStop(0, _lighten(col, 30));
-  grad.addColorStop(0.4, _lighten(col, 15));
-  grad.addColorStop(1, _darken(col, 10));
-  c.fillStyle = grad; c.strokeStyle = _darken(col, 20); c.lineWidth = 0.8*s;
-  c.beginPath(); c.roundRect(0, -screwR, screwL, screwR*2, screwR*0.4); c.fill(); c.stroke();
-  // Thread lines on distal 40%
-  const threadStart = screwL * 0.60;
-  c.strokeStyle = _darken(col, 35); c.lineWidth = 0.6*s;
-  const tStep = screwR * 1.6;
-  for (let tx = threadStart; tx < screwL - screwR*1.5; tx += tStep) {
-    c.beginPath(); c.moveTo(tx, -screwR-s); c.lineTo(tx+tStep*0.55, screwR+s); c.stroke();
+  c.translate(-w/2, 0);
+  c.rotate(Math.PI - screwAboveH); // right = medial
+  const sGrad = c.createLinearGradient(0,-screwR,0,screwR);
+  sGrad.addColorStop(0,_lighten(col,35)); sGrad.addColorStop(0.5,_lighten(col,10)); sGrad.addColorStop(1,_darken(col,15));
+  c.fillStyle=sGrad; c.strokeStyle=_darken(col,22); c.lineWidth=0.7*s;
+  c.beginPath(); c.roundRect(barL*0.5,-screwR,screwL-barL*0.5,screwR*2,screwR*0.3); c.fill(); c.stroke();
+  const tStart=barL*0.5+(screwL-barL*0.5)*0.55;
+  c.strokeStyle=_darken(col,35); c.lineWidth=0.55*s;
+  const tStep=screwR*1.5;
+  for(let tx=tStart;tx<screwL-screwR*2;tx+=tStep){
+    c.beginPath(); c.moveTo(tx,-screwR-1.8*s); c.lineTo(tx+tStep*0.6,screwR+1.8*s); c.stroke();
   }
-  // Helical thread tip — 4 lines at end
-  for (let i=0; i<4; i++) {
-    const tx = screwL - screwR*1.5 + i*(screwR*0.45);
-    c.beginPath(); c.moveTo(tx, -screwR-(s*1.5)); c.lineTo(tx+screwR*0.5, screwR+(s*1.5)); c.stroke();
-  }
-  // Trocar tip
-  c.fillStyle = _darken(col, 30);
-  c.beginPath(); c.moveTo(screwL, 0); c.lineTo(screwL - screwR*1.5, -screwR); c.lineTo(screwL - screwR*1.5, screwR); c.closePath(); c.fill();
+  c.fillStyle=_darken(col,28);
+  c.beginPath(); c.moveTo(screwL,0); c.lineTo(screwL-screwR*1.4,-screwR); c.lineTo(screwL-screwR*1.4,screwR); c.closePath(); c.fill();
   c.restore();
 
   // ── Side plate ──
-  const plateLighten = c.createLinearGradient(0, -ph/2, 0, ph/2);
-  plateLighten.addColorStop(0, _lighten(col, 18));
-  plateLighten.addColorStop(1, col);
-  c.fillStyle = plateLighten; c.strokeStyle = str; c.lineWidth = 1.5*s;
-  c.beginPath(); c.roundRect(-w/2, -ph/2, w, ph, Math.min(ph*0.25, 4*s)); c.fill(); c.stroke();
-  // Longitudinal ridge
-  c.strokeStyle = _lighten(col, 20); c.lineWidth = 0.6*s;
-  c.beginPath(); c.moveTo(-w/2+cap*1.5, -ph*0.12); c.lineTo(w/2-cap, -ph*0.12); c.stroke();
-  c.beginPath(); c.moveTo(-w/2+cap*1.5,  ph*0.12); c.lineTo(w/2-cap,  ph*0.12); c.stroke();
-  // Cortical screws (oval holes from distal end)
-  c.fillStyle = '#0d1117';
-  for (let i = 0; i < n; i++) {
-    const hx = w/2 - cap - i*sp;
-    c.beginPath(); c.ellipse(hx, 0, ph*0.21, ph*0.15, 0, 0, Math.PI*2); c.fill();
-    // Boss ring
-    c.strokeStyle = _lighten(col, 15); c.lineWidth = 0.7*s;
-    c.beginPath(); c.ellipse(hx, 0, ph*0.31, ph*0.24, 0, 0, Math.PI*2); c.stroke();
+  const pGrad=c.createLinearGradient(0,-ph/2,0,ph/2);
+  pGrad.addColorStop(0,_lighten(col,20)); pGrad.addColorStop(0.5,col); pGrad.addColorStop(1,_darken(col,8));
+  c.fillStyle=pGrad; c.strokeStyle=str; c.lineWidth=1.4*s;
+  c.beginPath(); c.roundRect(-w/2,-ph/2,w,ph,Math.min(ph*0.28,3.5*s)); c.fill(); c.stroke();
+  c.strokeStyle=_lighten(col,18); c.lineWidth=0.5*s;
+  c.beginPath(); c.moveTo(-w/2+cap*2,-ph*0.11); c.lineTo(w/2-cap,-ph*0.11); c.stroke();
+  c.beginPath(); c.moveTo(-w/2+cap*2, ph*0.11); c.lineTo(w/2-cap, ph*0.11); c.stroke();
+  for(let i=0;i<n;i++){
+    const hx=w/2-cap-i*sp;
+    c.strokeStyle=_lighten(col,12); c.lineWidth=0.6*s;
+    c.beginPath(); c.ellipse(hx,0,ph*0.3,ph*0.22,0,0,Math.PI*2); c.stroke();
+    c.fillStyle='#0d1117';
+    c.beginPath(); c.ellipse(hx,0,ph*0.2,ph*0.14,0,0,Math.PI*2); c.fill();
   }
 
-  // ── Barrel housing (proximal, covers screw entry) ──
+  // ── Barrel ──
   c.save();
-  c.translate(-w/2, 0);
-  c.rotate(-screwA);
-  // Barrel tube
-  const barGrad = c.createLinearGradient(0, -barD/2, 0, barD/2);
-  barGrad.addColorStop(0, _lighten(col, 22));
-  barGrad.addColorStop(0.5, col);
-  barGrad.addColorStop(1, _darken(col, 12));
-  c.fillStyle = barGrad; c.strokeStyle = str; c.lineWidth = 1.3*s;
-  c.beginPath(); c.roundRect(0, -barD/2, barL, barD, barD*0.2); c.fill(); c.stroke();
-  // Barrel bore (dark oval at tip)
-  c.fillStyle = 'rgba(0,0,0,.5)';
-  c.beginPath(); c.ellipse(barL*0.85, 0, barD*0.22, barD*0.38, 0, 0, Math.PI*2); c.fill();
-  // Set screw on top of barrel
-  c.fillStyle = _darken(col, 15); c.strokeStyle = _darken(col, 25); c.lineWidth = 0.6*s;
-  c.beginPath(); c.rect(barL*0.3 - barD*0.18, -barD/2 - barD*0.25, barD*0.36, barD*0.28); c.fill(); c.stroke();
-  // Phillips slot
-  c.strokeStyle = '#0d1117'; c.lineWidth = 0.8*s;
-  c.beginPath(); c.moveTo(barL*0.3 - barD*0.06, -barD/2 - barD*0.25); c.lineTo(barL*0.3 - barD*0.06, -barD/2); c.stroke();
+  c.translate(-w/2,0);
+  c.rotate(Math.PI - screwAboveH); // barrel right
+  const bGrad=c.createLinearGradient(0,-barD/2,0,barD/2);
+  bGrad.addColorStop(0,_lighten(col,25)); bGrad.addColorStop(0.45,col); bGrad.addColorStop(1,_darken(col,18));
+  c.fillStyle=bGrad; c.strokeStyle=str; c.lineWidth=1.2*s;
+  c.beginPath(); c.roundRect(0,-barD/2,barL,barD,barD*0.18); c.fill(); c.stroke();
+  c.strokeStyle=_darken(col,15); c.lineWidth=0.6*s;
+  [0.25,0.5,0.75].forEach(t=>{
+    c.beginPath(); c.moveTo(barL*t,-barD/2); c.lineTo(barL*t,barD/2); c.stroke();
+  });
+  c.fillStyle='rgba(0,0,0,.55)';
+  c.beginPath(); c.ellipse(barL-barD*0.1,0,barD*0.24,barD*0.38,0,0,Math.PI*2); c.fill();
+  c.fillStyle=_darken(col,12); c.strokeStyle=_darken(col,25); c.lineWidth=0.5*s;
+  c.beginPath(); c.rect(barL*0.4,-barD/2-barD*0.22,barD*0.35,barD*0.24); c.fill(); c.stroke();
+  c.strokeStyle='#0d1117'; c.lineWidth=0.7*s;
+  c.beginPath(); c.moveTo(barL*0.4+barD*0.175,-barD/2-barD*0.22); c.lineTo(barL*0.4+barD*0.175,-barD/2); c.stroke();
   c.restore();
 
   c.restore();
 }
-
 // ── DCP ───────────────────────────────────────────────────────
 // Flat rectangular plate, rounded ends, raised oval hole bosses
 function _drawDCP(c, p, w, ph, col, str, s) {
@@ -6616,21 +6646,62 @@ function fmDrawFragments(canvas, ctx2) {
 
 function fmComputeFragments() {
   const COLORS = ['#3b82f6','#ef4444','#22c55e','#f97316','#a855f7','#ec4899','#06b6d4','#84cc16'];
-  const frags = [];
 
-  // Each fracture LINE becomes its own fragment (can be moved/rotated independently)
-  fm.fracLines.forEach((fl, i) => {
-    if (!fl.points || fl.points.length < 2) return;
-    // Pivot = midpoint of the line
+  // Group lines into fragments by shared endpoints (within SNAP distance in image coords)
+  const SNAP = 18; // px in image space — lines closer than this at endpoints are joined
+  const n = fm.fracLines.length;
+  const group = Array.from({length:n}, (_,i) => i); // union-find: each line starts in own group
+
+  function root(i) { while(group[i]!==i){group[i]=group[group[i]];i=group[i];} return i; }
+  function union(a,b){ group[root(a)]=root(b); }
+
+  // Get all 4 endpoint combinations and snap
+  function endpts(fl) {
+    return [fl.points[0], fl.points[fl.points.length-1]];
+  }
+
+  for (let a = 0; a < n; a++) {
+    if (!fm.fracLines[a]?.points?.length) continue;
+    const [a0, a1] = endpts(fm.fracLines[a]);
+    for (let b = a+1; b < n; b++) {
+      if (!fm.fracLines[b]?.points?.length) continue;
+      const [b0, b1] = endpts(fm.fracLines[b]);
+      // Check all 4 endpoint pairs
+      if (Math.hypot(a0.x-b0.x,a0.y-b0.y)<SNAP ||
+          Math.hypot(a0.x-b1.x,a0.y-b1.y)<SNAP ||
+          Math.hypot(a1.x-b0.x,a1.y-b0.y)<SNAP ||
+          Math.hypot(a1.x-b1.x,a1.y-b1.y)<SNAP) {
+        union(a, b);
+      }
+    }
+  }
+
+  // Build fragments from groups
+  const groupMap = {};
+  for (let i = 0; i < n; i++) {
+    if (!fm.fracLines[i]?.points?.length) continue;
+    const r = root(i);
+    if (!groupMap[r]) groupMap[r] = [];
+    groupMap[r].push(i);
+  }
+
+  const frags = [];
+  Object.values(groupMap).forEach((lineIdxs, gi) => {
+    // Pivot = centroid of all points in this group
+    let allPts = [];
+    lineIdxs.forEach(li => allPts = allPts.concat(fm.fracLines[li].points));
     const pivot = {
-      x: fl.points.reduce((s,p)=>s+p.x,0)/fl.points.length,
-      y: fl.points.reduce((s,p)=>s+p.y,0)/fl.points.length,
+      x: allPts.reduce((s,p)=>s+p.x,0)/allPts.length,
+      y: allPts.reduce((s,p)=>s+p.y,0)/allPts.length,
     };
+    const name = lineIdxs.length > 1
+      ? `Fragment (${lineIdxs.length} lines)`
+      : `Line ${lineIdxs[0]+1}`;
     frags.push({
-      id: i,
-      color: COLORS[i % COLORS.length],
-      name: `Line ${i+1}`,
-      lineIndices: [i],   // which fracture lines belong to this fragment
+      id: gi,
+      color: COLORS[gi % COLORS.length],
+      name,
+      lineIndices: lineIdxs,
       _pivot: pivot,
       ox:0, oy:0, angle:0,
     });
@@ -6711,28 +6782,97 @@ function fmPointerDown(pos) {
     }
   }
 
-  // Hit test: find fragment whose lines are near the click
+  // Hit test: collect ALL fragments within threshold
   const ix=(pos.x-offX)/scale, iy=(pos.y-offY)/scale;
-  let hit=-1, minD=20/scale;
+  const THRESH = 22/scale;
+  const hits = [];
   fm.fragments.forEach((frag,fi) => {
+    let closest = Infinity;
     frag.lineIndices.forEach(li => {
       const fl=fm.fracLines[li]; if(!fl) return;
-      for(let i=0;i<fl.points.length-1;i++){
-        const a=fl.points[i],b=fl.points[i+1];
-        const d=distToSeg({x:ix,y:iy},a,b);
-        if(d<minD){minD=d;hit=fi;}
-      }
+      // Apply fragment transform to points for hit testing
+      fl.points.forEach((p,i) => {
+        if (i===0) return;
+        const pa = _fmProjLocal(fl.points[i-1], frag);
+        const pb = _fmProjLocal(p, frag);
+        const d = distToSeg({x:ix,y:iy}, pa, pb);
+        if (d < closest) closest = d;
+      });
     });
+    if (closest < THRESH) hits.push({fi, dist:closest});
   });
 
-  if (hit >= 0) {
-    fm.selFrag = hit;
-    const frag = fm.fragments[hit];
-    fm.dragFrag = { idx:hit, mode:'move', startX:pos.x, startY:pos.y, origOx:frag.ox, origOy:frag.oy };
+  if (hits.length === 0) {
+    fm.selFrag = null; fm.dragFrag = null;
+    fmHideFragPicker();
+  } else if (hits.length === 1) {
+    fmHideFragPicker();
+    fm.selFrag = hits[0].fi;
+    const frag = fm.fragments[hits[0].fi];
+    fm.dragFrag = { idx:hits[0].fi, mode:'move', startX:pos.x, startY:pos.y, origOx:frag.ox, origOy:frag.oy };
   } else {
-    fm.selFrag = null;
-    fm.dragFrag = null;
+    // Multiple overlapping — show picker
+    fmShowFragPicker(hits, pos);
   }
+}
+
+// Project a point through fragment transform into diagram space (no canvas scale)
+function _fmProjLocal(p, frag) {
+  const pivot = frag._pivot;
+  const dx=p.x-pivot.x, dy=p.y-pivot.y;
+  const cos=Math.cos(frag.angle), sin=Math.sin(frag.angle);
+  return {
+    x: pivot.x + cos*dx - sin*dy + frag.ox,
+    y: pivot.y + sin*dx + cos*dy + frag.oy,
+  };
+}
+
+function fmShowFragPicker(hits, pos) {
+  const picker = document.getElementById('fm-frag-picker');
+  const list   = document.getElementById('fm-frag-picker-list');
+  if (!picker || !list) return;
+  list.innerHTML = hits.map(({fi}) => {
+    const f = fm.fragments[fi];
+    return `<div onclick="fmPickFrag(${fi})" style="
+      display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;
+      border-radius:7px;transition:background .1s;
+    " onmouseenter="this.style.background='rgba(255,255,255,.06)'"
+       onmouseleave="this.style.background=''">
+      <div style="width:10px;height:10px;border-radius:50%;background:${f.color};flex-shrink:0"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">${f.name}</div>
+    </div>`;
+  }).join('');
+  // Position near click
+  const bw=160, bh=hits.length*36+28;
+  let left=pos.x+12, top=pos.y-bh/2;
+  if (left+bw > window.innerWidth-10) left=pos.x-bw-12;
+  if (top < 10) top=10;
+  if (top+bh > window.innerHeight-60) top=window.innerHeight-60-bh;
+  picker.style.left=left+'px'; picker.style.top=top+'px';
+  picker.style.display='block';
+  // Dismiss on outside tap
+  setTimeout(()=>{
+    document.addEventListener('touchstart', fmHideFragPicker, {once:true});
+    document.addEventListener('mousedown',  fmHideFragPickerOutside, {once:true});
+  }, 100);
+}
+
+function fmPickFrag(fi) {
+  fmHideFragPicker();
+  fm.selFrag = fi;
+  const frag = fm.fragments[fi];
+  // Mark that next move starts from this selection — drag starts on next pointerDown
+  fmDrawFragments(mobFmCvs, mobFmCtx);
+}
+
+function fmHideFragPicker() {
+  const p = document.getElementById('fm-frag-picker');
+  if (p) p.style.display='none';
+}
+
+function fmHideFragPickerOutside(e) {
+  const p = document.getElementById('fm-frag-picker');
+  if (p && !p.contains(e.target)) fmHideFragPicker();
 }
 
 function distToSeg(p, a, b) {
@@ -7977,6 +8117,25 @@ function dhsBubbleSetScrew(val) {
   xraySelImpl.plate._screwLength = parseInt(val);
   document.getElementById('dhsb-screw-val').textContent = val + 'mm';
   mobRedraw();
+}
+
+// ── Persistent canvas FABs ───────────────────────────────────
+const _fabShown = { fracture: false, implants: false };
+
+function fabShow(name) {
+  _fabShown[name] = true;
+  const el = document.getElementById('fab-' + name);
+  if (!el) return;
+  el.style.display = 'flex';
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = 'fabPop .3s cubic-bezier(.22,.68,0,1.3)';
+}
+
+function fabHide(name) {
+  _fabShown[name] = false;
+  const el = document.getElementById('fab-' + name);
+  if (el) el.style.display = 'none';
 }
 
 // ════════════════════════════════════════════════════════════
