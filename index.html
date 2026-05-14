@@ -715,45 +715,48 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 <div id="float-cluster" style="
   position:fixed;left:10px;bottom:62px;z-index:210;
   display:flex;flex-direction:column;gap:8px;align-items:flex-start;
-  user-select:none;touch-action:none;
+  user-select:none;
 ">
-  <!-- Cluster drag handle (moves whole cluster) -->
-  <div id="float-drag-handle" style="
-    align-self:flex-end;padding:4px 10px;cursor:grab;opacity:0.35;
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-  ">
-    <div style="width:22px;height:2px;background:rgba(255,255,255,.8);border-radius:2px"></div>
-    <div style="width:22px;height:2px;background:rgba(255,255,255,.8);border-radius:2px"></div>
-    <div style="width:22px;height:2px;background:rgba(255,255,255,.8);border-radius:2px"></div>
+  <!-- Move handle — always visible, tap to enter move mode -->
+  <div id="float-move-btn" onclick="floatToggleMove()" style="
+    align-self:flex-start;
+    background:rgba(10,12,18,.8);border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;
+    color:rgba(255,255,255,.35);cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    display:flex;align-items:center;gap:5px;
+    backdrop-filter:blur(6px);transition:all .2s;
+  ">⠿ Move</div>
+  <!-- Nudge arrows (shown in move mode) -->
+  <div id="float-nudge" style="display:none;gap:4px;align-items:center;">
+    <button onclick="floatNudge(-20,0)"  style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(10,12,18,.8);color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">←</button>
+    <div style="display:flex;flex-direction:column;gap:3px;">
+      <button onclick="floatNudge(0,20)"   style="width:28px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.15);background:rgba(10,12,18,.8);color:rgba(255,255,255,.6);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">↑</button>
+      <button onclick="floatNudge(0,-20)"  style="width:28px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.15);background:rgba(10,12,18,.8);color:rgba(255,255,255,.6);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">↓</button>
+    </div>
+    <button onclick="floatNudge(20,0)"   style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(10,12,18,.8);color:rgba(255,255,255,.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">→</button>
   </div>
 
-  <!-- Draw/Erase pill (fracture mode) -->
-  <div id="fm-draw-pill" style="display:none;align-items:center;gap:0;
+  <!-- Draw/Erase pill — whole pill is draggable -->
+  <div id="fm-draw-pill" class="float-item" data-id="fm-draw-pill" style="display:none;align-items:center;gap:0;
     background:rgba(10,12,18,.95);border:1.5px solid rgba(255,255,255,.12);
-    border-radius:40px;padding:5px;
-    box-shadow:0 4px 20px rgba(0,0,0,.6);backdrop-filter:blur(10px);">
-    <!-- Per-item drag grip -->
-    <span class="float-item-grip" data-target="fm-draw-pill"
-      style="cursor:grab;padding:0 6px;color:rgba(255,255,255,.25);font-size:14px;line-height:1;touch-action:none;">⠿</span>
-    <button id="fm-pill-draw"  onclick="fmPillDraw()"  style="padding:7px 14px;border-radius:32px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;background:var(--red);color:#fff;transition:all .15s;">✏ Draw</button>
-    <button id="fm-pill-erase" onclick="fmPillErase()" style="padding:7px 12px;border-radius:32px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;background:transparent;color:rgba(255,255,255,.4);transition:all .15s;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-4 4"/><path d="M6.5 17.5l4-4"/></svg>Erase</button>
-    <button onclick="fmPillClose()" style="padding:5px 9px;border-radius:32px;border:none;cursor:pointer;font-size:11px;background:transparent;color:rgba(255,255,255,.25);font-family:'IBM Plex Sans',sans-serif;">✕</button>
+    border-radius:40px;padding:5px;cursor:grab;
+    box-shadow:0 4px 20px rgba(0,0,0,.6);backdrop-filter:blur(10px);touch-action:none;">
+    <button id="fm-pill-draw"  class="float-item-btn" onclick="fmPillDraw()"  style="padding:7px 14px;border-radius:32px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;background:var(--red);color:#fff;transition:all .15s;">✏ Draw</button>
+    <button id="fm-pill-erase" class="float-item-btn" onclick="fmPillErase()" style="padding:7px 12px;border-radius:32px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;background:transparent;color:rgba(255,255,255,.4);transition:all .15s;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-4 4"/><path d="M6.5 17.5l4-4"/></svg>Erase</button>
+    <button class="float-item-btn" onclick="fmPillClose()" style="padding:5px 9px;border-radius:32px;border:none;cursor:pointer;font-size:11px;background:transparent;color:rgba(255,255,255,.25);font-family:'IBM Plex Sans',sans-serif;">✕</button>
   </div>
 
-  <!-- Fracture FAB -->
-  <div id="fab-fracture" style="display:none;align-items:center;gap:8px;">
-    <button onclick="mobOpen('fracmap')" style="background:linear-gradient(135deg,#c0392b,#8b1a14);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔀</button>
+  <!-- Fracture FAB — whole row draggable -->
+  <div id="fab-fracture" class="float-item" data-id="fab-fracture" style="display:none;align-items:center;gap:8px;cursor:grab;touch-action:none;">
+    <button class="float-item-btn" onclick="mobOpen('fracmap')" style="background:linear-gradient(135deg,#c0392b,#8b1a14);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔀</button>
     <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Fracture</div>
-    <span class="float-item-grip" data-target="fab-fracture"
-      style="cursor:grab;color:rgba(255,255,255,.25);font-size:16px;line-height:1;touch-action:none;padding:4px;">⠿</span>
   </div>
 
-  <!-- Implants FAB -->
-  <div id="fab-implants" style="display:none;align-items:center;gap:8px;">
-    <button onclick="mobOpen('implants')" style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔩</button>
+  <!-- Implants FAB — whole row draggable -->
+  <div id="fab-implants" class="float-item" data-id="fab-implants" style="display:none;align-items:center;gap:8px;cursor:grab;touch-action:none;">
+    <button class="float-item-btn" onclick="mobOpen('implants')" style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔩</button>
     <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Implants</div>
-    <span class="float-item-grip" data-target="fab-implants"
-      style="cursor:grab;color:rgba(255,255,255,.25);font-size:16px;line-height:1;touch-action:none;padding:4px;">⠿</span>
   </div>
 </div>
 
@@ -4096,6 +4099,19 @@ function initMobileEvents() {
     // Only register as a tap if not a real pan movement
     if (e.changedTouches.length === 1) {
       const t = mobGpt(e.changedTouches[0]);
+
+      // FM erase mode — delete the nearest fracture line
+      if (fmEraseMode && fm.fracLines.length) {
+        let bestIdx=-1, bestD=30/mobZl;
+        fm.fracLines.forEach((fl,li) => {
+          for(let i=0;i<fl.points.length-1;i++){
+            const d=distToSeg(t,fl.points[i],fl.points[i+1]);
+            if(d<bestD){bestD=d;bestIdx=li;}
+          }
+        });
+        if(bestIdx>=0){ fm.fracLines.splice(bestIdx,1); fm.generated=false; fm.fragments=[]; fmSyncMobUI(); mobRedraw(); }
+        return;
+      }
 
       if (tool === 'select') return;
       if (tool === 'erase') {
@@ -8278,6 +8294,36 @@ function dhsBubbleSetScrew(val) {
   mobRedraw();
 }
 
+// ── Float cluster move mode ──────────────────────────────────
+let _floatMoveMode = false;
+function floatToggleMove() {
+  _floatMoveMode = !_floatMoveMode;
+  const btn = document.getElementById('float-move-btn');
+  const cluster = document.getElementById('float-cluster');
+  if (_floatMoveMode) {
+    if(btn) { btn.textContent='✓ Done'; btn.style.color='#22c55e'; btn.style.borderColor='rgba(34,197,94,.4)'; }
+    if(cluster) cluster.style.outline='1.5px dashed rgba(255,255,255,.2)';
+    // Show directional nudge buttons
+    const nudge = document.getElementById('float-nudge');
+    if(nudge) nudge.style.display='flex';
+  } else {
+    if(btn) { btn.textContent='⠿ Move'; btn.style.color='rgba(255,255,255,.35)'; btn.style.borderColor='rgba(255,255,255,.12)'; }
+    if(cluster) cluster.style.outline='none';
+    const nudge = document.getElementById('float-nudge');
+    if(nudge) nudge.style.display='none';
+  }
+}
+function floatNudge(dx, dy) {
+  const cluster = document.getElementById('float-cluster');
+  if (!cluster) return;
+  const r = cluster.getBoundingClientRect();
+  const newL = Math.max(4, Math.min(window.innerWidth-120, r.left + dx));
+  const newB = Math.max(52, Math.min(window.innerHeight-60, window.innerHeight - r.bottom - dy));
+  cluster.style.right  = 'auto';
+  cluster.style.left   = newL + 'px';
+  cluster.style.bottom = newB + 'px';
+}
+
 // ── Float cluster visibility ─────────────────────────────────
 function _floatClusterShow() {
   const c = document.getElementById('float-cluster');
@@ -8345,60 +8391,83 @@ function fabHide(name) {
 (function() {
   function initFloatDrag() {
     const cluster = document.getElementById('float-cluster');
-    const handle  = document.getElementById('float-drag-handle');
     const delZone = document.getElementById('float-delete-zone');
-    if (!cluster || !handle) return;
+    if (!cluster) return;
 
-    // ── Unified state ──
-    let mode=null; // 'cluster' | 'item'
-    let cSX=0,cSY=0,cOR=0,cOB=0;
-    let iEl=null, iGhost=null, iLastCX=0, iLastCY=0;
+    // State
+    let mode=null; // 'cluster'|'item'
+    let startX=0, startY=0, lastX=0, lastY=0;
+    let origL=0, origB=0;
+    let iEl=null, iGhost=null;
+    let moved=false;
 
-    function clusterPos(){
-      const r=cluster.getBoundingClientRect();
-      // Use left if left is set, else derive from right
-      const left  = cluster.style.left !== 'auto' && cluster.style.left ? r.left : r.left;
-      return {right:left, bottom:window.innerHeight-r.bottom};
+    function clPos(){
+      return { left: cluster.getBoundingClientRect().left,
+               bottom: window.innerHeight - cluster.getBoundingClientRect().bottom };
     }
 
-    // ── Unified move / up ──
-    function onMove(cx,cy){
-      if(mode==='cluster'){
-        const dx=cx-cSX, dy=cy-cSY;
-        const newL = Math.max(4, Math.min(window.innerWidth-80, cOR+dx));
-        const newB = Math.max(52, Math.min(window.innerHeight-60, cOB-dy));
-        cluster.style.left   = newL+'px';
-        cluster.style.right  = 'auto';
-        cluster.style.bottom = newB+'px';
-      } else if(mode==='item' && iGhost){
-        iLastCX=cx; iLastCY=cy;
-        iGhost.style.left=(cx-iGhost._halfW)+'px';
-        iGhost.style.top =(cy-iGhost._halfH)+'px';
-        if(delZone){
-          const r=delZone.getBoundingClientRect();
-          const over=cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom;
-          delZone.style.background   =over?'rgba(192,57,43,.4)':'rgba(192,57,43,.12)';
-          delZone.style.borderColor  =over?'rgba(255,80,60,.9)':'rgba(192,57,43,.45)';
-          delZone.style.color        =over?'#fff':'rgba(232,138,132,.8)';
-        }
+    // ── Cluster reposition (drag cluster itself when no item target) ──
+    function clDown(cx,cy){
+      mode='cluster'; startX=cx; startY=cy; moved=false;
+      const p=clPos(); origL=p.left; origB=p.bottom;
+    }
+    function clMove(cx,cy){
+      if(mode!=='cluster') return;
+      const dx=cx-startX, dy=cy-startY;
+      if(!moved && Math.hypot(dx,dy)>6) moved=true;
+      if(!moved) return;
+      cluster.style.right  = 'auto';
+      cluster.style.left   = Math.max(4, Math.min(window.innerWidth-120, origL+dx))+'px';
+      cluster.style.bottom = Math.max(52, Math.min(window.innerHeight-60, origB-dy))+'px';
+    }
+
+    // ── Item drag (reposition or delete) ──
+    function iDown(el,cx,cy){
+      iEl=el; mode='item'; startX=cx; startY=cy; lastX=cx; lastY=cy; moved=false;
+      const r=el.getBoundingClientRect();
+      iGhost=document.createElement('div');
+      iGhost.style.cssText=`position:fixed;z-index:400;opacity:0;pointer-events:none;
+        left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;
+        background:rgba(10,12,18,.92);border:1.5px solid rgba(255,255,255,.2);
+        border-radius:40px;display:flex;align-items:center;justify-content:center;
+        font-size:13px;font-weight:700;color:rgba(255,255,255,.8);padding:8px 16px;
+        font-family:'IBM Plex Sans',sans-serif;transition:opacity .15s;`;
+      iGhost.textContent=el.id==='fm-draw-pill'?'✏/⌫':el.id==='fab-fracture'?'🔀':' 🔩';
+      iGhost._r=r;
+      document.body.appendChild(iGhost);
+    }
+    function iMove(cx,cy){
+      if(mode!=='item'||!iGhost) return;
+      lastX=cx; lastY=cy;
+      const dx=cx-startX, dy=cy-startY;
+      if(!moved && Math.hypot(dx,dy)>10){
+        moved=true;
+        iGhost.style.opacity='0.85';
+        iEl.style.opacity='0.2';
+        if(delZone) delZone.style.display='flex';
+      }
+      if(!moved) return;
+      iGhost.style.left=(cx-iGhost._r.width/2)+'px';
+      iGhost.style.top =(cy-iGhost._r.height/2)+'px';
+      if(delZone){
+        const r=delZone.getBoundingClientRect();
+        const over=cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom;
+        delZone.style.background   =over?'rgba(192,57,43,.4)':'rgba(192,57,43,.12)';
+        delZone.style.borderColor  =over?'rgba(255,80,60,.9)':'rgba(192,57,43,.45)';
+        delZone.style.color        =over?'#fff':'rgba(232,138,132,.8)';
       }
     }
-
     function onUp(){
-      if(mode==='cluster'){
-        handle.style.cursor='grab';
-      } else if(mode==='item'){
-        // Check delete BEFORE hiding zone
+      if(mode==='item'){
         let deleted=false;
-        if(delZone && iEl){
+        if(moved && delZone && iEl){
           const r=delZone.getBoundingClientRect();
-          if(iLastCX>=r.left&&iLastCX<=r.right&&iLastCY>=r.top&&iLastCY<=r.bottom){
+          if(lastX>=r.left&&lastX<=r.right&&lastY>=r.top&&lastY<=r.bottom){
             deleted=true;
-            iEl.style.display='none';
-            iEl.style.opacity='';
+            iEl.style.display='none'; iEl.style.opacity='';
             const id=iEl.id;
-            if(id==='fab-fracture'){_fabShown.fracture=false;}
-            if(id==='fab-implants'){_fabShown.implants=false;}
+            if(id==='fab-fracture') _fabShown.fracture=false;
+            if(id==='fab-implants') _fabShown.implants=false;
             if(id==='fm-draw-pill'){fmEraseMode=false;fm.drawing=false;fmActiveDrawMode=null;_fmSyncToggleBtns();}
           }
         }
@@ -8406,62 +8475,68 @@ function fabHide(name) {
         if(iGhost){iGhost.remove();iGhost=null;}
         if(delZone) delZone.style.display='none';
       }
-      mode=null; iEl=null;
+      mode=null; iEl=null; moved=false;
     }
 
-    // ── Cluster handle ──
-    function clusterDown(cx,cy){
-      mode='cluster'; cSX=cx; cSY=cy;
-      const p=clusterPos(); cOR=p.right; cOB=p.bottom;
-      handle.style.cursor='grabbing';
-    }
-    handle.addEventListener('mousedown',  e=>{ e.preventDefault(); clusterDown(e.clientX,e.clientY); });
-    handle.addEventListener('touchstart', e=>{ e.preventDefault(); clusterDown(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
-
-    // ── Item grips ──
-    function itemDown(grip,cx,cy){
-      iEl=document.getElementById(grip.dataset.target);
-      if(!iEl||iEl.style.display==='none') return;
-      mode='item';
-      iLastCX=cx; iLastCY=cy;
-      // Build ghost
-      const r=iEl.getBoundingClientRect();
-      iGhost=document.createElement('div');
-      iGhost.style.cssText=`position:fixed;z-index:400;opacity:0.8;pointer-events:none;
-        left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;
-        background:rgba(10,12,18,.92);border:1.5px solid rgba(255,255,255,.2);
-        border-radius:40px;display:flex;align-items:center;justify-content:center;
-        font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
-        color:rgba(255,255,255,.7);padding:8px 16px;`;
-      iGhost.textContent = iEl.id==='fm-draw-pill' ? '✏/⌫ Draw·Erase'
-                         : iEl.id==='fab-fracture' ? '🔀 Fracture'
-                         : '🔩 Implants';
-      iGhost._halfW = r.width/2;
-      iGhost._halfH = r.height/2;
-      document.body.appendChild(iGhost);
-      iEl.style.opacity='0.2';
-      if(delZone) delZone.style.display='flex';
-      grip.style.cursor='grabbing';
-    }
-
-    document.querySelectorAll('.float-item-grip').forEach(grip=>{
-      grip.addEventListener('mousedown',  e=>{ e.preventDefault(); e.stopPropagation(); itemDown(grip,e.clientX,e.clientY); });
-      grip.addEventListener('touchstart', e=>{ e.preventDefault(); e.stopPropagation(); itemDown(grip,e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
+    // ── Wire items — intercept ALL touches, distinguish tap vs drag ──
+    document.querySelectorAll('.float-item').forEach(el=>{
+      // Mouse: start drag immediately, fire click on mouseup if no movement
+      el.addEventListener('mousedown', e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        iDown(el,e.clientX,e.clientY);
+      });
+      el.addEventListener('mouseup', e=>{
+        if(mode==='item' && !moved){
+          // Tap — fire the button if one was targeted
+          const btn = e.target.closest('.float-item-btn');
+          if(btn) btn.click();
+        }
+      });
+      // Touch: intercept all, distinguish tap (no move) from drag (move)
+      el.addEventListener('touchstart', e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        iDown(el, e.touches[0].clientX, e.touches[0].clientY);
+        // Store touch target so we can fire it on tap
+        el._tapTarget = e.target;
+      },{passive:false});
+      el.addEventListener('touchend', e=>{
+        if(mode==='item' && !moved){
+          // Tap — fire the button
+          const btn = el._tapTarget && el._tapTarget.closest('.float-item-btn');
+          if(btn) btn.click();
+        }
+        el._tapTarget = null;
+      },{passive:false});
     });
 
-    // ── Unified global listeners ──
-    window.addEventListener('mousemove', e=>{ if(mode) onMove(e.clientX,e.clientY); });
-    window.addEventListener('mouseup',   e=>{ if(mode) onUp(); });
+    // ── Cluster background drag (empty area of cluster) ──
+    cluster.addEventListener('mousedown', e=>{
+      if(e.target.closest('.float-item')) return;
+      clDown(e.clientX,e.clientY);
+    });
+    cluster.addEventListener('touchstart', e=>{
+      if(e.target.closest('.float-item')) return;
+      e.preventDefault();
+      clDown(e.touches[0].clientX,e.touches[0].clientY);
+    },{passive:false});
+
+    // ── Global move/up ──
+    window.addEventListener('mousemove', e=>{
+      if(mode==='cluster') clMove(e.clientX,e.clientY);
+      else if(mode==='item') iMove(e.clientX,e.clientY);
+    });
+    window.addEventListener('mouseup', ()=>onUp());
     window.addEventListener('touchmove', e=>{
       if(!mode) return;
       e.preventDefault();
-      onMove(e.touches[0].clientX,e.touches[0].clientY);
+      if(mode==='cluster') clMove(e.touches[0].clientX,e.touches[0].clientY);
+      else iMove(e.touches[0].clientX,e.touches[0].clientY);
     },{passive:false});
-    window.addEventListener('touchend',  e=>{ if(mode) onUp(); });
+    window.addEventListener('touchend', ()=>onUp());
   }
-
-  document.addEventListener('DOMContentLoaded', initFloatDrag);
-  setTimeout(initFloatDrag, 600);
+  setTimeout(initFloatDrag, 400);
 })();
 
 // ════════════════════════════════════════════════════════════
