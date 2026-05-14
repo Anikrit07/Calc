@@ -711,6 +711,31 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
   </div>
 </div>
 
+<!-- ── Fracture draw/erase floating pill ── -->
+<div id="fm-draw-pill" style="
+  display:none;position:fixed;bottom:62px;left:50%;
+  transform:translateX(-50%);z-index:210;
+  background:rgba(10,12,18,.95);border:1.5px solid rgba(255,255,255,.12);
+  border-radius:40px;padding:5px;gap:4px;align-items:center;
+  box-shadow:0 4px 24px rgba(0,0,0,.6);backdrop-filter:blur(10px);
+">
+  <button id="fm-pill-draw" onclick="fmPillDraw()" style="
+    padding:8px 18px;border-radius:32px;border:none;cursor:pointer;
+    font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+    background:var(--red);color:#fff;transition:all .15s;
+  ">✏ Draw</button>
+  <button id="fm-pill-erase" onclick="fmPillErase()" style="
+    padding:8px 14px;border-radius:32px;border:none;cursor:pointer;
+    font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+    background:transparent;color:rgba(255,255,255,.4);transition:all .15s;
+  "><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M20 20H7L3 16l10-10 7 7-4 4"/><path d="M6.5 17.5l4-4"/></svg> Erase</button>
+  <button onclick="fmPillClose()" style="
+    padding:6px 10px;border-radius:32px;border:none;cursor:pointer;
+    font-size:11px;background:transparent;color:rgba(255,255,255,.25);
+    font-family:'IBM Plex Sans',sans-serif;
+  ">✕</button>
+</div>
+
 <!-- ── Persistent Canvas FABs ── -->
 <div id="fab-fracture" style="
   display:none;position:fixed;bottom:62px;right:12px;z-index:200;
@@ -1372,9 +1397,11 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
         <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px">Tap Start Drawing, then drag across the X-ray to trace each fracture line. One drag = one fracture plane.</div>
         <button class="btn" id="mob-fm-draw-btn" style="width:100%;justify-content:center;padding:12px;margin-bottom:8px;font-size:14px" onclick="mobFmActivateDraw()">✏ Start Drawing on X-Ray</button>
         <div id="mob-fm-trace-status" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px">No fracture lines drawn</div>
+        <!-- Drawn lines list with individual delete -->
+        <div id="mob-fm-lines-list" style="margin-bottom:8px"></div>
         <div style="display:flex;gap:8px">
-          <button class="btn" style="flex:1;justify-content:center;padding:9px" onclick="fmUndoLine();fmSyncMobUI()">↩ Undo</button>
-          <button class="btn" style="flex:1;justify-content:center;padding:9px" onclick="fmClearLines();fmSyncMobUI()">✕ Clear</button>
+          <button class="btn" style="flex:1;justify-content:center;padding:9px" onclick="fmUndoLine();fmSyncMobUI()">↩ Undo Last</button>
+          <button class="btn" style="flex:1;justify-content:center;padding:9px" onclick="fmClearLines();fmSyncMobUI()">✕ Clear All</button>
         </div>
       </div>
 
@@ -1462,9 +1489,10 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
     <!-- Fragment mode controls -->
     <div id="mob-frag-controls" style="display:flex;align-items:center;gap:6px;width:100%">
       <span style="font-size:10px;color:var(--muted);flex:1" id="mob-fm-sel-label">Tap a line to select</span>
-      <button onclick="fmMobRotSel(-0.15)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:16px;cursor:pointer">↺</button>
-      <button onclick="fmMobRotSel(0.15)"  style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 12px;border-radius:7px;font-size:16px;cursor:pointer">↻</button>
-      <button onclick="fmReset();fmDrawFragments(mobFmCvs,mobFmCtx)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 10px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Reset</button>
+      <button onclick="fmMobRotSel(-0.15)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 10px;border-radius:7px;font-size:16px;cursor:pointer">↺</button>
+      <button onclick="fmMobRotSel(0.15)"  style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 10px;border-radius:7px;font-size:16px;cursor:pointer">↻</button>
+      <button onclick="fmDeleteSelFrag()" style="background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.3);color:#e88a84;padding:6px 10px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif" id="mob-fm-del-btn" title="Delete selected fragment">✕</button>
+      <button onclick="fmReset();fmDrawFragments(mobFmCvs,mobFmCtx)" style="background:var(--panel);border:1px solid var(--border);color:var(--subtle);padding:6px 8px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">Reset</button>
     </div>
     <!-- Implant mode controls (shown when implant selected on canvas) -->
     <div id="mob-impl-controls" style="display:none;align-items:center;gap:6px;width:100%">
@@ -2744,8 +2772,8 @@ function _initMouseEvents(canvas) {
 
     if (fm.drawing && fm.currentLine.length>=2) {
       const simp=fm.currentLine.filter((_,i)=>i%4===0||i===fm.currentLine.length-1);
-      fm.fracLines.push({points:simp}); fm.currentLine=[];
-      fmUpdateStatus(); mobRedraw(); return;
+      if(!fmEraseMode){ fm.fracLines.push({points:simp}); fmUpdateStatus(); } fm.currentLine=[];
+      mobRedraw(); return;
     }
     if (fmRefDrawing && fm._refStart) {
       fmRefConfirm(fm._refStart,mobGpt(mxy(e)),'mobile'); fm._refStart=null; mobRedraw(); return;
@@ -2761,6 +2789,18 @@ function _initMouseEvents(canvas) {
     if (!_mouseMoved || (Math.abs((mobGptScreen(mxy(e)).x-(_mouseDownPt?.ts?.x||0)))<5 &&
                          Math.abs((mobGptScreen(mxy(e)).y-(_mouseDownPt?.ts?.y||0)))<5)) {
       const t=mobGpt(mxy(e));
+      // FM erase mode — tap to delete specific fracture line on x-ray canvas
+      if (fmEraseMode && fm.fracLines.length) {
+        let bestIdx=-1, bestD=30/mobZl;
+        fm.fracLines.forEach((fl,li) => {
+          for(let i=0;i<fl.points.length-1;i++){
+            const d=distToSeg(t,fl.points[i],fl.points[i+1]);
+            if(d<bestD){bestD=d;bestIdx=li;}
+          }
+        });
+        if(bestIdx>=0){ fm.fracLines.splice(bestIdx,1); fm.generated=false; fm.fragments=[]; fmSyncMobUI(); mobRedraw(); }
+        return;
+      }
       if (tool==='select') return;
       if (tool==='erase') {
         const i=objs.findIndex(o=>isNear(o,t.x,t.y));
@@ -3876,7 +3916,7 @@ function initMobileEvents() {
   mobCvs.addEventListener('touchstart', e => {
     e.preventDefault();
     // FM fracture drawing mode
-    if (fm.drawing) {
+    if (fm.drawing && !fmEraseMode) {
       const t = mobGpt(e.touches[0]);
       fm.currentLine = [t]; return;
     }
@@ -5805,6 +5845,7 @@ function fmSelectBone(key, el) {
 // ── FM Draw mode management ───────────────────────────────────
 // Only one mode active at a time: 'fracture' | 'reference' | null
 let fmActiveDrawMode = null;
+let fmEraseMode = false;
 
 function fmShowDrawBanner(mode) {
   const isFrac = mode === 'fracture';
@@ -5870,6 +5911,30 @@ function fmActivateDraw() {
   [btn,mBtn].forEach(b => { if(b){ b.textContent='🔴 Drawing…'; b.style.borderColor='#ef4444'; b.style.color='#ef4444'; }});
 }
 
+function mobFmToggleErase() {
+  fmEraseMode = !fmEraseMode;
+  if (fmEraseMode) { fm.drawing = false; fmActiveDrawMode = null; }
+  _fmSyncToggleBtns();
+  if (fmEraseMode) mobClose();
+}
+
+function _fmSyncToggleBtns() {
+  const drawBtn  = document.getElementById('mob-fm-draw-btn');
+  const eraseBtn = document.getElementById('mob-fm-erase-btn');
+  if (drawBtn) {
+    const label = fm.drawing ? '🔴 Drawing…' : (fm.fracLines.length ? '✏ Draw Another' : '✏ Draw');
+    drawBtn.textContent   = label;
+    drawBtn.style.background  = fm.drawing ? 'rgba(192,57,43,.15)' : 'var(--panel)';
+    drawBtn.style.borderColor = fm.drawing ? 'var(--red)'           : 'var(--border)';
+    drawBtn.style.color       = fm.drawing ? '#e88a84'              : 'var(--text)';
+  }
+  if (eraseBtn) {
+    eraseBtn.style.background  = fmEraseMode ? 'rgba(234,179,8,.15)' : 'var(--panel)';
+    eraseBtn.style.borderColor = fmEraseMode ? '#eab308'             : 'var(--border)';
+    eraseBtn.style.color       = fmEraseMode ? '#eab308'             : 'var(--muted)';
+  }
+}
+
 function fmStopDraw() {
   fm.drawing = false; fmActiveDrawMode = null;
   if (fm.currentLine.length >= 2) {
@@ -5919,6 +5984,14 @@ function fmClear() {
   document.getElementById('fmv-xray')?.classList.add('active');
   document.getElementById('fmv-schema')?.classList.remove('active');
   redraw(); // clear X-ray overlay
+}
+
+function fmDeleteLine(idx) {
+  if (idx < 0 || idx >= fm.fracLines.length) return;
+  fm.fracLines.splice(idx, 1);
+  fm.generated = false; fm.fragments = [];
+  fmSyncMobUI();
+  mobRedraw();
 }
 
 function fmUndoLine() {
@@ -6223,40 +6296,68 @@ function fmShowMobSchema() {
   fmDrawFragments(mobFmCvs, mobFmCtx);
   fmSyncMobUI();
 
-  // Unified touch handler — dispatches to implant or fragment mode
-  let _fmTouchStart = null, _fmTouchDragging = false, _fmDragInit = false;
+  // ── Unified touch handler ────────────────────────────────────
+  let _fmTouchStart = null, _fmTouchDragging = false;
+
+  function _fmPos(touch) {
+    const r = mobFmCvs.getBoundingClientRect();
+    return { x: (touch.clientX - r.left)*(mobFmCvs.width/r.width),
+             y: (touch.clientY - r.top)*(mobFmCvs.height/r.height) };
+  }
+
+  // Hit-test all fragments near pos — returns array sorted by distance
+  function _fmHitAll(pos) {
+    const scale=fm._drawScale||1, offX=fm._drawOffX||0, offY=fm._drawOffY||0;
+    const ix=(pos.x-offX)/scale, iy=(pos.y-offY)/scale;
+    const THRESH = 28/scale;
+    const hits = [];
+    fm.fragments.forEach((frag, fi) => {
+      let closest = Infinity;
+      frag.lineIndices.forEach(li => {
+        const fl = fm.fracLines[li]; if (!fl) return;
+        for (let i=0; i<fl.points.length-1; i++) {
+          const pa = _fmProjLocal(fl.points[i],   frag);
+          const pb = _fmProjLocal(fl.points[i+1], frag);
+          const d  = distToSeg({x:ix,y:iy}, pa, pb);
+          if (d < closest) closest = d;
+        }
+      });
+      if (closest < THRESH) hits.push({fi, dist:closest});
+    });
+    hits.sort((a,b) => a.dist - b.dist);
+    return hits;
+  }
 
   mobFmCvs.ontouchstart = e => {
     e.preventDefault();
-    const t = e.touches[0];
-    _fmTouchStart = { x: (t.clientX - mobFmCvs.getBoundingClientRect().left) * (mobFmCvs.width / mobFmCvs.getBoundingClientRect().width),
-                      y: (t.clientY - mobFmCvs.getBoundingClientRect().top)  * (mobFmCvs.height / mobFmCvs.getBoundingClientRect().height),
-                      time: Date.now() };
+    _fmTouchStart   = _fmPos(e.touches[0]);
     _fmTouchDragging = false;
-    _fmDragInit = false;
-    implDrag = null;
+    implDrag = null; fm.dragFrag = null;
   };
 
   mobFmCvs.ontouchmove = e => {
     e.preventDefault();
-    const t = e.touches[0];
-    const r = mobFmCvs.getBoundingClientRect();
-    const pos = { x: (t.clientX - r.left)*(mobFmCvs.width/r.width),
-                  y: (t.clientY - r.top)*(mobFmCvs.height/r.height) };
-
     if (!_fmTouchStart) return;
-    const dist = Math.hypot(pos.x - _fmTouchStart.x, pos.y - _fmTouchStart.y);
+    const pos  = _fmPos(e.touches[0]);
+    const dist = Math.hypot(pos.x-_fmTouchStart.x, pos.y-_fmTouchStart.y);
 
-    if (!_fmTouchDragging && dist > 8) {
-      // Crossed drag threshold — init drag from original start position
+    if (!_fmTouchDragging && dist > 12) {
       _fmTouchDragging = true;
-      _fmDragInit = true;
-      // Try implant drag first
-      if (implants.length) {
-        if (implPointerDown(_fmTouchStart)) { _fmDragInit = false; }
+      // Init drag: implant first, then closest fragment (no picker on drag)
+      if (implants.length && implPointerDown(_fmTouchStart)) {
+        // implant dragging
+      } else {
+        // Fragment: pick the single closest hit for immediate drag
+        const hits = _fmHitAll(_fmTouchStart);
+        if (hits.length > 0) {
+          fm.selFrag = hits[0].fi;
+          const frag = fm.fragments[hits[0].fi];
+          fm.dragFrag = { idx:hits[0].fi, mode:'move',
+            startX:_fmTouchStart.x, startY:_fmTouchStart.y,
+            origOx:frag.ox, origOy:frag.oy };
+          fmHideFragPicker();
+        }
       }
-      // Try fragment drag if no implant hit
-      if (_fmDragInit) { fmPointerDown(_fmTouchStart); _fmDragInit = false; }
     }
 
     if (_fmTouchDragging) {
@@ -6268,40 +6369,82 @@ function fmShowMobSchema() {
 
   mobFmCvs.ontouchend = e => {
     e.preventDefault();
-    const t = e.changedTouches[0];
-    const r = mobFmCvs.getBoundingClientRect();
-    const pos = { x: (t.clientX - r.left)*(mobFmCvs.width/r.width),
-                  y: (t.clientY - r.top)*(mobFmCvs.height/r.height) };
+    const tapPos = _fmTouchStart || _fmPos(e.changedTouches[0]);
 
     if (_fmTouchDragging) {
-      // End of drag
-      if (implDrag) { implPointerUp(); }
-      else { fmPointerUp(); }
+      if (implDrag) implPointerUp();
+      else fmPointerUp();
       fmDrawFragments(mobFmCvs, mobFmCtx);
       fmSyncMobUI();
     } else {
-      // It was a tap — use start position for accuracy
-      const tapPos = _fmTouchStart || pos;
-      // 1. Check hole tap first
+      // ── TAP ──────────────────────────────────────────────────
+
+      // 1. Hole tap (implant screws)
       if (implants.length && handleDiagramTap(tapPos)) {
-        _fmTouchStart = null; return;
+        _fmTouchStart=null; return;
       }
-      // 2. Check implant body tap (select it)
+
+      // 2. Implant body tap
       if (implants.length) {
         const hit = implHitTest(tapPos);
         if (hit) {
-          selImplant = hit.impl;
-          if (implMode !== 'implant') switchToImplMode();
-          fmDrawFragments(mobFmCvs, mobFmCtx);
-          _fmTouchStart = null; return;
+          selImplant=hit.impl;
+          if (implMode!=='implant') switchToImplMode();
+          fmDrawFragments(mobFmCvs,mobFmCtx);
+          _fmTouchStart=null; return;
         }
       }
-      // 3. Fragment tap
-      fmPointerDown(tapPos); fmPointerUp();
-      fmDrawFragments(mobFmCvs, mobFmCtx);
-      fmSyncMobUI();
+
+      // 3. Erase mode — delete the tapped line
+      if (fmEraseMode) {
+        const scale=fm._drawScale||1,offX=fm._drawOffX||0,offY=fm._drawOffY||0;
+        const ix=(tapPos.x-offX)/scale, iy=(tapPos.y-offY)/scale;
+        let bestIdx=-1, bestD=30/scale;
+        fm.fracLines.forEach((fl,li) => {
+          const frag=fm.fragments.find(f=>f.lineIndices.includes(li));
+          for(let i=0;i<fl.points.length-1;i++){
+            const pa=frag?_fmProjLocal(fl.points[i],frag):fl.points[i];
+            const pb=frag?_fmProjLocal(fl.points[i+1],frag):fl.points[i+1];
+            const d=distToSeg({x:ix,y:iy},pa,pb);
+            if(d<bestD){bestD=d;bestIdx=li;}
+          }
+        });
+        if(bestIdx>=0){
+          fm.fracLines.splice(bestIdx,1);
+          fm.generated=false;
+          fm.fragments=fm.fracLines.length?fmComputeFragments():[];
+          if(fm.fracLines.length) fm.generated=true;
+          fmDrawFragments(mobFmCvs,mobFmCtx);
+          fmSyncMobUI();
+        }
+        _fmTouchStart=null; return;
+      }
+
+      // 4. Fragment tap — same algorithm as pointer picker
+      const hits = _fmHitAll(tapPos);
+      if (hits.length === 1) {
+        // Single hit — select immediately
+        fm.selFrag = hits[0].fi;
+        fm.dragFrag = null;
+        fmHideFragPicker();
+        fmDrawFragments(mobFmCvs,mobFmCtx);
+        fmSyncMobUI();
+      } else if (hits.length > 1) {
+        // Multiple overlapping — show picker (same as pointer picker pattern)
+        fmShowFragPicker(hits, tapPos);
+        fm.selFrag = null;
+        fmDrawFragments(mobFmCvs,mobFmCtx);
+      } else {
+        // Miss — deselect
+        fm.selFrag = null;
+        fm.dragFrag = null;
+        fmHideFragPicker();
+        fmDrawFragments(mobFmCvs,mobFmCtx);
+        fmSyncMobUI();
+      }
     }
-    _fmTouchStart = null;
+
+    _fmTouchStart    = null;
     _fmTouchDragging = false;
   };
 }
@@ -6903,9 +7046,12 @@ function fmPointerUp() { fm.dragFrag=null; }
 
 // ── Mobile fracture mapper ────────────────────────────────────
 function mobFmActivateDraw() {
+  fmEraseMode = false;
   fmActivateDraw();
+  _fmSyncToggleBtns();
   fmSyncMobUI();
-  mobClose(); // close sheet so canvas is accessible
+  mobClose();
+  fmShowPill();
 }
 
 function fmSyncMobUI() {
@@ -6916,7 +7062,28 @@ function fmSyncMobUI() {
   const fragsEl = document.getElementById('mob-fm-frags');
   if (fragsEl) fragsEl.style.display = fm.generated ? 'block' : 'none';
   if (fm.generated) fmRenderMobFragList();
-  // Draw button
+  // Drawn lines list
+  const linesList = document.getElementById('mob-fm-lines-list');
+  if (linesList) {
+    if (fm.fracLines.length === 0) {
+      linesList.innerHTML = '';
+    } else {
+      linesList.innerHTML = fm.fracLines.map((fl,i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border)">
+          <div style="width:8px;height:8px;border-radius:50%;background:hsl(${i*47%360},70%,55%);flex-shrink:0"></div>
+          <div style="flex:1;font-size:11px;color:var(--text)">Line ${i+1}
+            <span style="color:var(--muted);font-size:10px"> · ${fl.points?.length||0} pts</span>
+          </div>
+          <button onclick="fmDeleteLine(${i})" style="
+            background:none;border:none;color:rgba(232,138,132,.6);
+            font-size:14px;cursor:pointer;padding:2px 6px;border-radius:5px;
+            transition:color .15s;
+          " onmouseenter="this.style.color='#e88a84'" onmouseleave="this.style.color='rgba(232,138,132,.6)'">✕</button>
+        </div>`).join('');
+    }
+  }
+  // Draw/erase toggle
+  _fmSyncToggleBtns();
   const btn = document.getElementById('mob-fm-draw-btn');
   if (btn) {
     if (fm.drawing) {
@@ -6938,6 +7105,23 @@ function fmSyncMobUI() {
   // Selected label in diagram bottom bar
   const sl = document.getElementById('mob-fm-sel-label');
   if (sl) sl.textContent = fm.selFrag !== null ? `Line ${fm.selFrag+1} selected` : 'Tap a line to select';
+}
+
+function fmDeleteSelFrag() {
+  if (fm.selFrag === null || !fm.fragments[fm.selFrag]) return;
+  const frag = fm.fragments[fm.selFrag];
+  // Remove the fracture lines belonging to this fragment
+  const toRemove = new Set(frag.lineIndices);
+  fm.fracLines = fm.fracLines.filter((_,i) => !toRemove.has(i));
+  // Recompute fragments
+  fm.fragments = fmComputeFragments();
+  fm.selFrag = null;
+  fm.generated = fm.fragments.length > 0;
+  // Update UI
+  const lbl = document.getElementById('mob-fm-sel-label');
+  if (lbl) lbl.textContent = 'Tap a line to select';
+  fmDrawFragments(mobFmCvs, mobFmCtx);
+  fmSyncMobUI();
 }
 
 function fmMobRotSel(rad) {
@@ -8117,6 +8301,43 @@ function dhsBubbleSetScrew(val) {
   xraySelImpl.plate._screwLength = parseInt(val);
   document.getElementById('dhsb-screw-val').textContent = val + 'mm';
   mobRedraw();
+}
+
+// ── Fracture draw/erase floating pill ────────────────────────
+function fmShowPill() {
+  const pill = document.getElementById('fm-draw-pill');
+  if (pill) { pill.style.display = 'flex'; fmSyncPill(); }
+}
+function fmHidePill() {
+  const pill = document.getElementById('fm-draw-pill');
+  if (pill) pill.style.display = 'none';
+}
+function fmSyncPill() {
+  const db = document.getElementById('fm-pill-draw');
+  const eb = document.getElementById('fm-pill-erase');
+  if (!db || !eb) return;
+  if (fmEraseMode) {
+    eb.style.background='rgba(234,179,8,.2)'; eb.style.color='#eab308';
+    db.style.background='transparent';        db.style.color='rgba(255,255,255,.4)';
+  } else {
+    db.style.background='var(--red)'; db.style.color='#fff';
+    eb.style.background='transparent'; eb.style.color='rgba(255,255,255,.4)';
+  }
+}
+function fmPillDraw() {
+  fmEraseMode = false;
+  if (!fm.drawing) fmActivateDraw();
+  fmSyncPill(); _fmSyncToggleBtns();
+}
+function fmPillErase() {
+  fmEraseMode = true;
+  fm.drawing = false; fmActiveDrawMode = null;
+  fmSyncPill(); _fmSyncToggleBtns();
+}
+function fmPillClose() {
+  fmEraseMode = false;
+  fm.drawing = false; fmActiveDrawMode = null;
+  fmHidePill(); _fmSyncToggleBtns();
 }
 
 // ── Persistent canvas FABs ───────────────────────────────────
