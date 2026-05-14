@@ -713,8 +713,8 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
 <!-- ── Draggable floating cluster ── -->
 <div id="float-cluster" style="
-  position:fixed;right:12px;bottom:62px;z-index:210;
-  display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+  position:fixed;left:10px;bottom:62px;z-index:210;
+  display:flex;flex-direction:column;gap:8px;align-items:flex-start;
   user-select:none;touch-action:none;
 ">
   <!-- Cluster drag handle (moves whole cluster) -->
@@ -742,18 +742,18 @@ button { font-family: 'IBM Plex Sans', sans-serif; cursor: pointer; }
 
   <!-- Fracture FAB -->
   <div id="fab-fracture" style="display:none;align-items:center;gap:8px;">
+    <button onclick="mobOpen('fracmap')" style="background:linear-gradient(135deg,#c0392b,#8b1a14);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔀</button>
+    <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Fracture</div>
     <span class="float-item-grip" data-target="fab-fracture"
       style="cursor:grab;color:rgba(255,255,255,.25);font-size:16px;line-height:1;touch-action:none;padding:4px;">⠿</span>
-    <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Fracture</div>
-    <button onclick="mobOpen('fracmap')" style="background:linear-gradient(135deg,#c0392b,#8b1a14);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔀</button>
   </div>
 
   <!-- Implants FAB -->
   <div id="fab-implants" style="display:none;align-items:center;gap:8px;">
+    <button onclick="mobOpen('implants')" style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔩</button>
+    <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Implants</div>
     <span class="float-item-grip" data-target="fab-implants"
       style="cursor:grab;color:rgba(255,255,255,.25);font-size:16px;line-height:1;touch-action:none;padding:4px;">⠿</span>
-    <div style="background:rgba(10,12,18,.88);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:4px 10px;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap;backdrop-filter:blur(6px);">Implants</div>
-    <button onclick="mobOpen('implants')" style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔩</button>
   </div>
 </div>
 
@@ -8036,6 +8036,8 @@ function nvOpen(name) {
     panel.classList.add('nv-panel-open');
   }
   if (backdrop) { backdrop.style.display='block'; backdrop.style.pointerEvents='all'; }
+  // Move cluster above panels
+  const _fc=document.getElementById('float-cluster'); if(_fc) _fc.style.zIndex='105';
   // Update active state on bar buttons
   document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('mbb-' + name);
@@ -8061,6 +8063,7 @@ function nvClose(silent) {
   _nvOpen = null;
   const backdrop = document.getElementById('nv-backdrop');
   if (backdrop) { backdrop.style.display='none'; backdrop.style.pointerEvents='none'; }
+  const _fc2=document.getElementById('float-cluster'); if(_fc2) _fc2.style.zIndex='210';
   document.querySelectorAll('.mob-bar-btn').forEach(b => b.classList.remove('active'));
   nvCloseActions();
 }
@@ -8346,93 +8349,115 @@ function fabHide(name) {
     const delZone = document.getElementById('float-delete-zone');
     if (!cluster || !handle) return;
 
-    // ── Cluster drag (whole group) ──
-    let cDrag=false, cSX=0, cSY=0, cOR=0, cOB=0;
-    function cGetPos() {
+    // ── Unified state ──
+    let mode=null; // 'cluster' | 'item'
+    let cSX=0,cSY=0,cOR=0,cOB=0;
+    let iEl=null, iGhost=null, iLastCX=0, iLastCY=0;
+
+    function clusterPos(){
       const r=cluster.getBoundingClientRect();
-      return {right:window.innerWidth-r.right, bottom:window.innerHeight-r.bottom};
+      // Use left if left is set, else derive from right
+      const left  = cluster.style.left !== 'auto' && cluster.style.left ? r.left : r.left;
+      return {right:left, bottom:window.innerHeight-r.bottom};
     }
-    function cDown(cx,cy){
-      cDrag=true; cSX=cx; cSY=cy;
-      const p=cGetPos(); cOR=p.right; cOB=p.bottom;
+
+    // ── Unified move / up ──
+    function onMove(cx,cy){
+      if(mode==='cluster'){
+        const dx=cx-cSX, dy=cy-cSY;
+        const newL = Math.max(4, Math.min(window.innerWidth-80, cOR+dx));
+        const newB = Math.max(52, Math.min(window.innerHeight-60, cOB-dy));
+        cluster.style.left   = newL+'px';
+        cluster.style.right  = 'auto';
+        cluster.style.bottom = newB+'px';
+      } else if(mode==='item' && iGhost){
+        iLastCX=cx; iLastCY=cy;
+        iGhost.style.left=(cx-iGhost._halfW)+'px';
+        iGhost.style.top =(cy-iGhost._halfH)+'px';
+        if(delZone){
+          const r=delZone.getBoundingClientRect();
+          const over=cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom;
+          delZone.style.background   =over?'rgba(192,57,43,.4)':'rgba(192,57,43,.12)';
+          delZone.style.borderColor  =over?'rgba(255,80,60,.9)':'rgba(192,57,43,.45)';
+          delZone.style.color        =over?'#fff':'rgba(232,138,132,.8)';
+        }
+      }
+    }
+
+    function onUp(){
+      if(mode==='cluster'){
+        handle.style.cursor='grab';
+      } else if(mode==='item'){
+        // Check delete BEFORE hiding zone
+        let deleted=false;
+        if(delZone && iEl){
+          const r=delZone.getBoundingClientRect();
+          if(iLastCX>=r.left&&iLastCX<=r.right&&iLastCY>=r.top&&iLastCY<=r.bottom){
+            deleted=true;
+            iEl.style.display='none';
+            iEl.style.opacity='';
+            const id=iEl.id;
+            if(id==='fab-fracture'){_fabShown.fracture=false;}
+            if(id==='fab-implants'){_fabShown.implants=false;}
+            if(id==='fm-draw-pill'){fmEraseMode=false;fm.drawing=false;fmActiveDrawMode=null;_fmSyncToggleBtns();}
+          }
+        }
+        if(!deleted && iEl) iEl.style.opacity='';
+        if(iGhost){iGhost.remove();iGhost=null;}
+        if(delZone) delZone.style.display='none';
+      }
+      mode=null; iEl=null;
+    }
+
+    // ── Cluster handle ──
+    function clusterDown(cx,cy){
+      mode='cluster'; cSX=cx; cSY=cy;
+      const p=clusterPos(); cOR=p.right; cOB=p.bottom;
       handle.style.cursor='grabbing';
     }
-    function cMove(cx,cy){
-      if(!cDrag) return;
-      const dx=cx-cSX, dy=cy-cSY;
-      cluster.style.right  = Math.max(4,  Math.min(window.innerWidth-60,  cOR-dx))+'px';
-      cluster.style.bottom = Math.max(52, Math.min(window.innerHeight-60, cOB-dy))+'px';
-    }
-    function cUp(){ cDrag=false; handle.style.cursor='grab'; }
-    handle.addEventListener('mousedown', e=>{ e.preventDefault(); cDown(e.clientX,e.clientY); });
-    window.addEventListener('mousemove', e=>{ if(cDrag) cMove(e.clientX,e.clientY); });
-    window.addEventListener('mouseup',   ()=>cUp());
-    handle.addEventListener('touchstart', e=>{ e.preventDefault(); cDown(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
-    window.addEventListener('touchmove',  e=>{ if(cDrag){e.preventDefault();cMove(e.touches[0].clientX,e.touches[0].clientY);}},{passive:false});
-    window.addEventListener('touchend',   ()=>cUp());
+    handle.addEventListener('mousedown',  e=>{ e.preventDefault(); clusterDown(e.clientX,e.clientY); });
+    handle.addEventListener('touchstart', e=>{ e.preventDefault(); clusterDown(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
 
-    // ── Per-item drag-to-delete ──
-    let iDrag=false, iEl=null, iGhost=null;
-
-    function isOverDelete(cx,cy){
-      if(!delZone||delZone.style.display==='none') return false;
-      const r=delZone.getBoundingClientRect();
-      return cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom;
-    }
-    function iDown(grip,cx,cy){
-      iEl = document.getElementById(grip.dataset.target);
-      if(!iEl) return;
-      iDrag=true;
-      // Ghost clone
-      iGhost=iEl.cloneNode(true);
-      iGhost.style.cssText='position:fixed;z-index:300;opacity:0.75;pointer-events:none;transition:none;';
+    // ── Item grips ──
+    function itemDown(grip,cx,cy){
+      iEl=document.getElementById(grip.dataset.target);
+      if(!iEl||iEl.style.display==='none') return;
+      mode='item';
+      iLastCX=cx; iLastCY=cy;
+      // Build ghost
       const r=iEl.getBoundingClientRect();
-      iGhost.style.left=r.left+'px'; iGhost.style.top=r.top+'px';
-      iGhost.style.width=r.width+'px';
+      iGhost=document.createElement('div');
+      iGhost.style.cssText=`position:fixed;z-index:400;opacity:0.8;pointer-events:none;
+        left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;
+        background:rgba(10,12,18,.92);border:1.5px solid rgba(255,255,255,.2);
+        border-radius:40px;display:flex;align-items:center;justify-content:center;
+        font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+        color:rgba(255,255,255,.7);padding:8px 16px;`;
+      iGhost.textContent = iEl.id==='fm-draw-pill' ? '✏/⌫ Draw·Erase'
+                         : iEl.id==='fab-fracture' ? '🔀 Fracture'
+                         : '🔩 Implants';
+      iGhost._halfW = r.width/2;
+      iGhost._halfH = r.height/2;
       document.body.appendChild(iGhost);
-      iEl.style.opacity='0.25';
-      // Show delete zone
+      iEl.style.opacity='0.2';
       if(delZone) delZone.style.display='flex';
       grip.style.cursor='grabbing';
     }
-    function iMove(cx,cy){
-      if(!iDrag||!iGhost) return;
-      const r=iEl.getBoundingClientRect();
-      iGhost.style.left=(cx-r.width/2)+'px';
-      iGhost.style.top=(cy-r.height/2)+'px';
-      // Highlight delete zone
-      if(delZone){
-        const over=isOverDelete(cx,cy);
-        delZone.style.background=over?'rgba(192,57,43,.35)':'rgba(192,57,43,.15)';
-        delZone.style.borderColor=over?'#c0392b':'rgba(192,57,43,.5)';
-      }
-    }
-    function iUp(cx,cy){
-      if(!iDrag) return;
-      iDrag=false;
-      if(iGhost){iGhost.remove();iGhost=null;}
-      if(delZone) delZone.style.display='none';
-      if(iEl) iEl.style.opacity='';
-      // Drop on delete zone → hide item
-      if(isOverDelete(cx,cy)&&iEl){
-        iEl.style.display='none';
-        // Reset fab shown state so it can reappear later
-        const id=iEl.id;
-        if(id==='fab-fracture') _fabShown.fracture=false;
-        if(id==='fab-implants') _fabShown.implants=false;
-        if(id==='fm-draw-pill') { fmEraseMode=false; fm.drawing=false; fmActiveDrawMode=null; _fmSyncToggleBtns(); }
-      }
-      iEl=null;
-    }
 
     document.querySelectorAll('.float-item-grip').forEach(grip=>{
-      grip.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation(); iDown(grip,e.clientX,e.clientY); });
-      grip.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); iDown(grip,e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
+      grip.addEventListener('mousedown',  e=>{ e.preventDefault(); e.stopPropagation(); itemDown(grip,e.clientX,e.clientY); });
+      grip.addEventListener('touchstart', e=>{ e.preventDefault(); e.stopPropagation(); itemDown(grip,e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
     });
-    window.addEventListener('mousemove', e=>{ if(iDrag) iMove(e.clientX,e.clientY); });
-    window.addEventListener('mouseup',   e=>{ if(iDrag) iUp(e.clientX,e.clientY); });
-    window.addEventListener('touchmove', e=>{ if(iDrag){e.preventDefault();iMove(e.touches[0].clientX,e.touches[0].clientY);}},{passive:false});
-    window.addEventListener('touchend',  e=>{ if(iDrag) iUp(e.changedTouches[0].clientX,e.changedTouches[0].clientY); });
+
+    // ── Unified global listeners ──
+    window.addEventListener('mousemove', e=>{ if(mode) onMove(e.clientX,e.clientY); });
+    window.addEventListener('mouseup',   e=>{ if(mode) onUp(); });
+    window.addEventListener('touchmove', e=>{
+      if(!mode) return;
+      e.preventDefault();
+      onMove(e.touches[0].clientX,e.touches[0].clientY);
+    },{passive:false});
+    window.addEventListener('touchend',  e=>{ if(mode) onUp(); });
   }
 
   document.addEventListener('DOMContentLoaded', initFloatDrag);
